@@ -1,0 +1,28 @@
+language: none
+
+env:
+  global:
+    - DOCKER_ACC=analysiscenter1
+    - DOCKER_REPO=ds-py3
+    - TAG="gpu"
+
+build:
+  pre_ci_boot:
+    image_name: $DOCKER_ACC/$DOCKER_REPO
+    image_tag: gpu
+  ci:
+    pylint
+
+integrations:
+  hub:
+    - integrationName: DockerHub analysiscenter.ru
+      type: docker
+  
+  notifications:
+    - integrationName: Slack analysiscenter.ru
+      type: slack
+      recipients:
+        - "#commits"
+      on_success: always
+      on_failure: always
+      
