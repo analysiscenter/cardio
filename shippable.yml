@@ -11,7 +11,7 @@ build:
     image_name: $DOCKER_ACC/$DOCKER_REPO
     image_tag: gpu
   ci:
-    pylint
+    - pylint
 
 integrations:
   hub:
