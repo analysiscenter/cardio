@@ -4,14 +4,14 @@ env:
   global:
     - DOCKER_ACC=analysiscenter1
     - DOCKER_REPO=ds-py3
-    - TAG="gpu"
+    - TAG="latest"
 
 build:
   pre_ci_boot:
     image_name: $DOCKER_ACC/$DOCKER_REPO
-    image_tag: gpu
+    image_tag: $TAG
   ci:
-    - pylint
+    - pylint3
 
 integrations:
   hub:
