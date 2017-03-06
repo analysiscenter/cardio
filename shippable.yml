@@ -11,6 +11,7 @@ build:
     image_name: $DOCKER_ACC/$DOCKER_REPO
     image_tag: $TAG
   ci:
+    - find . -iname "*.py"
     - find . -iname "*.py" | xargs pylint3
 
 integrations:
