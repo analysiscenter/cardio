@@ -11,7 +11,7 @@ build:
     image_name: $DOCKER_ACC/$DOCKER_REPO
     image_tag: $TAG
   ci:
-    - find -not -path './dataset/*' . -iname "*.py" | xargs -r pylint3 -rn --rcfile pylintrc
+    - find . -not -path './dataset/*' -iname "*.py" | xargs -r pylint3 -rn --rcfile pylintrc
 
 integrations:
   hub:
