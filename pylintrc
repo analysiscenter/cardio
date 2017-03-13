@@ -1,0 +1,9 @@
+[MASTER]
+ignore=dataset
+extension-pkg-whitelist=numpy
+
+[FORMAT]
+max-line-length=120
+
+[MISCELLANEOUS]
+notes=
