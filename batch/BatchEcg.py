@@ -32,7 +32,7 @@ class BatchEcg(Batch):
 
     def load(self, all_ecg_paths, btype="wfdb"):
         """
-
+        Loads data from different sources
         """
         self._ecg_index_path = {ecg: all_ecg_paths[ecg] for ecg in self.index}
         self._ecg_index_number = {
@@ -101,7 +101,7 @@ class BatchEcg(Batch):
 
     def dump(self, path, fmt):
         """
-
+        Dumps each ecg in its own file with filename identical to the index
         """
         if fmt == "npz":
             for ecg in self.index:
