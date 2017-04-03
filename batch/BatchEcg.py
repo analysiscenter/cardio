@@ -4,9 +4,9 @@
 from copy import deepcopy
 import sys
 import numpy as np
-from dataset import Batch, ArrayBatch, property, staticmethod, action
+from dataset import Batch # pylint: disable=import-error
 import pandas as pd
-import wfdb
+import wfdb # pylint: disable=import-error
 
 sys.path.append('..')
 
@@ -18,6 +18,7 @@ class BatchEcg(Batch):
 
     def __init__(self, index):
         """
+
         """
 
         super().__init__(index)
@@ -31,6 +32,7 @@ class BatchEcg(Batch):
 
     def load(self, all_ecg_paths, btype="wfdb"):
         """
+
         """
         self._ecg_index_path = {ecg: all_ecg_paths[ecg] for ecg in self.index}
         self._ecg_index_number = {
@@ -47,7 +49,7 @@ class BatchEcg(Batch):
 
         max_length = np.max([a.shape[1] for a in list_of_arrs])
         self._data = np.asarray([
-            np.pad(sig, ((0, 0), (0, max_length - sig.shape[1])), "constant")
+            np.pad(sig, ((0, 0), (0, max_length - sig.shape[1])), "constant") # pylint: disable=no-member
             for sig in list_of_arrs
         ])
         self._annotation = pd.concat(list_of_annotations)
@@ -88,9 +90,7 @@ class BatchEcg(Batch):
             list_of_annotations.append(pd.DataFrame(data["arr_1"],
                                                     columns=["ecg",
                                                              "index",
-                                                             "value"]
-                                                    )
-                                       )
+                                                             "value"]))
             fields = deepcopy(data["arr_2"].item())
             fields.update({"init_length": data["arr_0"].shape[1]})
             self._meta.update({self._ecg_index_number[ecg]: fields})
@@ -101,13 +101,14 @@ class BatchEcg(Batch):
 
     def dump(self, path, fmt):
         """
+
         """
         if fmt == "npz":
             for ecg in self.index:
-                    np.savez(path+ecg+"."+fmt,
-                             self[ecg][0][:, :self[ecg][2]["init_length"]],
-                             self[ecg][1],
-                             self[ecg][2])
+                np.savez(path+ecg+"."+fmt,  # pylint: disable=no-member
+                         self[ecg][0][:, :self[ecg][2]["init_length"]],
+                         self[ecg][1],
+                         self[ecg][2])
         else:
             raise NotImplementedError("The format is not supported yet")
 
@@ -120,7 +121,7 @@ class BatchEcg(Batch):
                     <= np.max(list(self._ecg_index_number.values()))):
                 return (self._data[index, :, :],
                         self._annotation if self._annotation.empty else
-                        self._annotation.loc["ecg" ==
+                        self._annotation.loc[self._annotation.ecg ==
                                              self._ecg_index_number[index], :],
                         self._meta[index])
             else:
@@ -129,7 +130,7 @@ class BatchEcg(Batch):
             if index in self.index:
                 return (self._data[self._ecg_index_number[index], :, :],
                         self._annotation if self._annotation.empty else
-                        self._annotation.loc["ecg" == index, :],
+                        self._annotation.loc[self._annotation.ecg == index, :],
                         self._meta[self._ecg_index_number[index]])
             else:
                 raise IndexError(
