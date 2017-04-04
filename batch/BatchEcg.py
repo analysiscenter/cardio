@@ -1,14 +1,14 @@
 """ contain Batch class for storing ECGs """
 
-# Imports
 from copy import deepcopy
 import sys
 import numpy as np
-from dataset import Batch # pylint: disable=import-error
 import pandas as pd
-import wfdb # pylint: disable=import-error
+import wfdb
 
 sys.path.append('..')
+from dataset import Batch
+
 
 
 class BatchEcg(Batch):
@@ -17,10 +17,6 @@ class BatchEcg(Batch):
     """
 
     def __init__(self, index):
-        """
-
-        """
-
         super().__init__(index)
 
         self._data = None
@@ -49,7 +45,7 @@ class BatchEcg(Batch):
 
         max_length = np.max([a.shape[1] for a in list_of_arrs])
         self._data = np.asarray([
-            np.pad(sig, ((0, 0), (0, max_length - sig.shape[1])), "constant") # pylint: disable=no-member
+            np.pad(sig, ((0, 0), (0, max_length - sig.shape[1])), "constant")
             for sig in list_of_arrs
         ])
         self._annotation = pd.concat(list_of_annotations)
@@ -105,7 +101,7 @@ class BatchEcg(Batch):
         """
         if fmt == "npz":
             for ecg in self.index:
-                np.savez(path+ecg+"."+fmt,  # pylint: disable=no-member
+                np.savez(path+ecg+"."+fmt,
                          self[ecg][0][:, :self[ecg][2]["init_length"]],
                          self[ecg][1],
                          self[ecg][2])
