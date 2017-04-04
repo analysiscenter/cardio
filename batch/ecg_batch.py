@@ -1,21 +1,20 @@
 """ contain Batch class for storing ECGs """
 
-from copy import deepcopy
 import sys
+import os
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 import wfdb
 
 sys.path.append('..')
-from dataset import Batch
+from dataset import Batch, action
 
 
-
-class BatchEcg(Batch):
+class EcgBatch(Batch):
     """
     TODO
     """
-
     def __init__(self, index):
         super().__init__(index)
 
@@ -26,19 +25,21 @@ class BatchEcg(Batch):
         self._ecg_index_number = dict()
         self.history = []
 
-    def load(self, all_ecg_paths, btype="wfdb"):
+    @action
+    def load(self, src, fmt="wfdb"):
         """
         Loads data from different sources
         """
+        all_ecg_paths = src
         self._ecg_index_path = {ecg: all_ecg_paths[ecg] for ecg in self.index}
         self._ecg_index_number = {
             self.index[i]: i
             for i in range(len(self.index))
         }
 
-        if btype == "wfdb":
+        if fmt == "wfdb":
             list_of_arrs, list_of_annotations = self._load_wfdb()
-        elif btype == "npz":
+        elif fmt == "npz":
             list_of_arrs, list_of_annotations = self._load_npz()
         else:
             raise TypeError("Incorrect type of batch source")
@@ -68,7 +69,7 @@ class BatchEcg(Batch):
             try:
                 annot = wfdb.rdann(path, "atr")
             except FileNotFoundError:
-                annot = pd.DataFrame(columns=["ecg", "index", "value"])
+                annot = pd.DataFrame(columns=["ecg", "index", "value"])     # pylint: disable=redefined-variable-type
             fields.update({"init_length": sig.shape[1]})
             list_of_arrs.append(sig)
             list_of_annotations.append(annot)
@@ -83,10 +84,9 @@ class BatchEcg(Batch):
             path = self._ecg_index_path[ecg]
             data = np.load(path+".npz")
             list_of_arrs.append(data["arr_0"])
-            list_of_annotations.append(pd.DataFrame(data["arr_1"],
-                                                    columns=["ecg",
-                                                             "index",
-                                                             "value"]))
+            list_of_annotations.append(
+                pd.DataFrame(data["arr_1"], columns=["ecg", "index", "value"])
+            )
             fields = deepcopy(data["arr_2"].item())
             fields.update({"init_length": data["arr_0"].shape[1]})
             self._meta.update({self._ecg_index_number[ecg]: fields})
@@ -95,13 +95,14 @@ class BatchEcg(Batch):
     def _load_arrays(self):
         raise NotImplementedError()
 
-    def dump(self, path, fmt):
+    @action
+    def dump(self, dst, fmt="npz"):
         """
         Dumps each ecg in its own file with filename identical to the index
         """
         if fmt == "npz":
             for ecg in self.index:
-                np.savez(path+ecg+"."+fmt,
+                np.savez(os.path.join(dst, ecg + "." + fmt),
                          self[ecg][0][:, :self[ecg][2]["init_length"]],
                          self[ecg][1],
                          self[ecg][2])
@@ -160,7 +161,3 @@ class BatchEcg(Batch):
             and its number in batch.
         """
         return list(self._ecg_index_number.items())
-
-
-if __name__ == "__main__":
-    pass
