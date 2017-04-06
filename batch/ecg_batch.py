@@ -63,7 +63,7 @@ class EcgBatch(Batch):
         meta = {}
         for pos, ecg in np.ndenumerate(self.indices):
             path = self.index.get_fullpath(ecg)
-            signal, fields = wfdb.rdsamp(path[:-4])
+            signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
             signal = signal.T
             try:
                 annot = wfdb.rdann(path, "atr")
