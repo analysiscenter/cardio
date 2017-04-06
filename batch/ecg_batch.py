@@ -40,10 +40,10 @@ class EcgBatch(Batch):
         else:
             raise TypeError("Incorrect type of source")
 
-        # ATTENTION! 
+        # ATTENTION!
         # Construction below is used to overcome numpy bug:
-        # adding empty array to list of arrays, then generating array 
-        # of arrays and removing the last item (empty array) 
+        # adding empty array to list of arrays, then generating array
+        # of arrays and removing the last item (empty array)
         list_of_arrs.append(np.array([]))
         self._data = np.array(list_of_arrs)[:-1]
         self._annotation = pd.concat(list_of_annotations)
