@@ -28,10 +28,10 @@ class EcgBatch(Batch):
         return pd.DataFrame(data=data, columns=["ecg", "index", "value"])
 
     @action
-    def load(self, src, fmt="wfdb"):
+    def load(self, src=None, fmt="wfdb"):
         """
         Loads data from different sources
-        src is supposed to be dict like this: {index_i:path_i}
+        src is not used yet, so files locations are defined by the index
         """
         if fmt == "wfdb":
             list_of_arrs, list_of_annotations, meta = self._load_wfdb()
