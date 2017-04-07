@@ -28,7 +28,7 @@ class EcgBatch(Batch):
         return pd.DataFrame(data=data, columns=["ecg", "index", "value"])
 
     @action
-    def load(self, src, fmt="wfdb"):
+    def load(self, src=None, fmt="wfdb"):
         """
         Loads data from different sources
         src is not used yet, so files locations are defined by the index
@@ -40,7 +40,12 @@ class EcgBatch(Batch):
         else:
             raise TypeError("Incorrect type of source")
 
-        self._data = np.array(list_of_arrs)
+        # ATTENTION!
+        # Construction below is used to overcome numpy bug:
+        # adding empty array to list of arrays, then generating array
+        # of arrays and removing the last item (empty array)
+        list_of_arrs.append(np.array([]))
+        self._data = np.array(list_of_arrs)[:-1]
         self._annotation = pd.concat(list_of_annotations)
         self._meta = meta
 
@@ -58,7 +63,7 @@ class EcgBatch(Batch):
         meta = {}
         for pos, ecg in np.ndenumerate(self.indices):
             path = self.index.get_fullpath(ecg)
-            signal, fields = wfdb.rdsamp(path)
+            signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
             signal = signal.T
             try:
                 annot = wfdb.rdann(path, "atr")
