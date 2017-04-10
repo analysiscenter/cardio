@@ -2,16 +2,16 @@
 
 import os
 import sys
+import copy
 import numpy as np
 import pandas as pd
-import wfdb
-import copy
-import pywt
 import matplotlib.pyplot as plt
 import signal_process as sps
+import wfdb
+import pywt
 
+from scipy.signal import resample_poly
 from dataset import Batch, action
-from scipy.signal import butter, lfilter, resample_poly, hilbert
 
 sys.path.append('..')
 
@@ -99,6 +99,15 @@ class EcgBatch(Batch):
             fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
         return list_of_arrs, list_of_annotations, meta
+    
+    def update(self, data=None, annot=None, meta=None):
+        if data is not None:
+            self._data = np.array(data)
+        if annot is not None:
+            self._annotation = annot
+        if meta is not None:
+            self._meta = meta
+        return self
 
     @action
     def dump(self, dst, fmt="npz"):
@@ -158,8 +167,8 @@ class EcgBatch(Batch):
         Apply butter_bandpass_filter
         """
         out_batch = EcgBatch(self.index)
-        out_batch._annotation = copy.deepcopy(self._annotation)
-        out_batch._meta = copy.deepcopy(self._meta)
+        out_batch.update(annot=copy.deepcopy(self._annotation),
+                         meta=copy.deepcopy(self._meta))
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, meta = self[ecg]
@@ -168,7 +177,9 @@ class EcgBatch(Batch):
                                              highcut, fs, order)
             list_of_arrs.append(arr.reshape(1, -1))
         list_of_arrs.append(np.array([]))
-        out_batch._data = np.array(list_of_arrs)[:-1]
+        out_batch.update(data=np.array(list_of_arrs)[:-1],
+                         annot=copy.deepcopy(self._annotation),
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
     @action
@@ -177,18 +188,18 @@ class EcgBatch(Batch):
         Resample signals to new fixed rate given by new_fs
         """
         out_batch = EcgBatch(self.index)
-        out_batch._annotation = copy.deepcopy(self._annotation)
-        out_batch._meta = copy.deepcopy(self._meta)
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, meta = self[ecg]
             fs = meta['fs']
             new_len = int(new_fs * len(signal[0]) / fs)
             list_of_arrs.append(resample_poly(signal, new_len,
-                                len(signal[0]), axis=1))
+                                              len(signal[0]), axis=1))
             out_batch._meta[ecg]['fs'] = new_fs
         list_of_arrs.append(np.array([]))
-        out_batch._data = np.array(list_of_arrs)[:-1]
+        out_batch.update(data=np.array(list_of_arrs)[:-1],
+                         annot=copy.deepcopy(self._annotation),
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
     @action
@@ -199,19 +210,18 @@ class EcgBatch(Batch):
         denotes the level of decomposition
         """
         out_batch = EcgBatch(self.index)
-        out_batch._annotation = copy.deepcopy(self._annotation)
-        out_batch._meta = copy.deepcopy(self._meta)
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, _ = self[ecg]
             new_len = 2**int(np.log2(len(signal[0])))
             w_coef = pywt.wavedec(resample_poly(signal, new_len,
-                                  len(signal[0]), axis=1),
+                                                len(signal[0]), axis=1),
                                   wavelet=wavelet, mode='per', axis=1)
-
             list_of_arrs.append(w_coef)
         list_of_arrs.append(np.array([]))
-        out_batch._data = np.array(list_of_arrs)[:-1]
+        out_batch.update(data=np.array(list_of_arrs)[:-1],
+                         annot=copy.deepcopy(self._annotation),
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
     @action
@@ -221,14 +231,12 @@ class EcgBatch(Batch):
         [time, scale, power].
         """
         out_batch = EcgBatch(self.index)
-        out_batch._annotation = copy.deepcopy(self._annotation)
-        out_batch._meta = copy.deepcopy(self._meta)
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, _ = self[ecg]
             new_len = 2**int(np.log2(len(signal[0])))
             w_coef = pywt.wavedec(resample_poly(signal, new_len,
-                                  len(signal[0]), axis=1),
+                                                len(signal[0]), axis=1),
                                   wavelet=wavelet, mode='per', axis=1)
             res_t = []
             for i in range(1, len(w_coef)):
@@ -241,7 +249,9 @@ class EcgBatch(Batch):
             power = np.stack(res_t)
             list_of_arrs.append([time_ax, scale_ax, power])
         list_of_arrs.append(np.array([]))
-        out_batch._data = np.array(list_of_arrs)[:-1]
+        out_batch.update(data=np.array(list_of_arrs)[:-1],
+                         annot=copy.deepcopy(self._annotation),
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
     @action
@@ -253,8 +263,6 @@ class EcgBatch(Batch):
             raise ValueError("Overlay should be in [0, 1]", overlay)
 
         out_batch = EcgBatch(self.index)
-        out_batch._annotation = copy.deepcopy(self._annotation)
-        out_batch._meta = copy.deepcopy(self._meta)
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, _ = self[ecg]
@@ -273,7 +281,9 @@ class EcgBatch(Batch):
             power = np.stack(res_t).transpose()
             list_of_arrs.append([time_ax, scale_ax, power])
         list_of_arrs.append(np.array([]))
-        out_batch._data = np.array(list_of_arrs)[:-1]
+        out_batch.update(data=np.array(list_of_arrs)[:-1],
+                         annot=copy.deepcopy(self._annotation),
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
     @action
@@ -282,9 +292,7 @@ class EcgBatch(Batch):
         Computes r-peaks using hmm
         """
         out_batch = EcgBatch(self.index)
-        out_batch._data = copy.deepcopy(self._data)
-        out_batch._annotation = copy.deepcopy(self._annotation)
-        out_batch._meta = copy.deepcopy(self._meta)
+        annot = copy.deepcopy(self._annotation)
 
         ann_data = []
         for ecg in self.indices:
@@ -295,10 +303,13 @@ class EcgBatch(Batch):
 
         ann_data.append(np.array([]))
         ann_data = np.array(ann_data)[:-1]
-        out_batch._annotation['R_peaks'] = ann_data
+        annot['R_peaks'] = ann_data
+        out_batch.update(data=copy.deepcopy(self._data),
+                         annot=annot,
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
-    def loc_segments(self, segment_type, kernel=None):
+    def loc_segments(self, segment_type):
         """
         Returns start and stop positons of requested segment_type
         """
@@ -309,15 +320,13 @@ class EcgBatch(Batch):
                            available_segment_types)
 
         out_batch = EcgBatch(self.index)
-        out_batch._data = copy.deepcopy(self._data)
-        out_batch._annotation = copy.deepcopy(self._annotation)
-        out_batch._meta = copy.deepcopy(self._meta)
+        cur_annot = self._annotation.copy()
 
         ann_start = []
         ann_stop = []
 
         for ecg in self.indices:
-            signal, annot, meta = self[ecg]
+            signal, annot, _ = self[ecg]
             rpeak = annot['R_peaks'][0]
             if segment_type == 'r_peak':
                 start = np.where(np.diff(rpeak) == 1)[0]
@@ -352,11 +361,15 @@ class EcgBatch(Batch):
 
         ann_start.append(np.array([]))
         ann_start = np.array(ann_start)[:-1]
-        out_batch._annotation[segment_type + '_start'] = ann_start
+        cur_annot[segment_type + '_start'] = ann_start
 
         ann_stop.append(np.array([]))
         ann_stop = np.array(ann_stop)[:-1]
-        out_batch._annotation[segment_type + '_stop'] = ann_stop
+        cur_annot[segment_type + '_stop'] = ann_stop
+        
+        out_batch.update(data=copy.deepcopy(self._data),
+                         annot=cur_annot,
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
     def mean_profile(self, segment_type, rate=None):
@@ -372,18 +385,18 @@ class EcgBatch(Batch):
             rate = 100
 
         out_batch = EcgBatch(self.index)
-        out_batch._meta = copy.deepcopy(self._meta)
         list_of_arrs = []
 
         for ecg in self.indices:
-            signal, annot, meta = self[ecg]
+            signal, annot, _ = self[ecg]
             start = annot[segment_type + '_start'][0]
             stop = annot[segment_type + '_stop'][0]
             stacked = sps.stack_segments(signal[0], start, stop, rate)
             list_of_arrs.append(stacked.mean(axis=0).reshape((1, -1)))
 
         list_of_arrs.append(np.array([]))
-        out_batch._data = np.array(list_of_arrs)[:-1]
+        out_batch.update(data=np.array(list_of_arrs)[:-1],
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
     def segment_describe(self, segment_type):
@@ -397,18 +410,18 @@ class EcgBatch(Batch):
                            available_segment_types)
 
         out_batch = EcgBatch(self.index)
-        out_batch._meta = copy.deepcopy(self._meta)
         list_of_arrs = []
 
         for ecg in self.indices:
-            signal, annot, meta = self[ecg]
+            signal, annot, _ = self[ecg]
             start = annot[segment_type + '_start'][0]
             stop = annot[segment_type + '_stop'][0]
             statistics = sps.segment_features(signal[0], start, stop)
             list_of_arrs.append(np.array(statistics))
 
         list_of_arrs.append(np.array([]))
-        out_batch._data = np.array(list_of_arrs)[:-1]
+        out_batch.update(data=np.array(list_of_arrs)[:-1],
+                         meta=copy.deepcopy(self._meta))
         return out_batch
 
     def show_signal(self, ecg, ax=None):
@@ -428,27 +441,27 @@ class EcgBatch(Batch):
         """
         #%matplotlib notebook
         if axarr is None:
-            fig, axarr = plt.subplots(2, 2)
+            _, axarr = plt.subplots(2, 2)
 
-        fs = 9
+        fontsize = 9
         signal, annot, meta = self[ecg]
         axarr[0, 0].plot(signal[0])
-        axarr[0, 0].set_title('ECG signal', fontsize=fs)
+        axarr[0, 0].set_title('ECG signal', fontsize=fontsize)
 
         start = annot['period_start']
         stop = annot['period_stop']
         mean, interval = sps.segment_profile(signal[0], start[0],
                                              stop[0], rate=100)
         sps.show_segment_profile(mean, interval, axarr[0, 1])
-        axarr[0, 1].set_title('Mean RR cycle with CI', fontsize=fs)
+        axarr[0, 1].set_title('Mean RR cycle with CI', fontsize=fontsize)
 
         sps.show_hist(start[0], stop[0], ax=axarr[1, 0])
-        axarr[1, 0].set_title('Distribution of RR cycle length', fontsize=fs)
+        axarr[1, 0].set_title('Distribution of RR cycle length', fontsize=fontsize)
 
         stacked = sps.stack_segments(signal[0], start[0], stop[0], rate=500)
         im = stacked / np.abs(stacked).max()
         axarr[1, 1].imshow(im, origin='low', aspect='auto')
-        axarr[1, 1].set_title('Stacked RR cycles', fontsize=fs)
+        axarr[1, 1].set_title('Stacked RR cycles', fontsize=fontsize)
 
         plt.suptitle('Type - %s' % meta['diag'])
         plt.subplots_adjust(left=None, bottom=None, right=None,
