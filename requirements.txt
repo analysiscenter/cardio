@@ -1,2 +1,2 @@
 wfdb
-pywt
+PyWavelets
