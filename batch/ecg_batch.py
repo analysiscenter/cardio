@@ -6,7 +6,7 @@ import copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import signal_process as sps
+import .signal_process as sps
 import wfdb
 import pywt
 
@@ -102,7 +102,7 @@ class EcgBatch(Batch):
             fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
         return list_of_arrs, list_of_annotations, meta
-    
+
     def update(self, data=None, annot=None, meta=None):
         if data is not None:
             self._data = np.array(data)
@@ -368,7 +368,7 @@ class EcgBatch(Batch):
         ann_stop.append(np.array([]))
         ann_stop = np.array(ann_stop)[:-1]
         cur_annot[segment_type + '_stop'] = ann_stop
-        
+
         out_batch.update(data=self._data.copy(),
                          annot=cur_annot,
                          meta=self._meta.copy())

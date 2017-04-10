@@ -6,7 +6,7 @@ max-line-length=120
 max-attributes=8
 max-args=6
 max-locals=20
-min-name-length=2
+good-names=fs, ax, im, a, b
 
 [TYPECHECK]
 ignored-modules=numpy

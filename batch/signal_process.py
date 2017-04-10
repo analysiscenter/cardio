@@ -4,11 +4,14 @@ import warnings
 import numpy as np
 
 from scipy.signal import butter, lfilter, resample_poly, gaussian
-from hmmlearn import hmm
 from scipy.stats import bayes_mvs
+from hmmlearn import hmm
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
+    """
+    Find frequence interval
+    """
     nyq = 0.5 * fs
     low = lowcut / nyq
     high = highcut / nyq
@@ -24,27 +27,33 @@ def butter_bandpass_filter(signal, lowcut, highcut, fs, order=5):
     return lfilter(b, a, signal)
 
 
-def hmm_estimate(signal, fs, kernel=None, n_iter=25):
-        warnings.filterwarnings("ignore")
-        if kernel is None:
-            kernel = gaussian(int(100 * fs / 300), int(10 * fs / 300))
+def hmm_estimate(signal, fs, kernel=None, n_iter=25, n_components=3):
+    """
+    Find n_components in signal
+    """
+    warnings.filterwarnings("ignore")
+    if kernel is None:
+        kernel = gaussian(int(100 * fs / 300), int(10 * fs / 300))
 
-        grad1 = np.gradient(signal)
-        grad1_sm = np.convolve(grad1**2, kernel, mode='same')
+    grad1 = np.gradient(signal)
+    grad1_sm = np.convolve(grad1**2, kernel, mode='same')
 
-        grad2 = np.gradient(np.gradient(signal))
-        grad2_sm = np.convolve(grad2**2, kernel, mode='same')
+    grad2 = np.gradient(np.gradient(signal))
+    grad2_sm = np.convolve(grad2**2, kernel, mode='same')
 
-        model = hmm.GaussianHMM(n_components=3, covariance_type="full",
+    model = hmm.GaussianHMM(n_components=n_components, covariance_type="full",
                                 n_iter=n_iter)
-        train = list(zip(signal, grad1, grad1_sm, grad2, grad2_sm))
-        model.fit(train)
+    train = list(zip(signal, grad1, grad1_sm, grad2, grad2_sm))
+    model.fit(train)
 
-        pred = model.predict(train)
-        return pred
+    pred = model.predict(train)
+    return pred
 
 
 def get_r_peaks(signal, pred, fs, kernel=None):
+    """
+    Find component within n_components that corresponds to r_peaks
+    """
     if kernel is None:
         kernel = gaussian(int(100 * fs / 300), int(10 * fs / 300))
 
@@ -60,6 +69,9 @@ def get_r_peaks(signal, pred, fs, kernel=None):
 
 
 def stack_segments(signal, start, stop, rate=None):
+    """
+    Divide signal into set of segments
+    """
     stacked = []
     if rate is None:
         rate = 100
@@ -72,6 +84,9 @@ def stack_segments(signal, start, stop, rate=None):
 
 
 def segment_profile(signal, start, stop, rate=None, return_ci=True):
+    """
+    Mean and ci for singal segments
+    """
     if rate is None:
         rate = 100
     stacked = stack_segments(signal, start, stop, rate)
@@ -89,6 +104,9 @@ def segment_profile(signal, start, stop, rate=None, return_ci=True):
 
 
 def segment_features(signal, start, stop):
+    """
+    Statistics of signal within sogments
+    """
     p_start = np.arange(len(signal))[start.astype(bool)]
     p_stop = np.arange(len(signal))[stop.astype(bool)]
 
@@ -107,6 +125,9 @@ def segment_features(signal, start, stop):
 
 
 def show_segment_profile(mean, interval, ax, rate=None):
+    """
+    Plot mean signal
+    """
     if rate is None:
         rate = 1
     ax.fill_between(np.linspace(0, rate, len(mean)), interval[:, 0],
@@ -115,6 +136,9 @@ def show_segment_profile(mean, interval, ax, rate=None):
 
 
 def show_hist(start, stop, ax, bins=None):
+    """
+    Histogram of segment lengh
+    """
     if bins is None:
         bins = np.linspace(0, 400, 20)
     p_start = np.arange(len(start))[start.astype(bool)]
