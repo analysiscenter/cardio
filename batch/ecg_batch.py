@@ -52,6 +52,9 @@ class EcgBatch(Batch):
         # of arrays and removing the last item (empty array)
         list_of_arrs.append(np.array([]))
         self._data = np.array(list_of_arrs)[:-1]
+        # ATTENTION!
+        # Annotation should be loaded with a separate function
+        self._annotation = list_of_annotations
         self._annotation = {}
         self._meta = meta
 
@@ -140,7 +143,7 @@ class EcgBatch(Batch):
         """
         ref = pd.read_csv(path, header=None)
         ref.columns = ['file', 'diag']
-        ref = ref.set_index('file')
+        ref = ref.set_index('file')  #pylint: disable=no-member
         for ecg in self.indices:
             self._meta[ecg]['diag'] = ref.ix[ecg]['diag']
         return self
@@ -167,8 +170,6 @@ class EcgBatch(Batch):
         Apply butter_bandpass_filter
         """
         out_batch = EcgBatch(self.index)
-        out_batch.update(annot=copy.deepcopy(self._annotation),
-                         meta=copy.deepcopy(self._meta))
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, meta = self[ecg]
@@ -178,8 +179,8 @@ class EcgBatch(Batch):
             list_of_arrs.append(arr.reshape(1, -1))
         list_of_arrs.append(np.array([]))
         out_batch.update(data=np.array(list_of_arrs)[:-1],
-                         annot=copy.deepcopy(self._annotation),
-                         meta=copy.deepcopy(self._meta))
+                         annot=self._annotation.copy(),
+                         meta=self._meta.copy())
         return out_batch
 
     @action
@@ -188,6 +189,7 @@ class EcgBatch(Batch):
         Resample signals to new fixed rate given by new_fs
         """
         out_batch = EcgBatch(self.index)
+        cur_meta = self._meta.copy()
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, meta = self[ecg]
@@ -195,11 +197,11 @@ class EcgBatch(Batch):
             new_len = int(new_fs * len(signal[0]) / fs)
             list_of_arrs.append(resample_poly(signal, new_len,
                                               len(signal[0]), axis=1))
-            out_batch._meta[ecg]['fs'] = new_fs
+            cur_meta[ecg]['fs'] = new_fs
         list_of_arrs.append(np.array([]))
         out_batch.update(data=np.array(list_of_arrs)[:-1],
-                         annot=copy.deepcopy(self._annotation),
-                         meta=copy.deepcopy(self._meta))
+                         annot=self._annotation.copy(),
+                         meta=cur_meta)
         return out_batch
 
     @action
@@ -220,8 +222,8 @@ class EcgBatch(Batch):
             list_of_arrs.append(w_coef)
         list_of_arrs.append(np.array([]))
         out_batch.update(data=np.array(list_of_arrs)[:-1],
-                         annot=copy.deepcopy(self._annotation),
-                         meta=copy.deepcopy(self._meta))
+                         annot=self._annotation.copy(),
+                         meta=self._meta.copy())
         return out_batch
 
     @action
@@ -250,8 +252,8 @@ class EcgBatch(Batch):
             list_of_arrs.append([time_ax, scale_ax, power])
         list_of_arrs.append(np.array([]))
         out_batch.update(data=np.array(list_of_arrs)[:-1],
-                         annot=copy.deepcopy(self._annotation),
-                         meta=copy.deepcopy(self._meta))
+                         annot=self._annotation.copy(),
+                         meta=self._meta.copy())
         return out_batch
 
     @action
@@ -282,8 +284,8 @@ class EcgBatch(Batch):
             list_of_arrs.append([time_ax, scale_ax, power])
         list_of_arrs.append(np.array([]))
         out_batch.update(data=np.array(list_of_arrs)[:-1],
-                         annot=copy.deepcopy(self._annotation),
-                         meta=copy.deepcopy(self._meta))
+                         annot=self._annotation.copy(),
+                         meta=self._meta.copy())
         return out_batch
 
     @action
@@ -304,9 +306,9 @@ class EcgBatch(Batch):
         ann_data.append(np.array([]))
         ann_data = np.array(ann_data)[:-1]
         annot['R_peaks'] = ann_data
-        out_batch.update(data=copy.deepcopy(self._data),
+        out_batch.update(data=self._data.copy(),
                          annot=annot,
-                         meta=copy.deepcopy(self._meta))
+                         meta=self._meta.copy())
         return out_batch
 
     def loc_segments(self, segment_type):
@@ -367,9 +369,9 @@ class EcgBatch(Batch):
         ann_stop = np.array(ann_stop)[:-1]
         cur_annot[segment_type + '_stop'] = ann_stop
         
-        out_batch.update(data=copy.deepcopy(self._data),
+        out_batch.update(data=self._data.copy(),
                          annot=cur_annot,
-                         meta=copy.deepcopy(self._meta))
+                         meta=self._meta.copy())
         return out_batch
 
     def mean_profile(self, segment_type, rate=None):
@@ -396,7 +398,7 @@ class EcgBatch(Batch):
 
         list_of_arrs.append(np.array([]))
         out_batch.update(data=np.array(list_of_arrs)[:-1],
-                         meta=copy.deepcopy(self._meta))
+                         meta=self._meta.copy())
         return out_batch
 
     def segment_describe(self, segment_type):
@@ -421,7 +423,7 @@ class EcgBatch(Batch):
 
         list_of_arrs.append(np.array([]))
         out_batch.update(data=np.array(list_of_arrs)[:-1],
-                         meta=copy.deepcopy(self._meta))
+                         meta=self._meta.copy())
         return out_batch
 
     def show_signal(self, ecg, ax=None):
@@ -430,7 +432,7 @@ class EcgBatch(Batch):
         """
         #%matplotlib notebook
         if ax is None:
-            fig, ax = plt.subplots()
+            _, ax = plt.subplots()
 
         ax.plot(self[ecg][0][0])
         plt.show()
