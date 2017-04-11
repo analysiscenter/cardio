@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name
 """ contain Batch class for processing ECGs """
 
 import os
@@ -8,12 +9,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import wfdb
 import pywt
-from scipy.signal import resample_poly
 
-sys.path.append('..')
+from scipy.signal import resample_poly
 from dataset import Batch, action
 
-import signal_process as sps
+sys.path.append('..')
+
+from signal_process import signal_process as sps
 
 
 class EcgBatch(Batch):
@@ -31,7 +33,7 @@ class EcgBatch(Batch):
     @staticmethod
     def create_annotation_df(data=None):
         """ Create a pandas dataframe with ECG annotations """
-        return pd.DataFrame(data=data, columns=["ecg", "index", "value"])
+        return {}
 
     @action
     def load(self, src=None, fmt="wfdb"):
@@ -55,7 +57,6 @@ class EcgBatch(Batch):
         # ATTENTION!
         # Annotation should be loaded with a separate function
         self._annotation = list_of_annotations
-        self._annotation = {}
         self._meta = meta
 
         # add info in self.history
@@ -67,8 +68,11 @@ class EcgBatch(Batch):
         return self
 
     def _load_wfdb(self, src):
+        """
+        Load signal and meta, loading of annotation should be added
+        """
         list_of_arrs = []
-        list_of_annotations = []
+        list_of_annotations = {}
         meta = {}
         for pos, ecg in np.ndenumerate(self.indices):
             if src is None:
@@ -77,33 +81,40 @@ class EcgBatch(Batch):
                 path = src[ecg]
             signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
             signal = signal.T
-            try:
-                annot = wfdb.rdann(path, "atr")
-            except FileNotFoundError:
-                annot = self.create_annotation_df()  # pylint: disable = redefined-variable-type
+            # try:
+            #     annot = wfdb.rdann(path, "atr")
+            # except FileNotFoundError:
+            #     annot = {}
             list_of_arrs.append(signal)
-            list_of_annotations.append(annot)
+            # list_of_annotations.append(annot)
             fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
 
         return list_of_arrs, list_of_annotations, meta
 
     def _load_npz(self):
+        """
+        Load signal and meta, loading of annotation should be added
+        """
         list_of_arrs = []
-        list_of_annotations = []
+        list_of_annotations = {}
         meta = {}
         for pos, ecg in np.ndenumerate(self.indices):
             path = self.index.get_fullpath(ecg)
             data = np.load(path)
             list_of_arrs.append(data["signal"])
-            annot = self.create_annotation_df(data["annotation"])
-            list_of_annotations.append(annot)
+            # annot = self.create_annotation_df(data["annotation"])
+            # list_of_annotations.append(annot)
             fields = data["meta"].item()
             fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
         return list_of_arrs, list_of_annotations, meta
 
+    @action
     def update(self, data=None, annot=None, meta=None):
+        """
+        Update content of ecg_batch
+        """
         if data is not None:
             self._data = np.array(data)
         if annot is not None:

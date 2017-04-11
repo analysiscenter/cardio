@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name
 """ contain methods for signal processing """
 
 import warnings
