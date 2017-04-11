@@ -6,14 +6,14 @@ import copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import .signal_process as sps
 import wfdb
 import pywt
-
 from scipy.signal import resample_poly
-from dataset import Batch, action
 
 sys.path.append('..')
+from dataset import Batch, action
+
+import signal_process as sps
 
 
 class EcgBatch(Batch):

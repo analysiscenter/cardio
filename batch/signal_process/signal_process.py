@@ -42,7 +42,7 @@ def hmm_estimate(signal, fs, kernel=None, n_iter=25, n_components=3):
     grad2_sm = np.convolve(grad2**2, kernel, mode='same')
 
     model = hmm.GaussianHMM(n_components=n_components, covariance_type="full",
-                                n_iter=n_iter)
+                            n_iter=n_iter)
     train = list(zip(signal, grad1, grad1_sm, grad2, grad2_sm))
     model.fit(train)
 
