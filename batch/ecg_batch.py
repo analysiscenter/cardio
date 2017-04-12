@@ -110,7 +110,6 @@ class EcgBatch(Batch):
             meta.update({ecg: fields})
         return list_of_arrs, list_of_annotations, meta
 
-    @action
     def update(self, data=None, annot=None, meta=None):
         """
         Update content of ecg_batch
@@ -131,10 +130,10 @@ class EcgBatch(Batch):
         if fmt == "npz":
             for ecg in self.indices:
                 signal, ann, meta = self[ecg]
-                del meta["__pos"]
+                # del meta["__pos"]
                 np.savez(os.path.join(dst, ecg + "." + fmt),
                          signal=signal,
-                         annotation=ann, meta=meta)
+                         annotation=ann, meta=meta.pop('__pos'))
         else:
             raise NotImplementedError("The format is not supported yet")
 
@@ -148,6 +147,47 @@ class EcgBatch(Batch):
             raise IndexError("There is no such index in the batch", index)
 
     @action
+    def pad(self, target_length=None, pad_annotation=False):
+        """
+        Left zero padding upto target_length or batch_maximal_length
+        """
+        out_batch = EcgBatch(self.index)
+        list_of_arrs = []
+        cur_meta = self._meta.copy()
+        
+        if target_length is None:
+            target_length = max(len(x[0]) for x in self._data)
+        
+        for ecg in self.indices:
+            signal, _, _ = self[ecg]
+            if len(signal[0]) > target_length:
+                list_of_arrs.append(signal[:, -target_length:])
+                left_pad = len(signal[0]) - target_length
+            else:
+                left_pad = target_length - len(signal[0])
+                list_of_arrs.append(np.pad(signal, pad_width=((0, 0), (left_pad, 0)), 
+                                           mode='constant', constant_values=0))    
+            cur_meta[ecg]['pad'] = left_pad
+
+        annot = self._annotation.copy()
+        if pad_annotation:
+            for key in annot:
+                pad_arrs = []
+                ann_arrs = annot[key]
+                for arr in ann_arrs:
+                    if len(arr[0]) > target_length:
+                        arr = arr[:, -target_length:]
+                    else:
+                        arr = np.pad(arr, pad_width=((0, 0), (left_pad, 0)), 
+                                     mode='constant', constant_values=0) 
+                    pad_arrs.append(arr)
+                annon[key] = np.array(pad_arrs)
+        out_batch.update(data=np.array(list_of_arrs),
+                         annot=annot,
+                         meta=cur_meta)
+        return out_batch
+    
+    @action
     def add_ref(self, path):
         """
         Loads labels for Challenge dataset from file REFERENCE.csv
@@ -160,11 +200,10 @@ class EcgBatch(Batch):
         return self
 
     @action
-    def add_hmm_pred(self, path):
+    def add_hmm_pred(self, pred_set):
         """
-        Loads r-peaks from file
+        Add r-peaks from pred_set
         """
-        pred_set = np.load(path)
         ann_data = []
         for pred, ecg in zip(pred_set, self.indices):
             signal, _, meta = self[ecg]
@@ -247,18 +286,7 @@ class EcgBatch(Batch):
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, _ = self[ecg]
-            new_len = 2**int(np.log2(len(signal[0])))
-            w_coef = pywt.wavedec(resample_poly(signal, new_len,
-                                                len(signal[0]), axis=1),
-                                  wavelet=wavelet, mode='per', axis=1)
-            res_t = []
-            for i in range(1, len(w_coef)):
-                res_t.append(np.repeat(w_coef[-i][0], 2**i))
-                res_t.append(np.repeat(w_coef[0][0], 2**(len(w_coef) - 1)))
-
-            time = np.linspace(0, len(signal[0]), new_len)
-            scale = np.arange(1, len(res_t) + 1)
-            time_ax, scale_ax = np.meshgrid(time, scale)
+            time_ax, scale_ax, power = sps.wavelet_spectrogram(signal, wavelet)
             power = np.stack(res_t)
             list_of_arrs.append([time_ax, scale_ax, power])
         list_of_arrs.append(np.array([]))
@@ -279,19 +307,7 @@ class EcgBatch(Batch):
         list_of_arrs = []
         for ecg in self.indices:
             signal, _, _ = self[ecg]
-            start = 0
-            end = start + window
-            res_t = []
-            while end < len(signal[0]):
-                segment = signal[0, start: end]
-                coef = np.fft.rfft(segment)
-                res_t.append(coef)
-                start += int(window * (1 - overlay))
-                end = start + window
-            time = np.linspace(0, len(signal[0]), len(res_t))
-            scale = np.arange(len(res_t[0]))
-            time_ax, scale_ax = np.meshgrid(time, scale)
-            power = np.stack(res_t).transpose()
+            time_ax, scale_ax, power = fft_spectrogram(signal, window, overlay)
             list_of_arrs.append([time_ax, scale_ax, power])
         list_of_arrs.append(np.array([]))
         out_batch.update(data=np.array(list_of_arrs)[:-1],
@@ -328,8 +344,8 @@ class EcgBatch(Batch):
         """
         available_segment_types = {'r_peak', 'rr_interval', 'period'}
         if segment_type not in available_segment_types:
-            raise KeyError('Unknown interval type {0}. \
-                           Available types are'.format(segment_type),
+            raise KeyError('Unknown interval type {0}.' \
+                           'Available types are'.format(segment_type),
                            available_segment_types)
 
         out_batch = EcgBatch(self.index)
@@ -342,32 +358,11 @@ class EcgBatch(Batch):
             signal, annot, _ = self[ecg]
             rpeak = annot['R_peaks'][0]
             if segment_type == 'r_peak':
-                start = np.where(np.diff(rpeak) == 1)[0]
-                stop = np.where(np.diff(rpeak) == -1)[0]
+                start, stop = sps.loc_segments(rpeak, 'peak')
             if segment_type == 'rr_interval':
-                start = np.where(np.diff(rpeak) == -1)[0]
-                stop = np.where(np.diff(rpeak) == 1)[0]
+                start, stop = sps.loc_segments(-rpeak+1, 'peak')
             if segment_type == 'period':
-                start = np.where(np.diff(rpeak) == 1)[0]
-                stop = start.copy()
-
-            if (len(start) > 2) and (len(stop) > 2):
-                if start[0] > stop[0]:
-                    stop = stop[1:]
-                if stop[-1] < start[-1]:
-                    start = start[:-1]
-                if segment_type == 'period':
-                    start = start[:-1]
-                    stop = stop[1:]
-                tmp = np.zeros_like(signal[0], dtype=int)
-                tmp[start] = 1
-                start = tmp
-                tmp = np.zeros_like(signal[0], dtype=int)
-                tmp[stop] = 1
-                stop = tmp
-            else:
-                start = np.zeros_like(signal[0], dtype=int)
-                stop = np.zeros_like(signal[0], dtype=int)
+                start, stop = sps.loc_segments(rpeak, 'period')
 
             ann_start.append(start.reshape((1, -1)))
             ann_stop.append(stop.reshape((1, -1)))
@@ -391,8 +386,8 @@ class EcgBatch(Batch):
         """
         available_segment_types = {'r_peak', 'rr_interval', 'period'}
         if segment_type not in available_segment_types:
-            raise KeyError('Unknown interval type {0}. \
-                           Available types are'.format(segment_type),
+            raise KeyError('Unknown interval type {0}.' \
+                           'Available types are'.format(segment_type),
                            available_segment_types)
         if rate is None:
             rate = 100
@@ -418,8 +413,8 @@ class EcgBatch(Batch):
         """
         available_segment_types = {'r_peak', 'rr_interval', 'period'}
         if segment_type not in available_segment_types:
-            raise KeyError('Unknown interval type {0}. \
-                           Available types are'.format(segment_type),
+            raise KeyError('Unknown interval type {0}.' \
+                           'Available types are'.format(segment_type),
                            available_segment_types)
 
         out_batch = EcgBatch(self.index)

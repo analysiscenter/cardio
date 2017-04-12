@@ -149,3 +149,82 @@ def show_hist(start, stop, ax, bins=None):
     width = 0.9 * (edg[1] - edg[0])
     center = (edg[:-1] + edg[1:]) / 2
     ax.bar(center, hist, align='center', width=width)
+
+def wavelet_spectrogram(signal, wavelet, axis=None):
+    """
+    Wavelet spectrogram of signal along given axis, default is -1
+    """
+    if axis is None:
+        axis = -1
+    new_len = 2**int(np.log2(signal.shape[axis]))
+    w_coef = pywt.wavedec(resample_poly(signal, new_len, signal.shape[axis], axis=axis),
+                          wavelet=wavelet, mode='per', axis=axis)
+    res_t = []
+    for i in range(1, len(w_coef)):
+        res_t.append(np.repeat(w_coef[-i][0], 2**i))
+        res_t.append(np.repeat(w_coef[0][0], 2**(len(w_coef) - 1)))
+
+    time = np.linspace(0, signal.shape[axis], new_len)
+    scale = np.arange(1, len(res_t) + 1)
+    time_ax, scale_ax = np.meshgrid(time, scale)
+    power = np.stack(res_t)
+    return time_ax, scale_ax, power
+
+def fft_spectrogram(signal, window, overlay=0, axis=None):
+    """
+    Windowed FFT along given axis, default is -1. Returns spectrogram as [time, scale, power].
+    """
+    if axis is None:
+        axis = -1
+    if (overlay < 0) or (overlay > 1):
+        raise ValueError("Overlay should be in [0, 1]", overlay)
+
+    start = 0
+    end = start + window
+    res_t = []
+    while end < signal.shape[axis]:
+        segment = signal[axis, start: end]
+        coef = np.fft.rfft(segment)
+        res_t.append(coef)
+        start += int(window * (1 - overlay))
+        end = start + window
+    time = np.linspace(0, signal.shape[axis], len(res_t))
+    scale = np.arange(len(res_t[0]))
+    time_ax, scale_ax = np.meshgrid(time, scale)
+    power = np.stack(res_t).transpose()
+    return time_ax, scale_ax, power
+
+def loc_segments(seq, segment_type):
+    """
+    Returns start and stop positons of requested segment_type
+    seq is a sequence of 0 and 1
+    peak is a continious segment of 1
+    period is a segment within beginnings of two successive peaks  
+    """
+    available_segment_types = {'peak', 'period'}
+    if segment_type not in available_segment_types:
+        raise KeyError('Unknown segmetnl type {0}.' \
+                       'Available types are'.format(segment_type),
+                       available_segment_types)
+    start_ind = np.where(np.diff(seq) == 1)[0] + 1
+    if segment_type == 'peak':
+        stop_ind = np.where(np.diff(seq) == -1)[0]
+    else:
+        stop_ind = start_ind - 1
+    if (len(start_ind) == 0) or (len(stop_ind) == 0):
+        start_ind = []
+        stop_ind = []
+    elif (len(start_ind) == 1) and (len(stop_ind) == 1):
+        if start_ind[0] > stop_ind[0]:
+            start_ind = []
+            stop_ind = []
+    else:
+        if start_ind[0] > stop_ind[0]:
+            stop_ind = stop_ind[1:]
+        if stop_ind[-1] < start_ind[-1]:
+            start_ind = start_ind[:-1]
+    start = np.zeros_like(seq, dtype=int) 
+    start[start_ind] = 1
+    stop = np.zeros_like(seq, dtype=int) 
+    stop[stop_ind] = 1
+    return start, stop
