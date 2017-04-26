@@ -4,9 +4,10 @@
 import warnings
 import numpy as np
 
-from scipy.signal import butter, lfilter, resample_poly, gaussian
+from scipy.signal import butter, lfilter, resample_poly, gaussian, correlate
 from scipy.stats import bayes_mvs
 from hmmlearn import hmm
+import pywt
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
@@ -28,48 +29,34 @@ def butter_bandpass_filter(signal, lowcut, highcut, fs, order=5):
     return lfilter(b, a, signal)
 
 
-def hmm_estimate(signal, fs, kernel=None, n_iter=25, n_components=3):
+def hmm_estimate(signal, n_components=3, n_iter=25):
     """
     Find n_components in signal
     """
     warnings.filterwarnings("ignore")
-    if kernel is None:
-        kernel = gaussian(int(100 * fs / 300), int(10 * fs / 300))
-
-    grad1 = np.gradient(signal)
-    grad1_sm = np.convolve(grad1**2, kernel, mode='same')
-
-    grad2 = np.gradient(np.gradient(signal))
-    grad2_sm = np.convolve(grad2**2, kernel, mode='same')
-
     model = hmm.GaussianHMM(n_components=n_components, covariance_type="full",
                             n_iter=n_iter)
-    train = list(zip(signal, grad1, grad1_sm, grad2, grad2_sm))
-    model.fit(train)
-
-    pred = model.predict(train)
+    model.fit(signal)
+    pred = model.predict(signal)
     return pred
+'''    
+def convolve(signal, kernel, axis=-1):
+    return np.apply_along_axis(np.convolve, axis, signal**2, v=kernel, mode='same')'''
 
 
-def get_r_peaks(signal, pred, fs, kernel=None):
+def get_r_peaks(pred, target):
     """
     Find component within n_components that corresponds to r_peaks
     """
-    if kernel is None:
-        kernel = gaussian(int(100 * fs / 300), int(10 * fs / 300))
-
-    grad2 = np.gradient(np.gradient(signal))**2
-    grad2 = np.convolve(grad2, kernel, mode='same')
-
     probe_class = []
     for i in range(max(pred)+1):
-        probe_class.append(np.correlate((pred == i).astype(int), grad2)[0])
+        probe_class.append(np.correlate((pred == i).astype(int), target)[0])
     rpeak_class = np.array(probe_class).argsort()[-1]
     rpeak = (pred == rpeak_class)
     return rpeak.astype(int)
 
 
-def stack_segments(signal, start, stop, rate=None):
+def stack_segments(signal, start, stop, unify=True, rate=None):
     """
     Divide signal into set of segments
     """
@@ -78,9 +65,15 @@ def stack_segments(signal, start, stop, rate=None):
         rate = 100
     p_start = np.arange(len(signal))[start.astype(bool)]
     p_stop = np.arange(len(signal))[stop.astype(bool)]
+    if len(p_start) == 0:
+        return np.array([[np.nan] * rate])
+    
     for a, b in zip(p_start, p_stop):
-        segment = signal[a: b]
-        stacked.append(resample_poly(segment, rate, len(segment)))
+        segment = signal[a: b + 1]
+        if unify:
+            stacked.append(resample_poly(segment, rate, len(segment)))
+        else:
+            stacked.append(segment)
     return np.array(stacked)
 
 
@@ -109,14 +102,14 @@ def segment_features(signal, start, stop):
     Statistics of signal within sogments
     """
     p_start = np.arange(len(signal))[start.astype(bool)]
-    p_stop = np.arange(len(signal))[stop.astype(bool)]
+    p_stop = np.arange(len(signal))[stop.astype(bool)] 
 
     if len(p_start) == 0:
-        return None
+        return np.array([]).reshape((5,0))
 
-    sig_segments = [signal[p_start[i]: p_stop[i]] for i in range(len(p_start))]
+    sig_segments = [signal[p_start[i]: p_stop[i] + 1] for i in range(len(p_start))]
 
-    length = (p_stop - p_start).astype(int)
+    length = (p_stop - p_start).astype(int) 
     ampl = np.array([np.abs(x).max() for x in sig_segments])
     area = np.array([np.abs(x).sum() for x in sig_segments])
     mean = np.array([x.mean() for x in sig_segments])
@@ -149,6 +142,61 @@ def show_hist(start, stop, ax, bins=None):
     width = 0.9 * (edg[1] - edg[0])
     center = (edg[:-1] + edg[1:]) / 2
     ax.bar(center, hist, align='center', width=width)
+
+
+def segment_alignment(signal, max_iter=10, align_to='median'):
+    """
+    To be added
+    """
+    n_iter = 0
+    shifted = signal.copy()
+    L = shifted.shape[-1]
+    while n_iter < max_iter:
+        if align_to == 'median':
+            mean = np.median(shifted, axis=0)
+        elif align_to == 'mean':
+            mean = np.mean(shifted, axis=0)
+        else:
+            raise KeyError('align_to supports mean or median only')
+        delay = []
+        for sig in shifted:
+            d = np.argmax(correlate(mean, sig, 'full'))
+            delay.append(L - d)
+        delay = np.array(delay)
+        if np.abs(delay).max() <= 1:
+            return shifted
+
+        for i in range(len(delay)):
+            if delay[i] >= 0:
+                shifted[i] = np.pad(shifted[i, delay[i]:], (0, delay[i]),
+                                    'constant', constant_values=0)
+            else:
+                shifted[i] = np.pad(shifted[i, :delay[i]], (-delay[i], 0),
+                                    'constant', constant_values=0)
+        n_iter += 1
+    return shifted
+
+
+def segment_centering(start, stop, target_length):
+    """
+    Wavelet spectrogram of signal along given axis, default is -1
+    """
+    p_start = np.arange(len(start))[start.astype(bool)]
+    p_stop = np.arange(len(stop))[stop.astype(bool)]
+    length = p_stop - p_start + 1
+    out = target_length - length
+
+    np_start = p_start - np.floor(out / 2).astype(int)
+    np_stop = p_stop + np.ceil(out / 2).astype(int)
+    valid_ind = (np_start >= 0) & (np_stop < len(stop))
+    np_start = np_start[valid_ind]
+    np_stop = np_stop[valid_ind]
+
+    res_start = np.zeros_like(start, dtype=int)
+    res_start[np_start] = 1
+    res_stop = np.zeros_like(stop, dtype=int)
+    res_stop[np_stop] = 1
+    return np.array([res_start, res_stop])
 
 def wavelet_spectrogram(signal, wavelet, axis=None):
     """
@@ -199,7 +247,7 @@ def loc_segments(seq, segment_type):
     Returns start and stop positons of requested segment_type
     seq is a sequence of 0 and 1
     peak is a continious segment of 1
-    period is a segment within beginnings of two successive peaks  
+    period is a segment within beginnings of two successive peaks
     """
     available_segment_types = {'peak', 'period'}
     if segment_type not in available_segment_types:
@@ -223,8 +271,8 @@ def loc_segments(seq, segment_type):
             stop_ind = stop_ind[1:]
         if stop_ind[-1] < start_ind[-1]:
             start_ind = start_ind[:-1]
-    start = np.zeros_like(seq, dtype=int) 
+    start = np.zeros_like(seq, dtype=int)
     start[start_ind] = 1
-    stop = np.zeros_like(seq, dtype=int) 
+    stop = np.zeros_like(seq, dtype=int)
     stop[stop_ind] = 1
     return start, stop
