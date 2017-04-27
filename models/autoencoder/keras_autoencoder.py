@@ -35,13 +35,13 @@ class KerasBaseAutoencoder(BaseAutoencoder):
 
     @staticmethod
     def _flatten(tensor):
-        if len(tensor.shape) >= 2:
+        if len(tensor.shape) > 2:
             return Flatten()(tensor)
         return tensor
 
     @staticmethod
     def _reshape(tensor, shape):
-        if len(shape) >= 2:
+        if len(shape) > 2:
             return Reshape(shape)(tensor)
         return tensor
 
@@ -70,14 +70,10 @@ class KerasAutoencoder(KerasBaseAutoencoder):
         encoded = self._build_encoder(encoded, dims, hidden_activation)
 
         # Decoder part
-        decoder_input = Input(shape=(dims[-1],))
-        decoder = decoder_input
-        decoded = encoded
-
         decoder_dims = dims[-2::-1] + [np.prod(input_shape)]
-        decoded, decoder = self._build_decoder(decoded, decoder, decoder_dims,
+        decoder_input = Input(shape=(dims[-1],))
+        decoded, decoder = self._build_decoder(encoded, decoder_input, decoder_dims,
                                                hidden_activation, output_activation)
-
         decoded = self._reshape(decoded, input_shape)
         decoder = self._reshape(decoder, input_shape)
 
@@ -94,7 +90,6 @@ class KerasVariationalAutoencoder(KerasBaseAutoencoder):
         encoder_input = Input(shape=input_shape)
         batch_size = tf.shape(encoder_input)[0]
         encoded = self._flatten(encoder_input)
-
         encoded = self._build_encoder(encoded, dims, activation)
         z_mean = Dense(dims[-1])(encoded)
         z_log_std = Dense(dims[-1])(encoded)
@@ -106,14 +101,10 @@ class KerasVariationalAutoencoder(KerasBaseAutoencoder):
         z = Lambda(sample_normal)([z_mean, z_log_std])
 
         # Decoder part
-        decoder_input = Input(shape=(dims[-1],))
-        decoder = decoder_input
-        decoded = z
-
         decoder_dims = dims[-2::-1] + [np.prod(input_shape)]
-        decoded, decoder = self._build_decoder(decoded, decoder, decoder_dims,
+        decoder_input = Input(shape=(dims[-1],))
+        decoded, decoder = self._build_decoder(z, decoder_input, decoder_dims,
                                                activation, "sigmoid")
-
         decoded = self._reshape(decoded, input_shape)
         decoder = self._reshape(decoder, input_shape)
 
@@ -121,8 +112,8 @@ class KerasVariationalAutoencoder(KerasBaseAutoencoder):
             reconstruction_loss = np.prod(input_shape) * metrics.binary_crossentropy(true, pred)
             kl_loss = -K.sum(1 + 2 * z_log_std - K.square(z_mean) - K.exp(2 * z_log_std), axis=-1) / 2
             return K.mean(reconstruction_loss + kl_loss)
-
         self.loss = loss
+
         self.autoencoder = Model(input=encoder_input, output=decoded)
         self.encoder = Model(input=encoder_input, output=z_mean)
         self.decoder = Model(input=decoder_input, output=decoder)
