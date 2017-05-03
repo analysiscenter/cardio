@@ -110,7 +110,8 @@ class KerasBaseAutoencoder(BaseAutoencoder):
             return Reshape(shape)(tensor)
         return tensor
 
-    def fit(self, x, *args, **kwargs):
+    def fit(self, x, batch_size=32, nb_epoch=10, verbose=1, callbacks=None,  # pylint: disable=too-many-arguments
+            validation_split=0.0, validation_data=None, *args, **kwargs):
         """Fit autoencoder model to given data.
 
         Parameters
@@ -121,12 +122,10 @@ class KerasBaseAutoencoder(BaseAutoencoder):
             Any keras predict arguments. Validation_data argument expects
             NumPy array, not an (input, output) tuple.
         """
-        if len(args) > 5:
-            args = list(args)
-            args[5] = (args[5], args[5])
-        if "validation_data" in kwargs:
-            kwargs["validation_data"] = (kwargs["validation_data"], kwargs["validation_data"])
-        return self.autoencoder.fit(x, x, *args, **kwargs)
+        if validation_data is not None:
+            validation_data = (validation_data, validation_data)
+        return self.autoencoder.fit(x, x, batch_size, nb_epoch, verbose, callbacks,
+                                    validation_split, validation_data, *args, **kwargs)
 
     def predict(self, x, *args, **kwargs):
         """Generate reconstructions for input samples.
