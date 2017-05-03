@@ -1,11 +1,8 @@
 """Contains keras-based autoencoder classes."""
 
-
 import numpy as np
 
-import tensorflow as tf
 from keras import backend as K
-from keras import metrics
 from keras.models import Model
 from keras.layers import Input, Dense, Flatten, Reshape, Lambda
 
@@ -14,6 +11,9 @@ from .base_autoencoder import BaseAutoencoder
 
 class KerasBaseAutoencoder(BaseAutoencoder):
     """Base keras autoencoder class.
+
+    All calls to unknown methods and attributes are redirected to the
+    autoencoder model.
 
     Attributes
     ----------
@@ -36,7 +36,12 @@ class KerasBaseAutoencoder(BaseAutoencoder):
         return getattr(self.autoencoder, name)
 
     @staticmethod
-    def _build_encoder(encoder_input, dims, activation):
+    def _get_block(dim, activation):
+        """Return Layer instance. Only Dense is supported yet."""
+        return Dense(dim, activation=activation)
+
+    @classmethod
+    def _build_encoder(cls, encoder_input, dims, activation):
         """Build an encoder part.
 
         Parameters
@@ -53,14 +58,13 @@ class KerasBaseAutoencoder(BaseAutoencoder):
         encoded : Tensor
             Hidden representations for input data.
         """
-
         encoded = encoder_input
         for dim in dims:
-            encoded = Dense(dim, activation=activation)(encoded)
+            encoded = cls._get_block(dim, activation=activation)(encoded)
         return encoded
 
-    @staticmethod
-    def _build_decoder(encoded, decoder_input, dims, hidden_activation, output_activation):
+    @classmethod
+    def _build_decoder(cls, encoded, decoder_input, dims, hidden_activation, output_activation):
         """Build a decoder part.
 
         Parameters
@@ -83,12 +87,11 @@ class KerasBaseAutoencoder(BaseAutoencoder):
         decoded : Tensor
             Extra output for decoder model.
         """
-
         decoded = encoded
         decoder = decoder_input
         activations = [hidden_activation] * (len(dims) - 1) + [output_activation]
         for dim, activation in zip(dims, activations):
-            layer = Dense(dim, activation=activation)
+            layer = cls._get_block(dim, activation=activation)
             decoded = layer(decoded)
             decoder = layer(decoder)
         return decoded, decoder
@@ -118,7 +121,9 @@ class KerasBaseAutoencoder(BaseAutoencoder):
             Any keras predict arguments. Validation_data argument expects
             NumPy array, not an (input, output) tuple.
         """
-
+        if len(args) > 5:
+            args = list(args)
+            args[5] = (args[5], args[5])
         if "validation_data" in kwargs:
             kwargs["validation_data"] = (kwargs["validation_data"], kwargs["validation_data"])
         return self.autoencoder.fit(x, x, *args, **kwargs)
@@ -133,7 +138,6 @@ class KerasBaseAutoencoder(BaseAutoencoder):
         *args, **kwargs :
             Any keras predict arguments.
         """
-
         return self.autoencoder.predict(x, *args, **kwargs)
 
     def encode(self, x, *args, **kwargs):
@@ -146,7 +150,6 @@ class KerasBaseAutoencoder(BaseAutoencoder):
         *args, **kwargs :
             Any keras predict arguments.
         """
-
         return self.encoder.predict(x, *args, **kwargs)
 
     def decode(self, x, *args, **kwargs):
@@ -159,7 +162,6 @@ class KerasBaseAutoencoder(BaseAutoencoder):
         *args, **kwargs :
             Any keras predict arguments.
         """
-
         return self.decoder.predict(x, *args, **kwargs)
 
 
@@ -180,9 +182,23 @@ class KerasAutoencoder(KerasBaseAutoencoder):
         output_activation : str or tensorflow element-wise function
             Output layer activation function.
         """
-
         super().__init__()
+        self._build_autoencoder(input_shape, dims, hidden_activation, output_activation)
 
+    def _build_autoencoder(self, input_shape, dims, hidden_activation, output_activation):
+        """Initialize autoencoder, encoder and decoder models.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input tensor shape without the batch dimension.
+        dims : list
+            Encoder hidden layers' dimensions.
+        hidden_activation : str or tensorflow element-wise function
+            Hidden layers' activation function.
+        output_activation : str or tensorflow element-wise function
+            Output layer activation function.
+        """
         # Encoder part
         encoder_input = Input(shape=input_shape)
         encoded = self._flatten(encoder_input)
@@ -216,36 +232,31 @@ class KerasVariationalAutoencoder(KerasBaseAutoencoder):
         activation : str or tensorflow element-wise function
             Hidden layers' activation function.
         """
-
         super().__init__()
+        self._build_autoencoder(input_shape, dims, activation)
 
+    def _build_autoencoder(self, input_shape, dims, activation):
+        """Initialize autoencoder, encoder and decoder models.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input tensor shape without the batch dimension.
+        dims : list
+            Encoder hidden layers' dimensions.
+        activation : str or tensorflow element-wise function
+            Hidden layers' activation function.
+        """
         # Encoder part
         encoder_input = Input(shape=input_shape)
-        batch_size = tf.shape(encoder_input)[0]
         encoded = self._flatten(encoder_input)
         encoded = self._build_encoder(encoded, dims, activation)
         z_mean = Dense(dims[-1])(encoded)
-        z_log_std = Dense(dims[-1])(encoded)
+        z_std = Dense(dims[-1], activation="softplus")(encoded)
+        self.kl_loss = -K.sum(1 + 2 * K.log(z_std) - K.square(z_mean) - K.square(z_std), axis=-1) / 2
 
-        # Sampling part
-        def sample_normal(args):
-            """Return samples from normal distribution.
-
-            Parameters
-            ----------
-            args : (mean, log_std)
-                Normal distribution mean and log standard deviation.
-
-            Returns
-            -------
-            z : Tensor
-                A tensor of shape (batch_size, decoder_input_size) filled with
-                random normal values.
-            """
-
-            mean, log_std = args
-            return K.random_normal(shape=(batch_size, dims[-1]), mean=mean, std=K.exp(log_std))
-        z = Lambda(sample_normal)([z_mean, z_log_std])
+        # Sampling from approximate posterior using the reparametrization trick
+        z = Lambda(lambda x: self._sample_normal(x[0], x[1]))([z_mean, z_std])
 
         # Decoder part
         decoder_dims = dims[-2::-1] + [np.prod(input_shape)]
@@ -255,37 +266,57 @@ class KerasVariationalAutoencoder(KerasBaseAutoencoder):
         decoded = self._reshape(decoded, input_shape)
         decoder = self._reshape(decoder, input_shape)
 
-        # Loss specification
-        def loss(true, pred):
-            """Calculate batch loss.
-
-            Consists of two parts:
-            1. Reconstruction loss - batch log likelihood, specified by
-               decoder distribution,
-            2. Kullback–Leibler divergence between the approximate posterior
-               and the prior.
-
-            Parameters
-            ----------
-            true : Tensor
-                True target.
-            pred : Tensor
-                Model predictions.
-
-            Returns
-            -------
-            loss : float
-                Batch loss.
-            """
-
-            reconstruction_loss = np.prod(input_shape) * metrics.binary_crossentropy(true, pred)
-            kl_loss = -K.sum(1 + 2 * z_log_std - K.square(z_mean) - K.exp(2 * z_log_std), axis=-1) / 2
-            return K.mean(reconstruction_loss + kl_loss)
-        self.loss = loss
-
         self.autoencoder = Model(input=encoder_input, output=decoded)
-        self.encoder = Model(input=encoder_input, output=z_mean)
+        self.encoder = Model(input=encoder_input, output=[z_mean, z_std])
         self.decoder = Model(input=decoder_input, output=decoder)
+
+    @staticmethod
+    def _sample_normal(mean=0, std=1, shape=None):
+        """Return independent samples from normal distribution.
+
+        Parameters
+        ----------
+        mean : float or Tensor of floats
+            Mean of the distribution. Defaults to 0.
+        std : float or Tensor of floats
+            Standard deviation of the distribution. Defaults to 1.
+        shape : tuple
+            Output tensor shape. If shape is None, it defaults to mean and std
+            broadcast shape.
+
+        Returns
+        -------
+        z : Tensor
+            A tensor of given shape filled with random normal values.
+        """
+        if shape is None:
+            shape = np.broadcast(np.atleast_1d(mean), np.atleast_1d(std)).shape
+        eps = K.random_normal(shape=shape, mean=0, std=1)
+        return mean + std * eps
+
+    def _loss(self, true, pred):
+        """Calculate batch loss.
+
+        Consists of two parts:
+        1. Reconstruction loss - batch log likelihood, specified by
+           decoder distribution,
+        2. Kullback–Leibler divergence between the approximate posterior
+           and the prior.
+
+        Parameters
+        ----------
+        true : Tensor
+            True target.
+        pred : Tensor
+            Model predictions.
+
+        Returns
+        -------
+        loss : float
+            Batch loss.
+        """
+        reconstruction_loss = K.sum(K.binary_crossentropy(pred, true), axis=list(range(1, K.ndim(true))))
+        return K.mean(reconstruction_loss + self.kl_loss)
 
     def compile(self, *args, **kwargs):
         """Compile autoencoder model.
@@ -293,7 +324,6 @@ class KerasVariationalAutoencoder(KerasBaseAutoencoder):
         Parameters
         ----------
         *args, **kwargs :
-            Any keras compile arguments, except loss.
+            Any keras compile arguments except loss.
         """
-
-        self.autoencoder.compile(loss=self.loss, *args, **kwargs)
+        self.autoencoder.compile(loss=self._loss, *args, **kwargs)

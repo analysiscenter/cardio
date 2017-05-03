@@ -1,6 +1,5 @@
 """Contains factory classes for autoencoder creation."""
 
-
 from .keras_autoencoder import KerasAutoencoder, KerasVariationalAutoencoder
 
 

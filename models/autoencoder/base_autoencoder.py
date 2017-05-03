@@ -1,6 +1,5 @@
 """Contains BaseAutoencoder interface."""
 
-
 class BaseAutoencoder:
     """Base autoencoder class."""
 
