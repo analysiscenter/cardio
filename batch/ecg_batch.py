@@ -23,10 +23,10 @@ class EcgBatch(Batch):
         self._meta = dict()
         self.history = []
 
-    # @staticmethod
-    # def create_annotation_df(data=None):
-    #     """ Create a pandas dataframe with ECG annotations """
-    #     return pd.DataFrame(data=data, columns=["ecg", "index", "value"])
+    @staticmethod
+    def create_annotation_df(data=None):
+        """ Create a pandas dataframe with ECG annotations """
+        return pd.DataFrame(data=data, columns=["ecg", "index", "value"])
 
     @action
     def load(self, src=None, fmt="wfdb"):
@@ -58,30 +58,31 @@ class EcgBatch(Batch):
 
         return self
 
-    def _wfdb_load_runner_src(self, src):
+    def _wfdb_load_runner_src(self, src, list_of_arrs, list_of_annotations,
+                              meta):
         for pos, ecg in np.ndenumerate(self.indices):
             path = src[ecg]
             signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
             signal = signal.T
-            # try:
-            #     annot = wfdb.rdann(path, "atr")
-            # except FileNotFoundError:
-            #     annot = self.create_annotation_df()     # pylint: disable=redefined-variable-type
+            try:
+                annot = wfdb.rdann(path, "atr")
+            except FileNotFoundError:
+                annot = self.create_annotation_df()  # pylint: disable=redefined-variable-type
             list_of_arrs.append(signal)
             list_of_annotations.append(annot)
             fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
         return list_of_arrs, list_of_annotations, meta
 
-    def _wfdb_load_runner(self):
+    def _wfdb_load_runner(self, list_of_arrs, list_of_annotations, meta):
         for pos, ecg in np.ndenumerate(self.indices):
             path = self.index.get_fullpath(ecg)
             signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
             signal = signal.T
-            # try:
-            #     annot = wfdb.rdann(path, "atr")
-            # except FileNotFoundError:
-            #     annot = self.create_annotation_df()     # pylint: disable=redefined-variable-type
+            try:
+                annot = wfdb.rdann(path, "atr")
+            except FileNotFoundError:
+                annot = self.create_annotation_df()  # pylint: disable=redefined-variable-type
             list_of_arrs.append(signal)
             list_of_annotations.append(annot)
             fields.update({"__pos": pos[0]})
@@ -95,9 +96,10 @@ class EcgBatch(Batch):
         meta = {}
         if src:
             list_of_arrs, list_of_annotations, meta = _wfdb_load_runner_src(
-                self, src)
+                self, src, list_of_arrs, list_of_annotations, meta)
         else:
-            list_of_arrs, list_of_annotations, meta = _wfdb_load_runner(self)
+            list_of_arrs, list_of_annotations, meta = _wfdb_load_runner(
+                self, list_of_arrs, list_of_annotations, meta)
 
         return list_of_arrs, list_of_annotations, meta
 
@@ -142,20 +144,26 @@ class EcgBatch(Batch):
             raise IndexError("There is no such index in the batch", index)
 
     def default_init(self, *args, **kwargs):
-        r = self.indices.tolist()
-        return r
+        """
+    	Default init for parallelism
+    	"""
+        init_indices = self.indices.tolist()
+        return init_indices
 
     def default_post(self, *args, **kwargs):
-        pass
+        """
+    	Default post for parallelism
+    	"""
+        print("Parallelism completed")
 
     @action
     def generate_subseqs(self, segm_length, step):
         list_of_splits = []
         for sig in self._data:
-            n = np.int((sig.shape[0] - segm_length) / step) + 1
+            n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
             splits = np.array([
                 np.array(sig[:, i * step:(i * step + segm_length)])
-                for i in range(n)
+                for i in range(n_splits)
             ])
             list_of_splits.append(splits)
         self._data = np.array(list_of_splits)
@@ -165,9 +173,9 @@ class EcgBatch(Batch):
         @inbatch_parallel(
             init='default_init', post='default_post', target='threads')
         def generate_subseqs_parallel(self, sig, segm_length, step):
-            n = np.int((sig.shape[0] - segm_length) / step) + 1
+            n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
             splits = np.array([
                 np.array(sig[:, i * step:(i * step + segm_length)])
-                for i in range(n)
+                for i in range(n_splits)
             ])
             return splits
