@@ -95,10 +95,10 @@ class EcgBatch(Batch):
         list_of_annotations = []
         meta = {}
         if src:
-            list_of_arrs, list_of_annotations, meta = _wfdb_load_runner_src(
+            list_of_arrs, list_of_annotations, meta = self._wfdb_load_runner_src(
                 self, src, list_of_arrs, list_of_annotations, meta)
         else:
-            list_of_arrs, list_of_annotations, meta = _wfdb_load_runner(
+            list_of_arrs, list_of_annotations, meta = self._wfdb_load_runner(
                 self, list_of_arrs, list_of_annotations, meta)
 
         return list_of_arrs, list_of_annotations, meta
@@ -143,14 +143,14 @@ class EcgBatch(Batch):
         else:
             raise IndexError("There is no such index in the batch", index)
 
-    def default_init(self, *args, **kwargs):
+    def default_init(self):
         """
     	Default init for parallelism
     	"""
         init_indices = self.indices.tolist()
         return init_indices
 
-    def default_post(self, *args, **kwargs):
+    def default_post(self): #pylint: disable=no-self-use
         """
     	Default post for parallelism
     	"""
@@ -158,6 +158,11 @@ class EcgBatch(Batch):
 
     @action
     def generate_subseqs(self, segm_length, step):
+    	"""
+    	Function to generate a number of subsequnces of segm_length, with
+    	step. Number of subseqs is defined by length of the initial signal
+    	and segm_lenght.
+    	"""
         list_of_splits = []
         for sig in self._data:
             n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
@@ -169,13 +174,16 @@ class EcgBatch(Batch):
         self._data = np.array(list_of_splits)
         return self
 
-        @action
-        @inbatch_parallel(
-            init='default_init', post='default_post', target='threads')
-        def generate_subseqs_parallel(self, sig, segm_length, step):
-            n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
-            splits = np.array([
-                np.array(sig[:, i * step:(i * step + segm_length)])
-                for i in range(n_splits)
-            ])
-            return splits
+    @action
+    @inbatch_parallel(
+        init='default_init', post='default_post', target='threads')
+    def generate_subseqs_parallel(self, sig, segm_length, step): #pylint: disable=unused-argument
+    """
+	Analog of generate_subseqs, desinged for parallelism.
+    """
+        n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
+        splits = np.array([
+            np.array(sig[:, i * step:(i * step + segm_length)])
+            for i in range(n_splits)
+        ])
+        return splits
