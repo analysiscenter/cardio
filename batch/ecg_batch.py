@@ -145,24 +145,24 @@ class EcgBatch(Batch):
 
     def default_init(self):
         """
-    	Default init for parallelism
-    	"""
+        Default init for parallelism
+        """
         init_indices = self.indices.tolist()
         return init_indices
 
-    def default_post(self): #pylint: disable=no-self-use
+    def default_post(self):  #pylint: disable=no-self-use
         """
-    	Default post for parallelism
-    	"""
+        Default post for parallelism
+        """
         print("Parallelism completed")
 
     @action
     def generate_subseqs(self, segm_length, step):
-    	"""
-    	Function to generate a number of subsequnces of segm_length, with
-    	step. Number of subseqs is defined by length of the initial signal
-    	and segm_lenght.
-    	"""
+        """
+        Function to generate a number of subsequnces of segm_length, 
+        with step. Number of subseqs is defined by length of the 
+        initial signal and segm_lenght.
+        """
         list_of_splits = []
         for sig in self._data:
             n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
@@ -177,10 +177,10 @@ class EcgBatch(Batch):
     @action
     @inbatch_parallel(
         init='default_init', post='default_post', target='threads')
-    def generate_subseqs_parallel(self, sig, segm_length, step): #pylint: disable=unused-argument
-    """
-	Analog of generate_subseqs, desinged for parallelism.
-    """
+    def generate_subseqs_parallel(self, sig, segm_length, step):  #pylint: disable=unused-argument
+        """
+        Analog of generate_subseqs, desinged for parallelism.
+        """
         n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
         splits = np.array([
             np.array(sig[:, i * step:(i * step + segm_length)])
