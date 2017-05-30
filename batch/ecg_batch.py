@@ -22,10 +22,10 @@ class EcgBatch(Batch):
         self._meta = dict()
         self.history = []
 
-    @staticmethod
-    def create_annotation_df(data=None):
-        """ Create a pandas dataframe with ECG annotations """
-        return pd.DataFrame(data=data, columns=["ecg", "index", "value"])
+    # @staticmethod
+    # def create_annotation_df(data=None):
+    #     """ Create a pandas dataframe with ECG annotations """
+    #     return pd.DataFrame(data=data, columns=["ecg", "index", "value"])
 
     @action
     def load(self, src=None, fmt="wfdb"):
@@ -34,7 +34,7 @@ class EcgBatch(Batch):
         src is not used yet, so files locations are defined by the index
         """
         if fmt == "wfdb":
-            list_of_arrs, list_of_annotations, meta = self._load_wfdb()
+            list_of_arrs, list_of_annotations, meta = self._load_wfdb(src)
         elif fmt == "npz":
             list_of_arrs, list_of_annotations, meta = self._load_npz()
         else:
@@ -57,22 +57,46 @@ class EcgBatch(Batch):
 
         return self
 
-    def _load_wfdb(self):
-        list_of_arrs = []
-        list_of_annotations = []
-        meta = {}
-        for pos, ecg in np.ndenumerate(self.indices):
-            path = self.index.get_fullpath(ecg)
+    def _wfdb_load_runner_src(self, src):
+    	for pos, ecg in np.ndenumerate(self.indices):
+            path = src[ecg]
             signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
             signal = signal.T
-            try:
-                annot = wfdb.rdann(path, "atr")
-            except FileNotFoundError:
-                annot = self.create_annotation_df()     # pylint: disable=redefined-variable-type
+            # try:
+            #     annot = wfdb.rdann(path, "atr")
+            # except FileNotFoundError:
+            #     annot = self.create_annotation_df()     # pylint: disable=redefined-variable-type
             list_of_arrs.append(signal)
             list_of_annotations.append(annot)
             fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
+
+        return list_of_arrs, list_of_annotations, meta
+
+    def _wfdb_load_runner(self):
+    	for pos, ecg in np.ndenumerate(self.indices):
+            path = self.index.get_fullpath(ecg)
+            signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
+            signal = signal.T
+            # try:
+            #     annot = wfdb.rdann(path, "atr")
+            # except FileNotFoundError:
+            #     annot = self.create_annotation_df()     # pylint: disable=redefined-variable-type
+            list_of_arrs.append(signal)
+            list_of_annotations.append(annot)
+            fields.update({"__pos": pos[0]})
+            meta.update({ecg: fields})
+
+        return list_of_arrs, list_of_annotations, meta
+
+    def _load_wfdb(self, src=None):
+        list_of_arrs = []
+        list_of_annotations = []
+        meta = {}
+        if src:
+        	list_of_arrs, list_of_annotations, meta = _wfdb_load_runner_src(self, src)
+        else:
+        	list_of_arrs, list_of_annotations, meta = _wfdb_load_runner(self)
 
         return list_of_arrs, list_of_annotations, meta
 
@@ -113,3 +137,27 @@ class EcgBatch(Batch):
                     self._meta[index])
         else:
             raise IndexError("There is no such index in the batch", index)
+
+    def default_init(self, *args, **kwargs):
+    	r = self.indices.tolist()
+    	return r
+
+    def default_post(self, *args, **kwargs):
+        pass
+
+    @action
+    def generate_subseqs(self, segm_length, step):
+        list_of_splits = []
+        for sig in self._data:
+            n = np.int((sig.shape[0] - segm_length) / step) + 1
+            splits = np.array([np.array(sig[:, i*step:(i*step + segm_length)]) for i in range(n)])
+            list_of_splits.append(splits)
+        self._data = np.array(list_of_splits)
+        return self
+       
+	@action
+	@inbatch_parallel(init='default_init', post='default_post', target='threads')
+	def generate_subseqs_parallel(self, sig, segm_length, step):
+		n = np.ceil((sig.shape[0] - segm_length) / step)
+		splits = np.array([np.array(sig[:, i*step:(i*step + segm_length)]) for i in range(n)])
+		return splits
