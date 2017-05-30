@@ -14,6 +14,7 @@ class EcgBatch(Batch):
     """
     Batch of ECG data
     """
+
     def __init__(self, index):
         super().__init__(index)
 
@@ -58,7 +59,7 @@ class EcgBatch(Batch):
         return self
 
     def _wfdb_load_runner_src(self, src):
-    	for pos, ecg in np.ndenumerate(self.indices):
+        for pos, ecg in np.ndenumerate(self.indices):
             path = src[ecg]
             signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
             signal = signal.T
@@ -70,11 +71,10 @@ class EcgBatch(Batch):
             list_of_annotations.append(annot)
             fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
-
         return list_of_arrs, list_of_annotations, meta
 
     def _wfdb_load_runner(self):
-    	for pos, ecg in np.ndenumerate(self.indices):
+        for pos, ecg in np.ndenumerate(self.indices):
             path = self.index.get_fullpath(ecg)
             signal, fields = wfdb.rdsamp(os.path.splitext(path)[0])
             signal = signal.T
@@ -94,9 +94,10 @@ class EcgBatch(Batch):
         list_of_annotations = []
         meta = {}
         if src:
-        	list_of_arrs, list_of_annotations, meta = _wfdb_load_runner_src(self, src)
+            list_of_arrs, list_of_annotations, meta = _wfdb_load_runner_src(
+                self, src)
         else:
-        	list_of_arrs, list_of_annotations, meta = _wfdb_load_runner(self)
+            list_of_arrs, list_of_annotations, meta = _wfdb_load_runner(self)
 
         return list_of_arrs, list_of_annotations, meta
 
@@ -108,7 +109,8 @@ class EcgBatch(Batch):
             path = self.index.get_fullpath(ecg)
             data = np.load(path)
             list_of_arrs.append(data["signal"])
-            list_of_annotations.append(self.create_annotation_df(data["annotation"]))
+            list_of_annotations.append(
+                self.create_annotation_df(data["annotation"]))
             fields = data["meta"].item()
             fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
@@ -123,24 +125,25 @@ class EcgBatch(Batch):
             for ecg in self.indices:
                 signal, ann, meta = self[ecg]
                 del meta["__pos"]
-                np.savez(os.path.join(dst, ecg + "." + fmt),
-                         signal=signal,
-                         annotation=ann, meta=meta)
+                np.savez(
+                    os.path.join(dst, ecg + "." + fmt),
+                    signal=signal,
+                    annotation=ann,
+                    meta=meta)
         else:
             raise NotImplementedError("The format is not supported yet")
 
     def __getitem__(self, index):
         if index in self.indices:
             pos = self._meta[index]['__pos']
-            return (self._data[pos],
-                    self._annotation if self._annotation.empty else self._annotation.loc[pos],
-                    self._meta[index])
+            return (self._data[pos], self._annotation if self._annotation.empty
+                    else self._annotation.loc[pos], self._meta[index])
         else:
             raise IndexError("There is no such index in the batch", index)
 
     def default_init(self, *args, **kwargs):
-    	r = self.indices.tolist()
-    	return r
+        r = self.indices.tolist()
+        return r
 
     def default_post(self, *args, **kwargs):
         pass
@@ -150,14 +153,21 @@ class EcgBatch(Batch):
         list_of_splits = []
         for sig in self._data:
             n = np.int((sig.shape[0] - segm_length) / step) + 1
-            splits = np.array([np.array(sig[:, i*step:(i*step + segm_length)]) for i in range(n)])
+            splits = np.array([
+                np.array(sig[:, i * step:(i * step + segm_length)])
+                for i in range(n)
+            ])
             list_of_splits.append(splits)
         self._data = np.array(list_of_splits)
         return self
-       
-	@action
-	@inbatch_parallel(init='default_init', post='default_post', target='threads')
-	def generate_subseqs_parallel(self, sig, segm_length, step):
-		n = np.ceil((sig.shape[0] - segm_length) / step)
-		splits = np.array([np.array(sig[:, i*step:(i*step + segm_length)]) for i in range(n)])
-		return splits
+
+        @action
+        @inbatch_parallel(
+            init='default_init', post='default_post', target='threads')
+        def generate_subseqs_parallel(self, sig, segm_length, step):
+            n = np.int((sig.shape[0] - segm_length) / step) + 1
+            splits = np.array([
+                np.array(sig[:, i * step:(i * step + segm_length)])
+                for i in range(n)
+            ])
+            return splits
