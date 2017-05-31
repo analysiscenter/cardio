@@ -143,45 +143,31 @@ class EcgBatch(Batch):
         else:
             raise IndexError("There is no such index in the batch", index)
 
-    def default_init(self):
+    def default_init(self, *args, **kwargs):
         """
         Default init for parallelism
         """
         init_indices = self.indices.tolist()
         return init_indices
 
-    def default_post(self):  #pylint: disable=no-self-use
+    def default_post(self, list_of_results, *args, **kwargs):  #pylint: disable=no-self-use
         """
-        Default post for parallelism
+        Default post for parallelism: collect results, make a numpy array
+        and change self._data attribute to it.
         """
-        print("Parallelism completed")
+        self._data = np.array(list_of_results)
+        return self
 
     @action
-    def generate_subseqs(self, segm_length, step):
+    @inbatch_parallel(init='default_init', post='default_post', target='threads')
+    def generate_subseqs(self, indice, segm_length, step):  #pylint: disable=unused-argument,no-self-use
         """
         Function to generate a number of subsequnces of segm_length,
         with step. Number of subseqs is defined by length of the
         initial signal and segm_lenght.
         """
-        list_of_splits = []
-        for sig in self._data:
-            n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
-            splits = np.array([
-                np.array(sig[:, i * step:(i * step + segm_length)])
-                for i in range(n_splits)
-            ])
-            list_of_splits.append(splits)
-        self._data = np.array(list_of_splits)
-        return self
-
-    @action
-    @inbatch_parallel(
-        init='default_init', post='default_post', target='threads')
-    def generate_subseqs_parallel(self, sig, segm_length, step):  #pylint: disable=unused-argument,no-self-use
-        """
-        Analog of generate_subseqs, desinged for parallelism.
-        """
-        n_splits = np.int((sig.shape[0] - segm_length) / step) + 1
+        sig = self[indice][0]
+        n_splits = np.int((sig.shape[1] - segm_length) / step) + 1
         splits = np.array([
             np.array(sig[:, i * step:(i * step + segm_length)])
             for i in range(n_splits)
