@@ -1,4 +1,4 @@
-# Setup file for ecg repo
+""" Setup file for ecg repo """
 
 from setuptools import setup
 #from setuptools import find_packages
