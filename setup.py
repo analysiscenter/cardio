@@ -1,9 +1,14 @@
+# Setup file for ecg repo
+
 from setuptools import setup
 #from setuptools import find_packages
 
 def readme():
-    with open('README.md') as f:
-        return f.read()
+    """
+    Function to initiate Readme.md
+    """
+    with open('README.md') as readme_file:
+        return readme_file.read()
 
 setup(name='dac_ecg',
       version='0.1',

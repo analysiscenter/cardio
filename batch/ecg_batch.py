@@ -96,10 +96,10 @@ class EcgBatch(Batch):
         meta = {}
         if src:
             list_of_arrs, list_of_annotations, meta = self._wfdb_load_runner_src(
-                self, src, list_of_arrs, list_of_annotations, meta)
+                src, list_of_arrs, list_of_annotations, meta)
         else:
             list_of_arrs, list_of_annotations, meta = self._wfdb_load_runner(
-                self, list_of_arrs, list_of_annotations, meta)
+                list_of_arrs, list_of_annotations, meta)
 
         return list_of_arrs, list_of_annotations, meta
 
@@ -159,8 +159,8 @@ class EcgBatch(Batch):
     @action
     def generate_subseqs(self, segm_length, step):
         """
-        Function to generate a number of subsequnces of segm_length, 
-        with step. Number of subseqs is defined by length of the 
+        Function to generate a number of subsequnces of segm_length,
+        with step. Number of subseqs is defined by length of the
         initial signal and segm_lenght.
         """
         list_of_splits = []
@@ -177,7 +177,7 @@ class EcgBatch(Batch):
     @action
     @inbatch_parallel(
         init='default_init', post='default_post', target='threads')
-    def generate_subseqs_parallel(self, sig, segm_length, step):  #pylint: disable=unused-argument
+    def generate_subseqs_parallel(self, sig, segm_length, step):  #pylint: disable=unused-argument,no-self-use
         """
         Analog of generate_subseqs, desinged for parallelism.
         """
