@@ -7,7 +7,7 @@ import pandas as pd
 import wfdb
 
 sys.path.append('..')
-from dataset import Batch, action
+from dataset import Batch, action, inbatch_parallel
 
 
 class EcgBatch(Batch):
