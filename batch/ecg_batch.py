@@ -143,14 +143,14 @@ class EcgBatch(Batch):
         else:
             raise IndexError("There is no such index in the batch", index)
 
-    def default_init(self, *args, **kwargs):
+    def default_init(self, *args, **kwargs):  #pylint: disable=unused-argument
         """
         Default init for parallelism
         """
         init_indices = self.indices.tolist()
         return init_indices
 
-    def default_post(self, list_of_results, *args, **kwargs):  #pylint: disable=no-self-use
+    def default_post(self, list_of_results, *args, **kwargs):  #pylint: disable=unused-argument
         """
         Default post for parallelism: collect results, make a numpy array
         and change self._data attribute to it.
@@ -169,7 +169,6 @@ class EcgBatch(Batch):
         sig = self[indice][0]
         n_splits = np.int((sig.shape[1] - segm_length) / step) + 1
         splits = np.array([
-            np.array(sig[:, i * step:(i * step + segm_length)])
-            for i in range(n_splits)
+            np.array(sig[:, i * step:(i * step + segm_length)]) for i in range(n_splits)
         ])
         return splits
