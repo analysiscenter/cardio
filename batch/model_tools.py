@@ -2,6 +2,89 @@ import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import model_from_yaml
 
+def spectrum1D(input, kernel, scales):
+	'''
+	Computes spectrogram of input. Input is convolved with kernel at scales
+	given in scales list. 
+	'''
+    layers = []
+    shape = input.get_shape().as_list()
+    shape = [-1] + shape[1: -1] + [1] + shape[-1:]
+    x = tf.reshape(input, shape)
+    nb_filters = kernel.get_shape().as_list()[-1]
+    for scale in scales:
+        f_conv = tf.cast(tf.image.resize_images(kernel, [scale, shape[-1]]), dtype=tf.float32)
+        f_conv = tf.reshape(input, [scale, 1, shape[-1], nb_filters])
+        conv = tf.nn.conv2d(x, f_conv, strides=[1, 1, 1, 1], padding='SAME')
+        layers.append(conv) 
+    output = tf.concat(layers, axis=-2)
+    return output
+
+class ScaledConv1D(Layer):
+	'''
+	Keras trainable layer computes spectrogram of 1D signal. 
+	Input is [batch_size, signal_length, channels]
+	Output is [batch_size, signal_length, number_of_scales, filters]
+	kernel_size is a length of generation function (wavelet)
+	scales is a list of scales at which signal is concolved with kernel
+	filter is a number of kernels.
+	'''
+    def __init__(self, filters, kernel_size, scales, activation=None, **kwargs):
+        self.kernel_size = kernel_size
+        self.output_dim = filters
+        self.scales = scales
+        if activation is None:
+            self.activation = 'relu'
+        else:
+            self.activation = activation
+        super(ScaledConv1D, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        self.kernel = self.add_weight(shape=(self.kernel_size, input_shape[-1], self.output_dim),
+                                      initializer='uniform', name='kernel',
+                                      trainable=True)
+        self.bias = self.add_weight(shape=(self.output_dim, ),
+                                    initializer='uniform',
+                                    name='bias',
+                                    trainable=True)
+        super(ScaledConv1D, self).build(input_shape)  # Be sure to call this somewhere!
+
+    def call(self, x):
+        output = spectrum1D(x, self.kernel, self.scales)
+        if self.bias is not None:
+            output = tf.nn.bias_add(output, self.bias)
+        if self.activation == 'linear':
+            return output
+        elif self.activation == 'relu':
+            output = tf.nn.relu(output)
+        elif self.activation == 'sigmoid':
+            output = tf.nn.sigmoid(output)
+        elif self.activation == 'tanh':
+            output = tf.nn.tanh(output)
+        else:
+            raise NotImplementedError("Only linear, relu, sigmoid, tanh activations are available")
+        return output
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], input_shape[1], len(self.scales), self.output_dim)
+
+class AxisMaxPooling(Layer):
+	'''
+	Max pooling along given axis. Default is last axis.
+	'''
+    def __init__(self, axis=-1, **kwargs):
+        self.pool_ax = axis
+        super(AxisMaxPooling, self).__init__(**kwargs)
+
+    def call(self, inputs):
+        return K.max(inputs, axis=self.pool_ax)
+    
+    def build(self, input_shape):
+        super(AxisMaxPooling, self).build(input_shape)
+    
+    def compute_output_shape(self, input_shape):
+        return tuple(np.delete(input_shape, self.pool_ax))
+
 def save_model(model, fname):
     '''
     Save model layers and weights
@@ -47,6 +130,15 @@ def fft(x):
     z2 = tf.cast(tf.abs(tf.fft(z)), dtype=tf.float32)
     return tf.map_fn(tf.transpose, z2)
 
+def spectrum(kernel, input, scales):
+	'''
+	tf convolution of input with kernel resized to given scales
+	'''
+    layers = []
+    for scale in scales:
+        f_conv = tf.cast(tf.image.resize_images(kernel, [scale, 1]), dtype=tf.float32)
+        layers.append(tf.nn.conv1d(input, f_conv, stride=1, padding='SAME'))
+    return tf.concat(layers, axis=-1)
 
 def arrhythmia_prediction(signal, models, plot=True, frame=3000,
                           t_step=500, thresh=0.7, artm_pos=0): 
