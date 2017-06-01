@@ -8,14 +8,13 @@ def spectrum1D(input, kernel, scales):
 	given in scales list. 
 	'''
     layers = []
-    shape = input.get_shape().as_list()
-    shape = [-1] + shape[1: -1] + [1] + shape[-1:]
-    x = tf.reshape(input, shape)
+    input_shape = x.get_shape().as_list()
+    x_2d = tf.expand_dims(x, -2)
     nb_filters = kernel.get_shape().as_list()[-1]
     for scale in scales:
-        f_conv = tf.cast(tf.image.resize_images(kernel, [scale, shape[-1]]), dtype=tf.float32)
-        f_conv = tf.reshape(input, [scale, 1, shape[-1], nb_filters])
-        conv = tf.nn.conv2d(x, f_conv, strides=[1, 1, 1, 1], padding='SAME')
+        f_conv = tf.cast(tf.image.resize_images(kernel, [scale, input_shape[-1]]), dtype=tf.float32)
+        f_conv_2d = tf.expand_dims(f_conv, 1)
+        conv = tf.nn.conv2d(x_2d, f_conv_2d, strides=[1, 1, 1, 1], padding='SAME')
         layers.append(conv) 
     output = tf.concat(layers, axis=-2)
     return output
@@ -29,10 +28,12 @@ class ScaledConv1D(Layer):
 	scales is a list of scales at which signal is concolved with kernel
 	filter is a number of kernels.
 	'''
-    def __init__(self, filters, kernel_size, scales, activation=None, **kwargs):
+    def __init__(self, filters, kernel_size, scales, 
+                 activation=None, use_bias=True, **kwargs):
         self.kernel_size = kernel_size
         self.output_dim = filters
         self.scales = scales
+        self.use_bias = use_bias
         if activation is None:
             self.activation = 'relu'
         else:
@@ -40,30 +41,31 @@ class ScaledConv1D(Layer):
         super(ScaledConv1D, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        self.kernel = self.add_weight(shape=(self.kernel_size, input_shape[-1], self.output_dim),
+        self.kernel = self.add_weight(shape=(self.kernel_size, input_shape[2], self.output_dim),
                                       initializer='uniform', name='kernel',
                                       trainable=True)
-        self.bias = self.add_weight(shape=(self.output_dim, ),
-                                    initializer='uniform',
-                                    name='bias',
-                                    trainable=True)
+        if self.use_bias:
+            self.bias = self.add_weight(shape=(self.output_dim, ),
+                                        initializer='uniform',
+                                        name='bias')
+        else:
+            self.bias = None
         super(ScaledConv1D, self).build(input_shape)  # Be sure to call this somewhere!
 
     def call(self, x):
         output = spectrum1D(x, self.kernel, self.scales)
-        if self.bias is not None:
+        if self.use_bias:
             output = tf.nn.bias_add(output, self.bias)
         if self.activation == 'linear':
             return output
         elif self.activation == 'relu':
-            output = tf.nn.relu(output)
+            return tf.nn.relu(output)
         elif self.activation == 'sigmoid':
-            output = tf.nn.sigmoid(output)
+            return tf.nn.sigmoid(output)
         elif self.activation == 'tanh':
-            output = tf.nn.tanh(output)
+            return tf.nn.tanh(output)
         else:
             raise NotImplementedError("Only linear, relu, sigmoid, tanh activations are available")
-        return output
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], input_shape[1], len(self.scales), self.output_dim)
