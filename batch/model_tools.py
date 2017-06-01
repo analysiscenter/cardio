@@ -2,19 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import model_from_yaml
 
-def spectrum1D(input, kernel, scales):
+def spectrum1D(x, kernel_list):
 	'''
-	Computes spectrogram of input. Input is convolved with kernel at scales
-	given in scales list. 
+	Convolve x with kennels in kernel_list 
 	'''
     layers = []
     input_shape = x.get_shape().as_list()
     x_2d = tf.expand_dims(x, -2)
-    nb_filters = kernel.get_shape().as_list()[-1]
-    for scale in scales:
-        f_conv = tf.cast(tf.image.resize_images(kernel, [scale, input_shape[-1]]), dtype=tf.float32)
-        f_conv_2d = tf.expand_dims(f_conv, 1)
-        conv = tf.nn.conv2d(x_2d, f_conv_2d, strides=[1, 1, 1, 1], padding='SAME')
+    for kernel in kernel_list:
+        conv = tf.nn.conv2d(x_2d, kernel, strides=[1, 1, 1, 1], padding='SAME')
         layers.append(conv) 
     output = tf.concat(layers, axis=-2)
     return output
@@ -44,16 +40,22 @@ class ScaledConv1D(Layer):
         self.kernel = self.add_weight(shape=(self.kernel_size, input_shape[2], self.output_dim),
                                       initializer='uniform', name='kernel',
                                       trainable=True)
+        self.scaled_kernels_2d = []
+        for scale in self.scales:
+            f_conv = tf.cast(tf.image.resize_images(self.kernel, 
+                                                    [scale, input_shape[-1]]), dtype=tf.float32)
+            self.scaled_kernels_2d.append(tf.expand_dims(f_conv, 1))
+        
         if self.use_bias:
             self.bias = self.add_weight(shape=(self.output_dim, ),
                                         initializer='uniform',
                                         name='bias')
         else:
             self.bias = None
-        super(ScaledConv1D, self).build(input_shape)  # Be sure to call this somewhere!
+        super(ScaledConv1D, self).build(input_shape)
 
     def call(self, x):
-        output = spectrum1D(x, self.kernel, self.scales)
+        output = spectrum1D(x, self.scaled_kernels_2d)
         if self.use_bias:
             output = tf.nn.bias_add(output, self.bias)
         if self.activation == 'linear':
