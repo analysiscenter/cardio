@@ -37,15 +37,9 @@ class ScaledConv1D(Layer):
         super(ScaledConv1D, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        self.kernel = self.add_weight(shape=(self.kernel_size, input_shape[2], self.output_dim),
+        self.kernel = self.add_weight(shape=(self.kernel_size, input_shape[-1], self.output_dim),
                                       initializer='uniform', name='kernel',
-                                      trainable=True)
-        self.scaled_kernels_2d = []
-        for scale in self.scales:
-            f_conv = tf.cast(tf.image.resize_images(self.kernel, 
-                                                    [scale, input_shape[-1]]), dtype=tf.float32)
-            self.scaled_kernels_2d.append(tf.expand_dims(f_conv, 1))
-        
+                                      trainable=True)       
         if self.use_bias:
             self.bias = self.add_weight(shape=(self.output_dim, ),
                                         initializer='uniform',
@@ -55,7 +49,14 @@ class ScaledConv1D(Layer):
         super(ScaledConv1D, self).build(input_shape)
 
     def call(self, x):
-        output = spectrum1D(x, self.scaled_kernels_2d)
+        scaled_kernels_2d = []
+        kernel_shape = self.kernel.get_shape().as_list()
+        for scale in self.scales:
+            f_conv = tf.cast(tf.image.resize_images(self.kernel, 
+                                                    [scale, kernel_shape[1]]), dtype=tf.float32)
+            f_conv = tf.nn.l2_normalize(f_conv, dim=-1)
+            scaled_kernels_2d.append(tf.expand_dims(f_conv, 1))
+        output = spectrum1D(x, scaled_kernels_2d)
         if self.use_bias:
             output = tf.nn.bias_add(output, self.bias)
         if self.activation == 'linear':
