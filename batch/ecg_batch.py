@@ -155,7 +155,12 @@ class EcgBatch(Batch):
         Default post for parallelism: collect results, make a numpy array
         and change self._data attribute to it.
         """
-        self._data = np.array(list_of_results)
+        # Check if all elements of the resulting list are numpy arrays.
+        # If not - throw an exception, otherwise rewrite self._data attribute.
+        if all(isinstance(x, np.ndarray) for x in list_of_results):
+            self._data = np.array(list_of_results)
+        else:
+            raise ValueError("List of results contains non-numpy.ndarray elements.")
         return self
 
     @action
