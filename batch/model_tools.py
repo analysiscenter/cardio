@@ -14,6 +14,31 @@ def spectrum1D(x, kernel_list):
         layers.append(conv) 
     output = tf.concat(layers, axis=-2)
     return output
+	
+def corrcoef(a, b, axis=1):
+	'''
+	Computes correlation coeffitient between corresponding 1-D slices
+	of arrays a and b along given axis
+	'''
+    mda = tf.nn.moments(a, axes=[axis])
+    mdb = tf.nn.moments(b, axes=[axis])
+    res = tf.reduce_mean(tf.multiply(a - tf.expand_dims(mda[0], dim=axis), 
+                                    b - tf.expand_dims(mdb[0], dim=axis)), axis=axis)
+    res = tf.divide(res, tf.multiply(tf.sqrt(mda[1]), tf.sqrt(mdb[1])))
+    return tf.expand_dims(res, dim=axis)
+	
+def corrmatrix(x):
+	'''
+	Computes correlation matrix along first axis.
+	X is a 4D tensor of dims batch_size + width + height + channels
+	Returns 4D tensor of dims batch_size + height*channels + height + channels
+	'''
+    dims = x.get_shape().as_list()
+    coef = []
+    for r1 in range(dims[2]):
+        for r2 in range(dims[3]):
+            coef.append(corrcoef(x, tf.expand_dims(tf.expand_dims(x[:, :, r1, r2], dim=2), dim=3)))
+    return tf.concat(coef, axis=1)
 
 class ScaledConv1D(Layer):
 	'''
