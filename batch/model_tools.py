@@ -1,11 +1,115 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import model_from_yaml
+from keras.utils import np_utils
+from keras.layers import *
+from sklearn.metrics import classification_report, f1_score
+import pandas as pd
+from sklearn.model_selection import StratifiedShuffleSplit
+
+def dataset_from_csv(csv_train_paths, csv_val_paths, dropna=True):
+    '''
+    retruns trainX, trainY, valX, valY
+    '''
+    df_train_list = []
+    for path in csv_train_paths:
+        df_train_list.append(pd.DataFrame.from_csv(path, sep=';'))
+    for df in df_train_list:
+        df.columns = range(df.shape[1])
+        df.index.name = 'id'
+        
+    df_val_list = []
+    for path in csv_val_paths:
+        df_val_list.append(pd.DataFrame.from_csv(path, sep=';'))
+    for df in df_val_list:
+        df.columns = range(df.shape[1])
+        df.index.name = 'id'
+        
+    df_train = pd.concat(df_train_list, axis=1, join='outer')
+    df_val = pd.concat(df_val_list, axis=1, join='outer')
+    
+    DIR_ECG = '/notebooks/data/ECG/training2017/'
+    names = pd.read_csv(DIR_ECG+"REFERENCE.csv", names=["NAME", "DIAG"])
+    np.random.seed(230517)
+
+    SSS = StratifiedShuffleSplit(n_splits=2, test_size=0.25, train_size=0.625, random_state=230517)
+    splitted, _ = SSS.split(names.NAME, names.DIAG)
+    train_one = np.array(names.NAME[splitted[0]])
+    train_two = np.array(names.NAME[splitted[1]])
+    val = np.array(names.NAME[~names.index.isin(np.concatenate((splitted[1],splitted[0])))])
+    
+    diag = names.set_index(['NAME'])
+    diag.ix[diag['DIAG'] != 'A', 'DIAG'] = 'nonA'
+    df_train = df_train.join(diag.ix[train_two])
+    df_val = df_val.join(diag.ix[val])
+    
+    if dropna:
+        df_train = df_train.dropna()
+        df_val = df_val.dropna()
+        
+    return [df_train.drop('DIAG', axis=1).as_matrix(), 
+            df_train['DIAG'].as_matrix(),
+            df_val.drop('DIAG', axis=1).as_matrix(), 
+            df_val['DIAG'].as_matrix()]
+
+def back_to_annot(arr, annot):
+    res = []
+    for x in arr:
+        res.append(annot[x == 1][0])
+    return np.array(res)
+
+def validate(pred, testY, unq_classes):
+    labels = np.zeros(pred.shape, dtype = int)
+    for i in range(len(labels)):
+        labels[i, np.argmax(pred[i])] = 1
+        
+    y_pred = back_to_annot(labels, unq_classes)
+    if testY.ndim > 1:
+        y_true = back_to_annot(testY, unq_classes)
+    else:
+        y_true = testY
+    
+    print(classification_report(y_true, y_pred))
+    print("f1_score", f1_score(y_true, y_pred, average='macro'))
+    
+def show_loss(hist):
+    fig = plt.figure()
+    plt.plot(hist.history["loss"], "r", label="train loss")
+    plt.plot(hist.history["val_loss"], "b", label="validation loss")
+    plt.legend()
+    plt.title ("Model loss")
+    plt.ylabel("Loss")
+    plt.xlabel("Epoch")
+    plt.show()
+
+def get_segments(ecg_batch, length, step, code=None):
+    trainX = []
+    trainY = []
+    counts = []
+    for k, ind in np.ndenumerate(ecg_batch.indices):
+        diag = ecg_batch._meta[ind]['diag'] 
+        sig = ecg_batch._data[k][0]
+        if len(sig) < length:
+            continue
+        if diag in ['~']:
+            continue
+        start = 0
+        count = 0
+        while(start + length <= len(sig)):
+            trainX.append(sig[start: start + length].reshape((-1, 1)))
+            start += step
+            count += 1
+        if code is None:
+            trainY.extend([diag] * count)
+        else:
+            trainY.extend([code[diag]] * count)
+        counts.append(count)
+    return np.array(trainX), np.array(trainY), counts
 
 def spectrum1D(x, kernel_list):
-	'''
-	Convolve x with kennels in kernel_list 
-	'''
+    '''
+    Convolve x with kennels in kernel_list 
+    '''
     layers = []
     input_shape = x.get_shape().as_list()
     x_2d = tf.expand_dims(x, -2)
@@ -14,25 +118,25 @@ def spectrum1D(x, kernel_list):
         layers.append(conv) 
     output = tf.concat(layers, axis=-2)
     return output
-	
+
 def corrcoef(a, b, axis=1):
-	'''
-	Computes correlation coeffitient between corresponding 1-D slices
-	of arrays a and b along given axis
-	'''
+    '''
+    Computes correlation coeffitient between corresponding 1-D slices
+    of arrays a and b along given axis
+    '''
     mda = tf.nn.moments(a, axes=[axis])
     mdb = tf.nn.moments(b, axes=[axis])
     res = tf.reduce_mean(tf.multiply(a - tf.expand_dims(mda[0], dim=axis), 
                                     b - tf.expand_dims(mdb[0], dim=axis)), axis=axis)
     res = tf.divide(res, tf.multiply(tf.sqrt(mda[1]), tf.sqrt(mdb[1])))
     return tf.expand_dims(res, dim=axis)
-	
+
 def corrmatrix(x):
-	'''
-	Computes correlation matrix along first axis.
-	X is a 4D tensor of dims batch_size + width + height + channels
-	Returns 4D tensor of dims batch_size + height*channels + height + channels
-	'''
+    '''
+    Computes correlation matrix along first axis.
+    X is a 4D tensor of dims batch_size + width + height + channels
+    Returns 4D tensor of dims batch_size + height*channels + height + channels
+    '''
     dims = x.get_shape().as_list()
     coef = []
     for r1 in range(dims[2]):
@@ -41,14 +145,14 @@ def corrmatrix(x):
     return tf.concat(coef, axis=1)
 
 class ScaledConv1D(Layer):
-	'''
-	Keras trainable layer computes spectrogram of 1D signal. 
-	Input is [batch_size, signal_length, channels]
-	Output is [batch_size, signal_length, number_of_scales, filters]
-	kernel_size is a length of generation function (wavelet)
-	scales is a list of scales at which signal is concolved with kernel
-	filter is a number of kernels.
-	'''
+    '''
+    Keras trainable layer computes spectrogram of 1D signal. 
+    Input is [batch_size, signal_length, channels]
+    Output is [batch_size, signal_length, number_of_scales, filters]
+    kernel_size is a length of generation function (wavelet)
+    scales is a list of scales at which signal is concolved with kernel
+    filter is a number of kernels.
+    '''
     def __init__(self, filters, kernel_size, scales, 
                  activation=None, use_bias=True, **kwargs):
         self.kernel_size = kernel_size
@@ -99,9 +203,9 @@ class ScaledConv1D(Layer):
         return (input_shape[0], input_shape[1], len(self.scales), self.output_dim)
 
 class AxisMaxPooling(Layer):
-	'''
-	Max pooling along given axis. Default is last axis.
-	'''
+    '''
+    Max pooling along given axis. Default is last axis.
+    '''
     def __init__(self, axis=-1, **kwargs):
         self.pool_ax = axis
         super(AxisMaxPooling, self).__init__(**kwargs)
@@ -160,10 +264,18 @@ def fft(x):
     z2 = tf.cast(tf.abs(tf.fft(z)), dtype=tf.float32)
     return tf.map_fn(tf.transpose, z2)
 
+def rfft(x, crop=2):
+    '''
+    tf fft 
+    '''
+    res = fft(x)
+    half = int(res.get_shape().as_list()[1] / crop)
+    return res[:, 2: half, :]
+
 def spectrum(kernel, input, scales):
-	'''
-	tf convolution of input with kernel resized to given scales
-	'''
+    '''
+    tf convolution of input with kernel resized to given scales
+    '''
     layers = []
     for scale in scales:
         f_conv = tf.cast(tf.image.resize_images(kernel, [scale, 1]), dtype=tf.float32)
