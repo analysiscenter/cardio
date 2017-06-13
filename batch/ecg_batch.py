@@ -15,8 +15,8 @@ class EcgBatch(Batch):
     Batch of ECG data
     """
 
-    def __init__(self, index):
-        super().__init__(index)
+    def __init__(self, index, preloaded=None):
+        super().__init__(index, preloaded)
 
         self._data = None
         self._annotation = self.create_annotation_df()
