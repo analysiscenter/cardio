@@ -1,7 +1,7 @@
 """ contain Batch class for processing ECGs """
 import wfdb
 sys.path.append('..')
-from dataset import Batch, action, inbatch_parallel
+from dataset import Batch, action, inbatch_parallel, any_action_failed
 
 class EcgBatch(Batch):
     """
@@ -32,9 +32,9 @@ class EcgBatch(Batch):
         src is not used yet, so files locations are defined by the index
         """
         if fmt == "wfdb":
-            self._load_wfdb(src=src)
+            self._load_wfdb(src=src) # pylint: disable=no-value-for-parameter
         elif fmt == "npz":
-            self._load_npz(src=src)
+            self._load_npz(src=src) # pylint: disable=no-value-for-parameter
         else:
             raise TypeError("Incorrect type of source")
 
@@ -49,8 +49,8 @@ class EcgBatch(Batch):
     @action
     @inbatch_parallel(init='loader_init', post='loader_post', target='async')
     async def _load_wfdb(self, ix, src=None, *args, **kwargs):
-        ecg = ix[1]
-        pos = ix[0]
+        ecg = index[1]
+        pos = index[0]
         if src:
             path = src[ecg]
         else:
@@ -69,10 +69,10 @@ class EcgBatch(Batch):
         return (ecg, signal, annot, fields)
 
     @action
-    @inbatch_parallel(init='loader_init', post='loader_post', target='async')
-    async def _load_npz(self, ix, src=None, *args, **kwargs):
-        ecg = ix[1]
-        pos = ix[0]
+    @inbatch_parallel(init='loader_init', post='loader_post', target='threads')
+    def _load_npz(self, ix, src=None, *args, **kwargs):
+        ecg = index[1]
+        pos = index[0]
 
         if src:
             path = src[ecg]
@@ -87,7 +87,7 @@ class EcgBatch(Batch):
         
         return (ecg, signal, annot, fields)
 
-    def loader_init(self, *args, **kwargs):
+    def loader_init(self, *args, **kwargs): #pylint: disable=unused-argument
         """
         Init method for parallelism in loading
         """
@@ -95,15 +95,18 @@ class EcgBatch(Batch):
         init_indices = [[(init_val[0], init_val[1])] for init_val in np.ndenumerate(self.indices)]
         return init_indices
 
-    def loader_post(self, list_of_results, *args, **kwargs):
+    def loader_post(self, list_of_results, *args, **kwargs): #pylint: disable=unused-argument
+        """
+        Post method for parallelism in loading
+        """
         if any_action_failed(list_of_results):
-            raise ValueError("Failed while parallelizing: ", self.get_errors(all_res))
+            raise ValueError("Failed while parallelizing: ", self.get_errors(list_of_results))
 
         array_of_results = np.array(list_of_results)
-        data = array_of_results[:,1]
-        annot = pd.concat(array_of_results[:,2])
-        meta = dict(zip(array_of_results[:,0],array_of_results[:,3]))
-        
+        data = array_of_results[:, 1]
+        annot = pd.concat(array_of_results[:, 2])
+        meta = dict(zip(array_of_results[:, 0],array_of_results[:, 3]))
+
         self._init_data(data, annot, meta)
 
         return self
@@ -114,22 +117,21 @@ class EcgBatch(Batch):
         Save each ecg in its own file named as '<index>.<fmt>'
         """
         if fmt == "npz":
-            self._dump_npz(dst=dst)
+            self._dump_npz(dst=dst) # pylint: disable=no-value-for-parameter
         else:
             raise NotImplementedError("The format is not supported yet")
 
         return self
-    
+
     @action
-    @inbatch_parallel(init='indices', target='async')
-    async def _dump_npz(self, ix, dst):
-        signal, ann, meta = self[ix]
+    @inbatch_parallel(init='indices', target='threads')
+    def _dump_npz(self, index, dst):
+        signal, ann, meta = self[index]
         del meta["__pos"]
-        np.savez(os.path.join(dst, ix + ".npz"),
-                signal=signal,
-                annotation=ann,
-                meta=meta)
-        return os.path.join(dst, ix + ".npz")
+        np.savez(os.path.join(dst, index + ".npz"),
+                 signal=signal,
+                 annotation=ann,
+                 meta=meta)
 
     def __getitem__(self, index):
         if index in self.indices:
@@ -150,7 +152,7 @@ class EcgBatch(Batch):
         # Check if all elements of the resulting list are numpy arrays.
         # If not - throw an exception, otherwise rewrite self._data attribute.
         if any_action_failed(list_of_results):
-            raise ValueError("Could not assemble the batch: ", self.get_errors(all_res))
+            raise ValueError("Could not assemble the batch: ", self.get_errors(list_of_results))
 
         if all(isinstance(x, np.ndarray) for x in list_of_results):
             self._data = np.array(list_of_results)
@@ -160,15 +162,20 @@ class EcgBatch(Batch):
 
     @action
     @inbatch_parallel(init='indices', post='default_post', target='threads')
-    def generate_subseqs(self, ix, length, step):
+    def generate_subseqs(self, index, length, step):
         """
         Function to generate a number of subsequnces of length,
         with step. Number of subseqs is defined by length of the
         initial signal and lenght.
         """
-        sig = self[ix][0]
+        sig = self[index][0]
         n_splits = np.int((sig.shape[1] - length) / step) + 1
         splits = np.array([
             np.array(sig[:, i * step:(i * step + length)]) for i in range(n_splits)
         ])
         return splits
+
+import numpy as np
+import pandas as pd
+import sys
+import os
