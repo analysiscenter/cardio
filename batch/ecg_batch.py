@@ -1,4 +1,4 @@
-""" contain Batch class for processing ECGs """i
+""" contain Batch class for processing ECGs """
 import wfdb
 sys.path.append('..')
 from dataset import Batch, action, inbatch_parallel
