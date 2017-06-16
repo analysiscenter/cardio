@@ -152,9 +152,8 @@ def segment_signal(signal, annot, meta, index, length, step, pad):
     if(len(signal[0]) < length):
         if pad:
             pad_len = length - len(signal[0])
-            segments.append(np.lib.pad(signal, ((pad_len, 0), (0, 0)),
+            segments.append(np.lib.pad(signal, ((0, 0), (pad_len, 0)),
                                        'constant', constant_values=(0, 0)))
-            print(segments)
             return [np.array(segments), meta['diag'], index]
         else:
             raise ValueError('Signal is shorter than segment length: %i < %i'
@@ -164,6 +163,11 @@ def segment_signal(signal, annot, meta, index, length, step, pad):
         start += step
     return [np.array(segments), meta['diag'], index]
 
+def noise_filter(signal, annot, meta, index):
+    if meta['diag'] == '~':
+        return None
+    else:    
+        return [signal, annot, {index: meta}]
 
 class EcgBatch(Batch):
     """
@@ -269,7 +273,6 @@ class EcgBatch(Batch):
             #     annot = {}
             list_of_arrs.append(signal)
             # list_of_annotations.append(annot)
-            fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
 
         return list_of_arrs, list_of_annotations, meta
@@ -290,7 +293,6 @@ class EcgBatch(Batch):
             list_of_arrs.append(data["signal"])
             list_of_annotations.append(data["annotation"].tolist())
             fields = data["meta"].tolist()
-            fields.update({"__pos": pos[0]})
             meta.update({ecg: fields})
 
         keys = list(list_of_annotations[0].keys())
@@ -313,7 +315,6 @@ class EcgBatch(Batch):
             for ecg in self.indices:
                 signal, ann, meta = self[ecg]
                 saved_meta = meta.copy()
-                del saved_meta['__pos']
                 np.savez(os.path.join(dst, ecg + "." + fmt),
                          signal=signal,
                          annotation=ann,
@@ -321,15 +322,15 @@ class EcgBatch(Batch):
         else:
             raise NotImplementedError("The format is not supported yet")
         return self
-
+    
     def __getitem__(self, index):
-        if index in self.indices:
-            pos = self._meta[index]['__pos']
-            return (self._signal[pos],
+        try:
+            pos = np.where(self.index.indices == index)[0][0]
+        except IndexError:
+            raise IndexError("There is no such index in the batch: {0}".format(index))
+        return (self._signal[pos],
                     {k: v[pos] for k, v in self._annotation.items()},
                     self._meta[index])
-        else:
-            raise IndexError("There is no such index in the batch", index)
 
     def update(self, data=None, annot=None, meta=None):
         """
@@ -386,12 +387,38 @@ class EcgBatch(Batch):
         data = np.concatenate(list_of_arrs)
         labels = np.repeat(list_of_labels, list_of_lens)
         origins = np.repeat(list_of_origs, list_of_lens)
-        meta = {i: {'__pos': i, 'diag': labels[i], 'origin': origins[i]}
+        meta = {i: {'diag': labels[i], 'origin': origins[i]}
                 for i in range(len(labels))}
 
         return out_batch.update(data=data,
                                 annot={},
                                 meta=meta)
+
+    def post_parallel_filter(self, all_results, *args, **kwargs):
+        if any([isinstance(res, Exception) for res in all_results]):
+            print([res for res in all_results if isinstance(res, Exception)])
+            return self
+        
+        valid_results = [res for res in all_results if res is not None]
+        valid_indices = np.array([list(x[2].keys())[0] for x in valid_results])
+        out_batch = EcgBatch(DatasetIndex(index = valid_indices))
+        list_of_arrs = [x[0] for x in valid_results]
+        list_of_arrs.append(np.array([]))
+        data = np.array(list_of_arrs)[:-1]
+        if len(valid_results) > 0:
+            keys = list(valid_results[0][1].keys())
+        else:
+            keys = []
+        annot = {}
+        for k in keys:
+            list_of_arrs = [x[1][k] for x in valid_results]
+            list_of_arrs.append(np.array([]))
+            annot[k] = np.array(list_of_arrs)[:-1]
+        meta = dict(ChainMap(*[x[2] for x in valid_results]))
+        return out_batch.update(data=data,
+                                annot=annot,
+                                meta=meta)
+
 
     @action
     @inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
@@ -411,6 +438,15 @@ class EcgBatch(Batch):
         return segment_signal
 
     @action
+    @inbatch_parallel(init="init_parallel", post="post_parallel_filter",
+                      target='mpc')
+    def drop_noise(self):
+        """
+        Segment all signals
+        """
+        return noise_filter
+
+    @action
     def add_ref(self, path):
         """
         Load labels from file REFERENCE.csv
@@ -421,6 +457,7 @@ class EcgBatch(Batch):
         for ecg in self.indices:
             self._meta[ecg]['diag'] = ref.ix[ecg]['diag']
         return self
+
 
     @model()
     def fft_inception():
@@ -464,7 +501,7 @@ class EcgBatch(Batch):
         model = Model(inputs=input, outputs=fc_2)
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
-        hist = {'train_loss': [], 'val_loss': [], 'val_metric': []}
+        hist = {'train_loss': [], 'val_loss': [], 'val_metric': [], 'batch_size': None}
         diag_code = {'A': 'A', 'N': 'nonA', 'O': 'nonA'}
 
         lr_schedule = [[0, 50, 100], [0.01, 0.001, 0.0001]]
@@ -493,6 +530,7 @@ class EcgBatch(Batch):
     @action(model='fft_inception', singleton=True)
     def train_fft_inception(self, model_comp, nb_epoch, batch_size):
         model, hist, code, lr_s = model_comp
+        hist['batch_size'] = batch_size
         trainX = self._signal.reshape((-1, 3000, 1))
         trainY, enq_classes = self.get_labels(encode=code)
         epoch_num = len(hist['train_loss'])
@@ -518,9 +556,11 @@ class EcgBatch(Batch):
         testX = self._signal.reshape((-1, 3000, 1))
         testY, unq_classes = self.get_labels(encode=code)
         pred = model.predict(testX)
-        hist['val_loss'].append(log_loss(testY, pred))
+        batch_size = hist['batch_size']
+        #hist['val_loss'].append(log_loss(testY, pred))
         hist['val_metric'].append(f1_metric(pred, testY, unq_classes))
-        #print(model.evaluate(testX, testY, batch_size=batch_size))
+        hist['val_loss'].append(model.evaluate(testX, testY, 
+                                                 batch_size=batch_size))
         return self
 
     @action(model='fft_inception')
@@ -530,7 +570,7 @@ class EcgBatch(Batch):
             print('Train history is empty')
         else:
             print('Epoch', len(hist['train_loss']))
-            print('train_loss: %3.2f   val_loss: %3.2f   val_metric: %3.2f'
+            print('train_loss: %3.4f   val_loss: %3.4f   val_metric: %3.4f'
                   % (hist['train_loss'][-1], hist['val_loss'][-1],
                      hist['val_metric'][-1]))
         return self
