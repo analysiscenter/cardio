@@ -9,6 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import wfdb
 import pywt
+import itertools
 
 from scipy.signal import resample_poly, gaussian
 from scipy.stats import threshold
@@ -101,8 +102,8 @@ def back_to_annot(arr, annot):
         res.append(annot[x == 1][0])
     return np.array(res)
 
-
-def validate(pred, testY, unq_classes):
+    
+def get_pred_classes(pred, testY, unq_classes):
     labels = np.zeros(pred.shape, dtype=int)
     for i in range(len(labels)):
         labels[i, np.argmax(pred[i])] = 1
@@ -112,23 +113,7 @@ def validate(pred, testY, unq_classes):
         y_true = back_to_annot(testY, unq_classes)
     else:
         y_true = testY
-
-    print(classification_report(y_true, y_pred))
-    print("f1_score", f1_score(y_true, y_pred, average='macro'))
-
-
-def f1_metric(pred, testY, unq_classes):
-    labels = np.zeros(pred.shape, dtype=int)
-    for i in range(len(labels)):
-        labels[i, np.argmax(pred[i])] = 1
-
-    y_pred = back_to_annot(labels, unq_classes)
-    if testY.ndim > 1:
-        y_true = back_to_annot(testY, unq_classes)
-    else:
-        y_true = testY
-
-    return f1_score(y_true, y_pred, average='macro')
+    return y_true, y_pred
 
 
 def resample_signal(signal, annot, meta, index, new_fs):
@@ -139,6 +124,7 @@ def resample_signal(signal, annot, meta, index, new_fs):
     new_len = int(new_fs * len(signal[0]) / fs)
     signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
     meta['fs'] = new_fs
+    return [signal, annot, meta, index]
     return [signal, annot, {index: meta}]
 
 
@@ -154,20 +140,32 @@ def segment_signal(signal, annot, meta, index, length, step, pad):
             pad_len = length - len(signal[0])
             segments.append(np.lib.pad(signal, ((0, 0), (pad_len, 0)),
                                        'constant', constant_values=(0, 0)))
-            return [np.array(segments), meta['diag'], index]
+            return [np.array(segments), {}, {'diag': diag}, index]
         else:
             raise ValueError('Signal is shorter than segment length: %i < %i'
                              % (len(signal[0]), length))
     while(start + length <= len(signal[0])):
         segments.append(signal[:, start: start + length])
         start += step
-    return [np.array(segments), meta['diag'], index]
+    return [np.array(segments), {}, {'diag': diag}, index]
 
 def noise_filter(signal, annot, meta, index):
     if meta['diag'] == '~':
         return None
-    else:    
+    else:
+        return [signal, annot, meta, index]
+
+def augment_fs_signal(signal, annot, meta, index, distr_type, params):
+    if distr_type == 'none':
         return [signal, annot, {index: meta}]
+    if distr_type == 'normal':
+        new_fs = np.random.normal(**params)
+    elif distr_type == 'uniform':
+        new_fs = np.random.uniform(**params)
+    elif distr_type == 'delta':
+        new_fs = params['loc']
+    new_sig = resample_signal(signal, annot, meta, index, new_fs)[0]
+    return [new_sig, {}, meta, index]
 
 class EcgBatch(Batch):
     """
@@ -238,6 +236,7 @@ class EcgBatch(Batch):
         # of arrays and removing the last item (empty array)
         list_of_arrs.append(np.array([]))
         self._signal = np.array(list_of_arrs)[:-1]
+        #self._signal = np.array(list(itertools.chain([x for y in list_of_arrs for x in y])))
         # ATTENTION!
         # Annotation should be loaded with a separate function
         self._annotation = list_of_annotations
@@ -351,73 +350,52 @@ class EcgBatch(Batch):
         if any([isinstance(res, Exception) for res in all_results]):
             print([res for res in all_results if isinstance(res, Exception)])
             return self
-        out_batch = EcgBatch(self.index)
-        list_of_arrs = [x[0] for x in all_results]
-        list_of_arrs.append(np.array([]))
-        data = np.array(list_of_arrs)[:-1]
-        if len(all_results) > 0:
-            keys = list(all_results[0][1].keys())
-        else:
-            keys = []
-        annot = {}
-        for k in keys:
-            list_of_arrs = [x[1][k] for x in all_results]
-            list_of_arrs.append(np.array([]))
-            annot[k] = np.array(list_of_arrs)[:-1]
-        meta = dict(ChainMap(*[x[2] for x in all_results]))
-        return out_batch.update(data=data,
-                                annot=annot,
-                                meta=meta)
 
-    def post_parallel_segment(self, all_results, *args, **kwargs):
-        if any([isinstance(res, Exception) for res in all_results]):
-            print([res for res in all_results if isinstance(res, Exception)])
-            return self
-
-        list_of_arrs = [x[0] for x in all_results]
-        list_of_lens = [len(x[0]) for x in all_results]
-
-        list_of_labels = [x[1] for x in all_results]
-
-        list_of_origs = [x[2] for x in all_results]
-
-        ind = DatasetIndex(index=np.arange(sum(list_of_lens), dtype=int))
-
-        out_batch = EcgBatch(ind)
-        data = np.concatenate(list_of_arrs)
-        labels = np.repeat(list_of_labels, list_of_lens)
-        origins = np.repeat(list_of_origs, list_of_lens)
-        meta = {i: {'diag': labels[i], 'origin': origins[i]}
-                for i in range(len(labels))}
-
-        return out_batch.update(data=data,
-                                annot={},
-                                meta=meta)
-
-    def post_parallel_filter(self, all_results, *args, **kwargs):
-        if any([isinstance(res, Exception) for res in all_results]):
-            print([res for res in all_results if isinstance(res, Exception)])
-            return self
-        
         valid_results = [res for res in all_results if res is not None]
-        valid_indices = np.array([list(x[2].keys())[0] for x in valid_results])
-        out_batch = EcgBatch(DatasetIndex(index = valid_indices))
+
         list_of_arrs = [x[0] for x in valid_results]
-        list_of_arrs.append(np.array([]))
-        data = np.array(list_of_arrs)[:-1]
-        if len(valid_results) > 0:
-            keys = list(valid_results[0][1].keys())
+        list_of_lens = [len(x[0]) for x in valid_results]
+        list_of_annot = [x[1] for x in valid_results]
+        list_of_meta = [x[2] for x in valid_results]
+        list_of_origs = [x[3] for x in valid_results]
+
+        if max(list_of_lens) <= 1:
+            ind = DatasetIndex(index=np.array(list_of_origs))
+        else:
+            ind = DatasetIndex(index=np.arange(sum(list_of_lens), dtype=int))
+        out_batch = EcgBatch(ind)
+        
+        if list_of_arrs[0].ndim == 3:
+            flat_list = list(itertools.chain([x for y in list_of_arrs for x in y]))
+            flat_list.append([])
+            batch_data = np.array(flat_list)[:-1]
+        elif list_of_arrs[0].ndim == 2:
+            list_of_arrs.append([])
+            batch_data = np.array(list_of_arrs)[:-1]
+        else:
+            raise ValueError('Signal is expected to have ndim = 2 or 3, found ndim = {0}'
+                             .format(list_of_arrs[0].ndim))
+
+        origins = np.repeat(list_of_origs, list_of_lens)
+        metas = np.repeat(list_of_meta, list_of_lens)
+        for i in range(len(batch_data)):
+            metas[i].update({'origin': origins[i]})
+        batch_meta = dict(zip(ind.indices, metas))
+        
+        annots = np.repeat(list_of_annot, list_of_lens)
+        if len(annots) > 0:
+            keys = list(annots[0].keys())
         else:
             keys = []
-        annot = {}
+        batch_annot = {}
         for k in keys:
-            list_of_arrs = [x[1][k] for x in valid_results]
+            list_of_arrs = [x[k] for x in annots]
             list_of_arrs.append(np.array([]))
-            annot[k] = np.array(list_of_arrs)[:-1]
-        meta = dict(ChainMap(*[x[2] for x in valid_results]))
-        return out_batch.update(data=data,
-                                annot=annot,
-                                meta=meta)
+            batch_annot[k] = np.array(list_of_arrs)[:-1]
+
+        return out_batch.update(data=batch_data,
+                                annot=batch_annot,
+                                meta=batch_meta)
 
 
     @action
@@ -429,7 +407,16 @@ class EcgBatch(Batch):
         return resample_signal
 
     @action
-    @inbatch_parallel(init="init_parallel", post="post_parallel_segment",
+    @inbatch_parallel(init="init_parallel", post="post_parallel",
+                      target='threads')
+    def augment_fs(self, signal, annot, meta, index, distr_type, params):
+        """
+        Segment all signals
+        """
+        return augment_fs_signal(signal, annot, meta, index, distr_type, params)
+
+    @action
+    @inbatch_parallel(init="init_parallel", post="post_parallel",
                       target='mpc')
     def segment(self, length, step, pad):
         """
@@ -438,7 +425,7 @@ class EcgBatch(Batch):
         return segment_signal
 
     @action
-    @inbatch_parallel(init="init_parallel", post="post_parallel_filter",
+    @inbatch_parallel(init="init_parallel", post="post_parallel",
                       target='mpc')
     def drop_noise(self):
         """
@@ -531,7 +518,7 @@ class EcgBatch(Batch):
     def train_fft_inception(self, model_comp, nb_epoch, batch_size):
         model, hist, code, lr_s = model_comp
         hist['batch_size'] = batch_size
-        trainX = self._signal.reshape((-1, 3000, 1))
+        trainX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         trainY, enq_classes = self.get_labels(encode=code)
         epoch_num = len(hist['train_loss'])
         if epoch_num in lr_s[0]:
@@ -553,14 +540,15 @@ class EcgBatch(Batch):
     @action(model='fft_inception')
     def calc_loss(self, model_comp):
         model, hist, code, _ = model_comp
-        testX = self._signal.reshape((-1, 3000, 1))
+        testX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         testY, unq_classes = self.get_labels(encode=code)
         pred = model.predict(testX)
         batch_size = hist['batch_size']
-        #hist['val_loss'].append(log_loss(testY, pred))
-        hist['val_metric'].append(f1_metric(pred, testY, unq_classes))
         hist['val_loss'].append(model.evaluate(testX, testY, 
-                                                 batch_size=batch_size))
+                                               batch_size=batch_size,
+                                               verbose=0))
+        y_true, y_pred = get_pred_classes(pred, testY, unq_classes)       
+        hist['val_metric'].append(f1_score(y_true, y_pred, average='macro'))
         return self
 
     @action(model='fft_inception')
@@ -578,10 +566,12 @@ class EcgBatch(Batch):
     @action(model='fft_inception')
     def print_accuracy(self, model_comp):
         model, hist, code, _ = model_comp
-        testX = self._signal.reshape((-1, 3000, 1))
+        testX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         testY, unq_classes = self.get_labels(encode=code)
         pred = model.predict(testX)
-        validate(pred, testY, unq_classes)
+        y_true, y_pred = get_pred_classes(pred, testY, unq_classes) 
+        print(classification_report(y_true, y_pred))
+        print("f1_score", f1_score(y_true, y_pred, average='macro'))
         return self
 
     @action(model='fft_inception')
