@@ -88,7 +88,6 @@ class EcgBatch(Batch):
     @inbatch_parallel(init='indices', target='threads')
     def _dump_npz(self, index, dst):
         signal, ann, meta = self[index]
-        del meta["__pos"]
         np.savez(
             os.path.join(dst, index + ".npz"),
             signal=signal,
