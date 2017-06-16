@@ -123,9 +123,9 @@ def resample_signal(signal, annot, meta, index, new_fs):
     fs = meta['fs']
     new_len = int(new_fs * len(signal[0]) / fs)
     signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
-    meta['fs'] = new_fs
-    return [signal, annot, meta, index]
-    return [signal, annot, {index: meta}]
+    out_meta = meta.copy()
+    out_meta['fs'] = new_fs
+    return [signal, annot, out_meta, index]
 
 
 def segment_signal(signal, annot, meta, index, length, step, pad):
@@ -157,15 +157,24 @@ def noise_filter(signal, annot, meta, index):
 
 def augment_fs_signal(signal, annot, meta, index, distr_type, params):
     if distr_type == 'none':
-        return [signal, annot, {index: meta}]
+        return [signal, annot, meta, index]
     if distr_type == 'normal':
         new_fs = np.random.normal(**params)
     elif distr_type == 'uniform':
         new_fs = np.random.uniform(**params)
     elif distr_type == 'delta':
         new_fs = params['loc']
-    new_sig = resample_signal(signal, annot, meta, index, new_fs)[0]
-    return [new_sig, {}, meta, index]
+    new_sig, _, new_meta, _ = resample_signal(signal, annot, meta, index, new_fs)
+    return [new_sig, {}, new_meta, index]
+
+def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
+    res = [augment_fs_signal(signal, annot, meta, index, distr_type, params)
+           for (distr_type, params) in list_of_distr]
+    out_sig = [x[0] for x in res]
+    out_annot = [x[1] for x in res]
+    out_meta = [x[2] for x in res]
+    out_sig.append([])
+    return [np.array(out_sig)[:-1], out_annot, out_meta, index]
 
 class EcgBatch(Batch):
     """
@@ -354,10 +363,10 @@ class EcgBatch(Batch):
         valid_results = [res for res in all_results if res is not None]
 
         list_of_arrs = [x[0] for x in valid_results]
-        list_of_lens = [len(x[0]) for x in valid_results]
-        list_of_annot = [x[1] for x in valid_results]
-        list_of_meta = [x[2] for x in valid_results]
-        list_of_origs = [x[3] for x in valid_results]
+        list_of_lens = np.array([len(x[0]) for x in valid_results])
+        list_of_annot = np.array([x[1] for x in valid_results]).ravel()
+        list_of_meta = np. array([x[2] for x in valid_results]).ravel()
+        list_of_origs = np.array([x[3] for x in valid_results]).ravel()
 
         if max(list_of_lens) <= 1:
             ind = DatasetIndex(index=np.array(list_of_origs))
@@ -365,7 +374,9 @@ class EcgBatch(Batch):
             ind = DatasetIndex(index=np.arange(sum(list_of_lens), dtype=int))
         out_batch = EcgBatch(ind)
         
-        if list_of_arrs[0].ndim == 3:
+        full_length = len(ind.indices)
+        
+        if list_of_arrs[0].ndim in [1, 3]:
             flat_list = list(itertools.chain([x for y in list_of_arrs for x in y]))
             flat_list.append([])
             batch_data = np.array(flat_list)[:-1]
@@ -373,16 +384,28 @@ class EcgBatch(Batch):
             list_of_arrs.append([])
             batch_data = np.array(list_of_arrs)[:-1]
         else:
-            raise ValueError('Signal is expected to have ndim = 2 or 3, found ndim = {0}'
+            raise ValueError('Signal is expected to have ndim = 1, 2 or 3, found ndim = {0}'
                              .format(list_of_arrs[0].ndim))
 
-        origins = np.repeat(list_of_origs, list_of_lens)
-        metas = np.repeat(list_of_meta, list_of_lens)
+        if full_length == len(list_of_origs):
+            origins =  list_of_origs
+        else:
+            origins = np.repeat(list_of_origs, list_of_lens)
+        
+        #print(full_length, len(list_of_meta))
+        #print(list_of_meta)
+        if full_length == len(list_of_meta):
+            metas = list_of_meta#list(itertools.chain([x for y in list_of_meta for x in y]))
+        else:
+            metas = np.repeat(list_of_meta, list_of_lens)
         for i in range(len(batch_data)):
             metas[i].update({'origin': origins[i]})
         batch_meta = dict(zip(ind.indices, metas))
-        
-        annots = np.repeat(list_of_annot, list_of_lens)
+
+        if full_length == len(list_of_annot):
+            annots = list_of_annot#list(itertools.chain([x for y in list_of_annot for x in y]))
+        else:
+            annots = np.repeat(list_of_annot, list_of_lens)
         if len(annots) > 0:
             keys = list(annots[0].keys())
         else:
@@ -409,11 +432,11 @@ class EcgBatch(Batch):
     @action
     @inbatch_parallel(init="init_parallel", post="post_parallel",
                       target='threads')
-    def augment_fs(self, signal, annot, meta, index, distr_type, params):
+    def augment_fs(self, signal, annot, meta, index, list_of_distr):
         """
         Segment all signals
         """
-        return augment_fs_signal(signal, annot, meta, index, distr_type, params)
+        return augment_fs_signal_mult(signal, annot, meta, index, list_of_distr)
 
     @action
     @inbatch_parallel(init="init_parallel", post="post_parallel",
