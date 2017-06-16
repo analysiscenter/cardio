@@ -2,10 +2,9 @@
 import os
 import sys
 import numpy as np
-import pandas as pd
 import wfdb
 sys.path.append('..')
-from dataset import Batch, action, inbatch_parallel, any_action_failed
+from dataset import Batch, action, inbatch_parallel
 
 
 class EcgBatch(Batch):
