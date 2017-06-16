@@ -12,8 +12,8 @@ class EcgBatch(Batch):
     Batch of ECG data
     """
 
-    def __init__(self, index):
-        super().__init__(index)
+    def __init__(self, index, preloaded=None):
+        super().__init__(index, preloaded)
         self.signal = np.ndarray(self.indices.shape, dtype=object)
         self.annotation = {}
         self.meta = {}
