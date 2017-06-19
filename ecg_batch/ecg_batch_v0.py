@@ -11,7 +11,7 @@ import wfdb
 import itertools
 
 from scipy.signal import resample_poly, gaussian
-from sklearn.metrics import classification_report, f1_score, log_loss
+from sklearn.metrics import classification_report, f1_score
 from collections import ChainMap
 from dataset_img import *
 from functools import partial
@@ -30,7 +30,7 @@ sys.path.append('..')
 
 
 def Inception2D(x, base_dim, nb_filters, size_1, size_2,
-                activation='linear', padding='same'):#pylint: disable-msg=too-many-arguments
+                activation='linear', padding='same'):#pylint: disable=too-many-arguments
     '''
     Inception block for 2D spectrogram.
     '''
@@ -82,6 +82,9 @@ def crop(x, a, b):
 
 
 def get_ecg(i, fields):
+	'''
+	Return ecg signal, annot and meta by index
+	'''
     data, annot, meta = fields
     pos = meta[i]['__pos']
     return (data[pos],
@@ -90,6 +93,9 @@ def get_ecg(i, fields):
 
 
 def back_to_annot(arr, annot):
+	'''
+	Convert categorical array to labeled array
+	'''
     res = []
     for x in arr:
         res.append(annot[x == 1][0])
@@ -97,6 +103,9 @@ def back_to_annot(arr, annot):
 
 
 def get_pred_classes(pred, testY, unq_classes):
+	'''
+	Returns labeled prediction and true labeles
+	'''
     labels = np.zeros(pred.shape, dtype=int)
     for i in range(len(labels)):
         labels[i, np.argmax(pred[i])] = 1
@@ -128,7 +137,7 @@ def segment_signal(signal, annot, meta, index, length, step, pad):
     diag = meta['diag']
     start = 0
     segments = []
-    if(len(signal[0]) < length):
+    if len(signal[0]) < length:
         if pad:
             pad_len = length - len(signal[0])
             segments.append(np.lib.pad(signal, ((0, 0), (pad_len, 0)),
@@ -137,13 +146,16 @@ def segment_signal(signal, annot, meta, index, length, step, pad):
         else:
             raise ValueError('Signal is shorter than segment length: %i < %i'
                              % (len(signal[0]), length))
-    while(start + length <= len(signal[0])):
+    while start + length <= len(signal[0]):
         segments.append(signal[:, start: start + length])
         start += step
     return [np.array(segments), {}, {'diag': diag}, index]
 
 
 def noise_filter(signal, annot, meta, index):
+	'''
+	Drop signals labeled as noise
+	'''
     if meta['diag'] == '~':
         return None
     else:
@@ -151,6 +163,9 @@ def noise_filter(signal, annot, meta, index):
 
 
 def augment_fs_signal(signal, annot, meta, index, distr_type, params):
+	'''
+	Return resampled signal
+	'''
     if distr_type == 'none':
         return [signal, annot, meta, index]
     if distr_type == 'normal':
@@ -165,6 +180,9 @@ def augment_fs_signal(signal, annot, meta, index, distr_type, params):
 
 
 def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
+	'''
+	Returns many resampled signals
+	'''
     res = [augment_fs_signal(signal, annot, meta, index, distr_type, params)
            for (distr_type, params) in list_of_distr]
     out_sig = [x[0] for x in res]
@@ -332,7 +350,7 @@ class EcgBatch(Batch):
                              .format(index))
         return (self._signal[pos],
                 {k: v[pos] for k, v in self._annotation.items()},
-                 self._meta[index])
+                self._meta[index])
 
     def update(self, data=None, annot=None, meta=None):
         """
@@ -346,10 +364,17 @@ class EcgBatch(Batch):
             self._meta = meta
         return self
 
-    def init_parallel(self, *args, **kwargs):
+    def init_parallel(self, *args, **kwargs):#pylint: disable=unused-argument
+		'''
+		Return array of ecg with index
+		'''
         return [list(self[i]) + [i] for i in self.indices]
 
-    def post_parallel(self, all_results, *args, **kwargs):
+    def post_parallel(self, all_results, *args, **kwargs):#pylint: disable=unused-argument
+		'''
+		Build ecg_batch 
+		Broadcasting is supported
+		'''
         if any([isinstance(res, Exception) for res in all_results]):
             print([res for res in all_results if isinstance(res, Exception)])
             return self
@@ -590,8 +615,7 @@ class EcgBatch(Batch):
 
     @action(model='fft_inception')
     def show_loss(self, model_comp):
-        model, hist, _, _ = model_comp
-        fig = plt.figure()
+        hist = model_comp[1]
         plt.plot(hist["train_loss"], "r", label="train loss")
         plt.plot(hist["val_loss"], "b", label="validation loss")
         plt.legend()
