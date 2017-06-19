@@ -1,3 +1,5 @@
 wfdb
 PyWavelets
 hmmlearn
+tf
+keras

@@ -1,0 +1,30 @@
+language: none
+
+env:
+  global:
+    - DOCKER_ACC=analysiscenter1
+    - DOCKER_REPO=ds-py3
+    - TAG="latest"
+
+build:
+  pre_ci_boot:
+    image_name: $DOCKER_ACC/$DOCKER_REPO
+    image_tag: $TAG
+    pull: false
+  pre_ci:
+    docker pull $DOCKER_ACC/$DOCKER_REPO:$TAG
+  ci:
+    - pylint3 -rn --rcfile pylintrc dataset
+
+integrations:
+  hub:
+    - integrationName: DockerHub analysiscenter.ru
+      type: docker
+  
+  notifications:
+    - integrationName: Slack analysiscenter.ru
+      type: slack
+      recipients:
+        - "#commits"
+      on_success: always
+      on_failure: always

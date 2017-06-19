@@ -1,0 +1,20 @@
+[MASTER]
+ignore=examples
+extension-pkg-whitelist=numpy
+max-line-length=120
+max-attributes=20
+max-locals=20
+max-args=8
+
+[TYPECHECK]
+ignored-modules=numpy,cv2
+
+[MESSAGE CONTROL]
+disable=no-value-for-parameter,no-self-use,too-few-public-methods,unsubscriptable-object,duplicate-code
+
+[BASIC]
+class-rgx=[A-Z_][a-zA-Z0-9_]+$
+good-names=f,i,j,k,l,m,n,p,q,r,x,y,z,e,ex,_,ix,fn
+
+[MISCELLANEOUS]
+notes=
