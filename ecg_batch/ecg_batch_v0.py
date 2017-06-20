@@ -12,7 +12,7 @@ import wfdb
 from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
 from keras.layers import (Input, Conv1D, Conv2D,
-                          MaxPooling1D, MaxPooling2D, Lambda, 
+                          MaxPooling1D, MaxPooling2D, Lambda,
                           Reshape, Dense, GlobalMaxPooling2D)
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
@@ -30,21 +30,21 @@ def Inception2D(x, base_dim, nb_filters, size_1, size_2,#pylint: disable=too-man
     '''
     Inception block for 2D spectrogram.
     '''
-    conv_1 = Conv2D(base_dim, (1, 1),
+    conv_1 = Conv2D(base_dim, (1, 1),#pylint: disable=no-value-for-parameter
                     activation=activation, padding=padding)(x)
 
-    conv_2 = Conv2D(base_dim, (1, 1),
+    conv_2 = Conv2D(base_dim, (1, 1),#pylint: disable=no-value-for-parameter
                     activation=activation, padding=padding)(x)
-    conv_2a = Conv2D(nb_filters, (size_1, size_1),
+    conv_2a = Conv2D(nb_filters, (size_1, size_1),#pylint: disable=no-value-for-parameter
                      activation=activation, padding=padding)(conv_2)
 
-    conv_3 = Conv2D(base_dim, (1, 1),
+    conv_3 = Conv2D(base_dim, (1, 1),#pylint: disable=no-value-for-parameter
                     activation=activation, padding='same')(x)
-    conv_3a = Conv2D(nb_filters, (size_2, size_2),
+    conv_3a = Conv2D(nb_filters, (size_2, size_2),#pylint: disable=no-value-for-parameter
                      activation=activation, padding=padding)(conv_3)
 
     pool = MaxPooling2D(strides=(1, 1), padding=padding)(x)
-    conv_4 = Conv2D(nb_filters, (1, 1),
+    conv_4 = Conv2D(nb_filters, (1, 1),#pylint: disable=no-value-for-parameter
                     activation=activation, padding=padding)(pool)
 
     concat = Concatenate(axis=-1)([conv_1, conv_2a, conv_3a, conv_4])
@@ -528,7 +528,7 @@ class EcgBatch(ds.Batch):
                      activation='softmax')(drop)
 
         opt = Adam()
-        model = Model(inputs=input,
+        model = Model(inputs=input,#pylint: disable=unexpected-keyword-arg, no-value-for-parameter
                       outputs=fc_2)#pylint: disable=unexpected-keyword-arg, no-value-for-parameter
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
