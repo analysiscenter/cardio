@@ -3,32 +3,26 @@
 
 import os
 import sys
-import copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import wfdb
 import itertools
 
-import dataset_img as ds
-#from dataset import Batch, action, inbatch_parallel, post_parallel
-
-from scipy.signal import resample_poly, gaussian
+from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
-from collections import ChainMap
-from functools import partial
-
-from keras.layers import Input, Convolution1D, Convolution2D, MaxPooling2D
+from keras.layers import Input, Conv1D, Conv2D
 from keras.layers import MaxPooling1D, MaxPooling2D, Lambda, Reshape
 from keras.layers import Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
 from keras.models import Model, Sequential
-from keras import backend as K
 from keras.regularizers import l2
 from keras.utils import np_utils
 from keras.models import model_from_yaml
 from keras.optimizers import Adam
+
+import dataset as ds
 
 sys.path.append('..')
 
@@ -38,21 +32,21 @@ def Inception2D(x, base_dim, nb_filters, size_1, size_2,
     '''
     Inception block for 2D spectrogram.
     '''
-    conv_1 = Convolution2D(base_dim, (1, 1),
+    conv_1 = Conv2D(base_dim, (1, 1),
                            activation=activation, padding=padding)(x)
 
-    conv_2 = Convolution2D(base_dim, (1, 1),
+    conv_2 = Conv2D(base_dim, (1, 1),
                            activation=activation, padding=padding)(x)
-    conv_2a = Convolution2D(nb_filters, (size_1, size_1),
+    conv_2a = Conv2D(nb_filters, (size_1, size_1),
                             activation=activation, padding=padding)(conv_2)
 
-    conv_3 = Convolution2D(base_dim, (1, 1),
+    conv_3 = Conv2D(base_dim, (1, 1),
                            activation=activation, padding='same')(x)
-    conv_3a = Convolution2D(nb_filters, (size_2, size_2),
+    conv_3a = Conv2D(nb_filters, (size_2, size_2),
                             activation=activation, padding=padding)(conv_3)
 
     pool = MaxPooling2D(strides=(1, 1), padding=padding)(x)
-    conv_4 = Convolution2D(nb_filters, (1, 1),
+    conv_4 = Conv2D(nb_filters, (1, 1),
                            activation=activation, padding=padding)(pool)
 
     concat = Concatenate(axis=-1)([conv_1, conv_2a, conv_3a, conv_4])
@@ -135,6 +129,7 @@ def resample_signal(signal, annot, meta, index, new_fs):
 
 
 def segment_signal(signal, annot, meta, index, length, step, pad):
+    #pylint: disable=too-many-arguments
     """
     Segment signal
     """
@@ -153,7 +148,10 @@ def segment_signal(signal, annot, meta, index, length, step, pad):
     while start + length <= len(signal[0]):
         segments.append(signal[:, start: start + length])
         start += step
-    return [np.array(segments), {}, {'diag': diag}, index]
+    _ = annot
+    out_annot = {} #TODO: resample annotation
+    out_meta = {'diag': diag}
+    return [np.array(segments), out_annot, out_meta, index]
 
 
 def noise_filter(signal, annot, meta, index):
@@ -308,7 +306,7 @@ class EcgBatch(ds.Batch):
         list_of_arrs = []
         list_of_annotations = []
         meta = {}
-        for pos, ecg in np.ndenumerate(self.indices):
+        for ecg in self.indices:
             if src is None:
                 path = self.index.get_fullpath(ecg)
             else:
@@ -375,8 +373,10 @@ class EcgBatch(ds.Batch):
         return [[*self[i], i] for i in self.indices]
 
     def post_parallel(self, all_results, *args, **kwargs):
+        #pylint: disable=too-many-locals
+        #pylint: disable=too-many-branches
         '''
-        Build ecg_batch 
+        Build ecg_batch
         Broadcasting is supported
         '''
         _ = args, kwargs
@@ -449,31 +449,18 @@ class EcgBatch(ds.Batch):
         """
         return resample_signal
 
-    '''
-    @action
-    @inbatch_parallel(init="init_parallel", post="post_parallel",
-                      target='threads')
-    def augment_fs(self, signal, annot, meta, index, list_of_distr):
-        """
-        Segment all signals
-        """
-        return augment_fs_signal_mult(signal, annot, meta,
-                                      index, list_of_distr)
-    '''
-    
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                      target='mpc')
+                         target='mpc')
     def augment_fs(self, list_of_distr):#pylint: disable=unused-argument
         """
         Segment all signals
         """
         return augment_fs_signal_mult
 
-    
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                      target='mpc')
+                         target='mpc')
     def segment(self, length, step, pad):#pylint: disable=unused-argument
         """
         Segment all signals
@@ -482,7 +469,7 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                      target='mpc')
+                         target='mpc')
     def drop_noise(self):
         """
         Segment all signals
@@ -502,17 +489,17 @@ class EcgBatch(ds.Batch):
         return self
 
     @ds.model()
-    def fft_inception():
-        input = Input((3000, 1))
+    def fft_inception():#pylint: disable=too-many-locals
+        input = Input((3000, 1))#pylint: disable=redefined-builtin
 
-        conv_1 = Convolution1D(4, 4, activation='relu')(input)
+        conv_1 = Conv1D(4, 4, activation='relu')(input)
         mp_1 = MaxPooling1D()(conv_1)
 
-        conv_2 = Convolution1D(8, 4, activation='relu')(mp_1)
+        conv_2 = Conv1D(8, 4, activation='relu')(mp_1)
         mp_2 = MaxPooling1D()(conv_2)
-        conv_3 = Convolution1D(16, 4, activation='relu')(mp_2)
+        conv_3 = Conv1D(16, 4, activation='relu')(mp_2)
         mp_3 = MaxPooling1D()(conv_3)
-        conv_4 = Convolution1D(32, 4, activation='relu')(mp_3)
+        conv_4 = Conv1D(32, 4, activation='relu')(mp_3)
 
         fft_1 = Lambda(rfft)(conv_4)
         shape_fft = fft_1.get_shape().as_list()
@@ -540,7 +527,7 @@ class EcgBatch(ds.Batch):
                      activation='softmax')(drop)
 
         opt = Adam()
-        model = Model(inputs=input, outputs=fc_2)
+        model = Model(inputs=input, outputs=fc_2)#pylint: disable=unexpected-keyword-arg, no-value-for-parameter
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
         hist = {'train_loss': [], 'val_loss': [],
@@ -553,6 +540,9 @@ class EcgBatch(ds.Batch):
 
     @ds.action()
     def get_labels(self, encode=None):
+        '''
+        Get categorical labels
+        '''
         dsY = []
         for ind in self.indices:
             diag = self._meta[ind]['diag']
@@ -572,6 +562,9 @@ class EcgBatch(ds.Batch):
 
     @ds.action(model='fft_inception', singleton=True)
     def train_fft_inception(self, model_comp, nb_epoch, batch_size):
+        '''
+        fft_incaption model
+        '''
         model, hist, code, lr_s = model_comp
         hist['batch_size'] = batch_size
         trainX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
@@ -590,11 +583,17 @@ class EcgBatch(ds.Batch):
 
     @ds.action(model='fft_inception')
     def print_summary(self, model_comp):
+        '''
+        Print model layers 
+        '''
         print(model_comp[0].summary())
         return self
 
     @ds.action(model='fft_inception')
     def calc_loss(self, model_comp):
+        '''
+        Add current val_loss and val_metric to training history
+        '''
         model, hist, code, _ = model_comp
         testX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         testY, unq_classes = self.get_labels(encode=code)
@@ -609,7 +608,10 @@ class EcgBatch(ds.Batch):
 
     @ds.action(model='fft_inception')
     def train_report(self, model_comp):
-        model, hist, _, _ = model_comp
+        '''
+        Print loss and metrics at the end of epoch
+        '''
+        hist = model_comp[1]
         if len(hist['train_loss']) == 0:
             print('Train history is empty')
         else:
@@ -621,6 +623,9 @@ class EcgBatch(ds.Batch):
 
     @ds.action(model='fft_inception')
     def print_accuracy(self, model_comp):
+        '''
+        Print accuracy
+        '''
         model, _, code, _ = model_comp
         testX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         testY, unq_classes = self.get_labels(encode=code)
@@ -632,6 +637,9 @@ class EcgBatch(ds.Batch):
 
     @ds.action(model='fft_inception')
     def show_loss(self, model_comp):
+        '''
+        Plot train and validation loss
+        '''
         hist = model_comp[1]
         plt.plot(hist["train_loss"], "r", label="train loss")
         plt.plot(hist["val_loss"], "b", label="validation loss")
@@ -662,8 +670,8 @@ class EcgBatch(ds.Batch):
         '''
         model = model_comp[0]
         fin = open(fname + ".layers", "r")
-        yaml_string  = fin.read()
+        yaml_string = fin.read()
         fin.close()
-        model = model_from_yaml(yaml_string )
+        model = model_from_yaml(yaml_string)
         model.load_weights(fname)
         return self
