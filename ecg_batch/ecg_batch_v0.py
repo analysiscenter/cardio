@@ -7,7 +7,6 @@ import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import wfdb
 
 from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
@@ -19,8 +18,10 @@ from keras.layers.merge import Concatenate
 from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 from keras.utils import np_utils
+import wfdb
 
 import dataset as ds
+
 
 sys.path.append('..')
 
@@ -487,7 +488,7 @@ class EcgBatch(ds.Batch):
         return self
 
     @ds.model()
-    def fft_inception():#pylint: disable=too-many-locals
+    def fft_inception():#pylint: disable=too-many-locals, no-method-argument
         '''
         fft inception model
         '''
