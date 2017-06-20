@@ -10,8 +10,7 @@ max-locals=20
 good-names=fs, ax, im, a, b, i, _
 
 [TYPECHECK]
-ignored-modules=numpy
-ignored-modules=keras
+ignored-modules=numpy, keras
 
 [MISCELLANEOUS]
 notes=
