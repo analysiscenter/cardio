@@ -49,7 +49,7 @@ class Inception2D(Layer):
             self.padding = padding
         super(Inception2D, self).__init__(*agrs, **kwargs)
 
-    def call(self, x, mask=None):
+    def call(self, x):
         conv_1 = Conv2D(self.base_dim, (1, 1),
                         activation=self.activation, padding=self.padding)(x)
 
