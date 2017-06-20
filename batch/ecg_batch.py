@@ -1,5 +1,4 @@
 """ contain Batch class for processing ECGs """
-# pylint: disable=invalid-name
 
 import os
 import sys
