@@ -11,23 +11,22 @@ import wfdb
 
 from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
-from keras.layers import Input, Conv1D, Conv2D
-from keras.layers import MaxPooling1D, MaxPooling2D, Lambda, Reshape
-from keras.layers import Dense, GlobalMaxPooling2D
+from keras.layers import (Input, Conv1D, Conv2D,
+                          MaxPooling1D, MaxPooling2D, Lambda, 
+                          Reshape, Dense, GlobalMaxPooling2D)
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
 from keras.models import Model, model_from_yaml
-from keras.regularizers import l2
-from keras.utils import np_utils
 from keras.optimizers import Adam
+from keras.utils import np_utils
 
 import dataset as ds
 
 sys.path.append('..')
 
 
-def Inception2D(x, base_dim, nb_filters, size_1, size_2,
-                activation='linear', padding='same'):#pylint: disable=too-many-arguments
+def Inception2D(x, base_dim, nb_filters, size_1, size_2,#pylint: disable=too-many-arguments
+                activation='linear', padding='same'):
     '''
     Inception block for 2D spectrogram.
     '''
@@ -449,7 +448,7 @@ class EcgBatch(ds.Batch):
         return resample_signal
 
     @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", 
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
     def augment_fs(self, list_of_distr):#pylint: disable=unused-argument, no-self-use
         """
@@ -469,7 +468,7 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
-    def drop_noise(self):#pylint: no-self-use
+    def drop_noise(self):#pylint: disable=no-self-use
         """
         Segment all signals
         """
@@ -489,6 +488,9 @@ class EcgBatch(ds.Batch):
 
     @ds.model()
     def fft_inception():#pylint: disable=too-many-locals
+        '''
+        fft inception model
+        '''
         input = Input((3000, 1))#pylint: disable=redefined-builtin
 
         conv_1 = Conv1D(4, 4, activation='relu')(input)
@@ -526,7 +528,7 @@ class EcgBatch(ds.Batch):
                      activation='softmax')(drop)
 
         opt = Adam()
-        model = Model(inputs=input, 
+        model = Model(inputs=input,
                       outputs=fc_2)#pylint: disable=unexpected-keyword-arg, no-value-for-parameter
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
@@ -560,7 +562,7 @@ class EcgBatch(ds.Batch):
         catY = np_utils.to_categorical(num_labels)[len(pos_labels):]
         return catY, unq_classes
 
-    @ds.action(model='fft_inception', singleton=True)
+    @ds.action(model='fft_inception')
     def train_fft_inception(self, model_comp, nb_epoch, batch_size):
         '''
         fft_incaption model

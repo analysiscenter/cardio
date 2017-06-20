@@ -5,12 +5,13 @@ init-hook='import sys; sys.path.append(".")'
 [FORMAT]
 max-line-length=120
 max-attributes=8
-max-args=6
+max-args=8
 max-locals=20
 good-names=fs, ax, im, a, b, i, _
 
 [TYPECHECK]
 ignored-modules=numpy
+ignored-modules=keras
 
 [MISCELLANEOUS]
 notes=
