@@ -3,11 +3,11 @@
 
 import os
 import sys
+import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import wfdb
-import itertools
 
 from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
@@ -16,10 +16,9 @@ from keras.layers import MaxPooling1D, MaxPooling2D, Lambda, Reshape
 from keras.layers import Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
-from keras.models import Model, Sequential
+from keras.models import Model, model_from_yaml
 from keras.regularizers import l2
 from keras.utils import np_utils
-from keras.models import model_from_yaml
 from keras.optimizers import Adam
 
 import dataset as ds
@@ -33,21 +32,21 @@ def Inception2D(x, base_dim, nb_filters, size_1, size_2,
     Inception block for 2D spectrogram.
     '''
     conv_1 = Conv2D(base_dim, (1, 1),
-                           activation=activation, padding=padding)(x)
+                    activation=activation, padding=padding)(x)
 
     conv_2 = Conv2D(base_dim, (1, 1),
-                           activation=activation, padding=padding)(x)
+                    activation=activation, padding=padding)(x)
     conv_2a = Conv2D(nb_filters, (size_1, size_1),
-                            activation=activation, padding=padding)(conv_2)
+                     activation=activation, padding=padding)(conv_2)
 
     conv_3 = Conv2D(base_dim, (1, 1),
-                           activation=activation, padding='same')(x)
+                    activation=activation, padding='same')(x)
     conv_3a = Conv2D(nb_filters, (size_2, size_2),
-                            activation=activation, padding=padding)(conv_3)
+                     activation=activation, padding=padding)(conv_3)
 
     pool = MaxPooling2D(strides=(1, 1), padding=padding)(x)
     conv_4 = Conv2D(nb_filters, (1, 1),
-                           activation=activation, padding=padding)(pool)
+                    activation=activation, padding=padding)(pool)
 
     concat = Concatenate(axis=-1)([conv_1, conv_2a, conv_3a, conv_4])
     return concat
@@ -280,7 +279,7 @@ class EcgBatch(ds.Batch):
         list_of_arrs = []
         list_of_annotations = {}
         meta = {}
-        for ecg in self.indices:
+        for ecg in self.index.indices:
             if src is None:
                 path = self.index.get_fullpath(ecg)
             else:
@@ -306,7 +305,7 @@ class EcgBatch(ds.Batch):
         list_of_arrs = []
         list_of_annotations = []
         meta = {}
-        for ecg in self.indices:
+        for ecg in self.index.indices:
             if src is None:
                 path = self.index.get_fullpath(ecg)
             else:
@@ -370,7 +369,7 @@ class EcgBatch(ds.Batch):
         '''
         Return array of ecg with index
         '''
-        return [[*self[i], i] for i in self.indices]
+        return [[*self[i], i] for i in self.index.indices]
 
     def post_parallel(self, all_results, *args, **kwargs):
         #pylint: disable=too-many-locals
@@ -443,16 +442,16 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def resample(self, new_fs):#pylint: disable=unused-argument
+    def resample(self, new_fs):#pylint: disable=unused-argument, no-self-use
         """
         Resample all signals in batch to new_fs
         """
         return resample_signal
 
     @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", 
                          target='mpc')
-    def augment_fs(self, list_of_distr):#pylint: disable=unused-argument
+    def augment_fs(self, list_of_distr):#pylint: disable=unused-argument, no-self-use
         """
         Segment all signals
         """
@@ -461,7 +460,7 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
-    def segment(self, length, step, pad):#pylint: disable=unused-argument
+    def segment(self, length, step, pad):#pylint: disable=unused-argument, no-self-use
         """
         Segment all signals
         """
@@ -470,7 +469,7 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
-    def drop_noise(self):
+    def drop_noise(self):#pylint: no-self-use
         """
         Segment all signals
         """
@@ -484,7 +483,7 @@ class EcgBatch(ds.Batch):
         ref = pd.read_csv(path, header=None)
         ref.columns = ['file', 'diag']
         ref = ref.set_index('file')  #pylint: disable=no-member
-        for ecg in self.indices:
+        for ecg in self.index.indices:
             self._meta[ecg]['diag'] = ref.ix[ecg]['diag']
         return self
 
@@ -527,7 +526,8 @@ class EcgBatch(ds.Batch):
                      activation='softmax')(drop)
 
         opt = Adam()
-        model = Model(inputs=input, outputs=fc_2)#pylint: disable=unexpected-keyword-arg, no-value-for-parameter
+        model = Model(inputs=input, 
+                      outputs=fc_2)#pylint: disable=unexpected-keyword-arg, no-value-for-parameter
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
         hist = {'train_loss': [], 'val_loss': [],
@@ -584,7 +584,7 @@ class EcgBatch(ds.Batch):
     @ds.action(model='fft_inception')
     def print_summary(self, model_comp):
         '''
-        Print model layers 
+        Print model layers
         '''
         print(model_comp[0].summary())
         return self
