@@ -1,3 +1,4 @@
 wfdb
 PyWavelets
 hmmlearn
+keras

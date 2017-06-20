@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
+
 from keras.layers import (Input, Conv1D, Conv2D,
                           MaxPooling1D, MaxPooling2D, Lambda,
                           Reshape, Dense, GlobalMaxPooling2D)
@@ -18,6 +19,7 @@ from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 from keras.utils import np_utils
 from keras.engine.topology import Layer
+
 import wfdb
 
 import dataset as ds
@@ -51,26 +53,29 @@ class Inception2D(Layer):
         super(Inception2D, self).build(input_shape)
 
     def call(self, x, mask=None):
-        conv_1 = Conv2D(self.base_dim, (1, 1),#pylint: disable=no-value-for-parameter
+        conv_1 = Conv2D(self.base_dim, (1, 1),
                         activation=self.activation, padding=self.padding)(x)
 
-        conv_2 = Conv2D(self.base_dim, (1, 1),#pylint: disable=no-value-for-parameter
+        conv_2 = Conv2D(self.base_dim, (1, 1),
                         activation=self.activation, padding=self.padding)(x)
-        conv_2a = Conv2D(self.nb_filters, (self.kernel_size_1, self.kernel_size_1),#pylint: disable=no-value-for-parameter
+        conv_2a = Conv2D(self.nb_filters, (self.kernel_size_1, self.kernel_size_1),
                          activation=self.activation, padding=self.padding)(conv_2)
 
-        conv_3 = Conv2D(self.base_dim, (1, 1),#pylint: disable=no-value-for-parameter
+        conv_3 = Conv2D(self.base_dim, (1, 1),
                         activation=self.activation, padding=self.padding)(x)
-        conv_3a = Conv2D(self.nb_filters, (self.kernel_size_2, self.kernel_size_2),#pylint: disable=no-value-for-parameter
+        conv_3a = Conv2D(self.nb_filters, (self.kernel_size_2, self.kernel_size_2),
                          activation=self.activation, padding=self.padding)(conv_3)
 
         pool = MaxPooling2D(strides=(1, 1), padding=self.padding)(x)
-        conv_4 = Conv2D(self.nb_filters, (1, 1),#pylint: disable=no-value-for-parameter
+        conv_4 = Conv2D(self.nb_filters, (1, 1),
                         activation=self.activation, padding=self.padding)(pool)
 
         return Concatenate(axis=-1)([conv_1, conv_2a, conv_3a, conv_4])
 
     def compute_output_shape(self, input_shape):
+        '''
+        Get output shape of inception layer
+        '''
         return (input_shape[0], input_shape[1], input_shape[2], self.base_dim + 3 * self.nb_filters)
 
 
@@ -467,7 +472,6 @@ class EcgBatch(ds.Batch):
         """
         Resample all signals in batch to new_fs
         """
-        _ = new_fs
         return resample_signal
 
     @ds.action
@@ -477,7 +481,6 @@ class EcgBatch(ds.Batch):
         """
         Segment all signals
         """
-        _ = list_of_distr
         return augment_fs_signal_mult
 
     @ds.action
@@ -487,13 +490,12 @@ class EcgBatch(ds.Batch):
         """
         Segment all signals
         """
-        _ = length, step, pad
         return segment_signal
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
-    def drop_noise(self):#pylint: disable=no-self-use
+    def drop_noise(self):
         """
         Segment all signals
         """
@@ -516,9 +518,9 @@ class EcgBatch(ds.Batch):
         '''
         fft inception model
         '''
-        input = Input((3000, 1))#pylint: disable=redefined-builtin
+        x = Input((3000, 1))
 
-        conv_1 = Conv1D(4, 4, activation='relu')(input)
+        conv_1 = Conv1D(4, 4, activation='relu')(x)
         mp_1 = MaxPooling1D()(conv_1)
 
         conv_2 = Conv1D(8, 4, activation='relu')(mp_1)
@@ -553,8 +555,7 @@ class EcgBatch(ds.Batch):
                      activation='softmax')(drop)
 
         opt = Adam()
-        model = Model(inputs=input,#pylint: disable=unexpected-keyword-arg, no-value-for-parameter
-                      outputs=fc_2)#pylint: disable=unexpected-keyword-arg, no-value-for-parameter
+        model = Model(inputs=input, outputs=fc_2)
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
         hist = {'train_loss': [], 'val_loss': [],

@@ -1,6 +1,3 @@
-[BASIC]
-good-names=_,i,j,t,x,y,z
-
 [MASTER]
 extension-pkg-whitelist=numpy
 init-hook='import sys; sys.path.append(".")'
@@ -10,7 +7,10 @@ max-line-length=120
 max-attributes=8
 max-args=8
 max-locals=20
-good-names=fs, ax, im, a, b, i, _, k, fs
+good-names=ax,im,a,b,_,fs,i,j,k,t,x,y,z
+
+[MESSAGE CONTROL]
+disable=no-value-for-parameter,no-self-use,too-few-public-methods,unsubscriptable-object
 
 [TYPECHECK]
 ignored-modules=numpy, keras
