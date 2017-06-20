@@ -11,17 +11,17 @@ class EcgBatch(Batch):
 
     """
 
-    Сlass for storing batch of ECG (electrocardiogram) 
+    Сlass for storing batch of ECG (electrocardiogram)
     signals.
     Derived from base class Batch
-    
+
     Main attributes:
         1. index: numpy array of signal IDs. Usually string names of files
         2. _data: tuple that contains three data structures with
            relevant ECG information:
            signal - numpy array of signals; initialized as np.array of
            None's same size as index.
-           annotation - dict with annotation of the signals; initialized as 
+           annotation - dict with annotation of the signals; initialized as
            empty dict.
            meta - dict with metadata of the signals (sampling rate, etc.);
            initialized as empty dict.
@@ -33,7 +33,7 @@ class EcgBatch(Batch):
             given base class Batch. Also initializes
             _data attribute.
         2. load(self, src, fmt='wfdb'):
-            Load signals from files, either 'wfdb' 
+            Load signals from files, either 'wfdb'
             for .mat files, or 'npz' for npz files.
             returns self
         3. dump(self, dst, fmt='nz')
@@ -133,8 +133,8 @@ class EcgBatch(Batch):
             batch = EcgBatch(ind)
             batch.load(...)
             batch.dump(dst='./dump/')
-        
-        """ 
+
+        """
 
         if fmt == "npz":
             self._dump_npz(dst=dst)  # pylint: disable=no-value-for-parameter
