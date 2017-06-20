@@ -10,15 +10,15 @@ import matplotlib.pyplot as plt
 from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
 
+from keras.engine.topology import Layer
 from keras.layers import (Input, Conv1D, Conv2D,
                           MaxPooling1D, MaxPooling2D, Lambda,
                           Reshape, Dense, GlobalMaxPooling2D)
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
-from keras.models import model_from_yaml, Model
+from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 from keras.utils import np_utils
-from keras.engine.topology import Layer
 
 import wfdb
 
@@ -48,9 +48,6 @@ class Inception2D(Layer):
         else:
             self.padding = padding
         super(Inception2D, self).__init__(*agrs, **kwargs)
-
-    def build(self, input_shape):
-        super(Inception2D, self).build(input_shape)
 
     def call(self, x, mask=None):
         conv_1 = Conv2D(self.base_dim, (1, 1),

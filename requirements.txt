@@ -2,4 +2,4 @@ wfdb
 PyWavelets
 hmmlearn
 tf
-keras>=2.0.0
+Keras>=2.0.0
