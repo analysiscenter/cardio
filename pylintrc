@@ -10,7 +10,7 @@ max-line-length=120
 max-attributes=8
 max-args=8
 max-locals=20
-good-names=fs, ax, im, a, b, i, _
+good-names=fs, ax, im, a, b, i, _, k, fs
 
 [TYPECHECK]
 ignored-modules=numpy, keras

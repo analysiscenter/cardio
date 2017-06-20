@@ -17,6 +17,7 @@ from keras.layers.merge import Concatenate
 from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 from keras.utils import np_utils
+from keras.engine.topology import Layer
 import wfdb
 
 import dataset as ds
@@ -25,30 +26,52 @@ import dataset as ds
 sys.path.append('..')
 
 
-def Inception2D(x, base_dim, nb_filters, size_1, size_2,#pylint: disable=too-many-arguments
-                activation='linear', padding='same'):
+class Inception2D(Layer):
     '''
-    Inception block for 2D spectrogram.
+    Keras inception layer.
     '''
-    conv_1 = Conv2D(base_dim, (1, 1),#pylint: disable=no-value-for-parameter
-                    activation=activation, padding=padding)(x)
+    def __init__(self, base_dim, nb_filters,#pylint: disable=too-many-arguments
+                 kernel_size_1, kernel_size_2,
+                 activation=None, padding=None, *agrs, **kwargs):
+        self.base_dim = base_dim
+        self.nb_filters = nb_filters
+        self.kernel_size_1 = kernel_size_1
+        self.kernel_size_2 = kernel_size_2
+        if activation is None:
+            self.activation = 'linear'
+        else:
+            self.activation = activation
+        if padding is None:
+            self.padding = 'same'
+        else:
+            self.padding = padding
+        super(Inception2D, self).__init__(*agrs, **kwargs)
 
-    conv_2 = Conv2D(base_dim, (1, 1),#pylint: disable=no-value-for-parameter
-                    activation=activation, padding=padding)(x)
-    conv_2a = Conv2D(nb_filters, (size_1, size_1),#pylint: disable=no-value-for-parameter
-                     activation=activation, padding=padding)(conv_2)
+    def build(self, input_shape):
+        super(Inception2D, self).build(input_shape)
 
-    conv_3 = Conv2D(base_dim, (1, 1),#pylint: disable=no-value-for-parameter
-                    activation=activation, padding='same')(x)
-    conv_3a = Conv2D(nb_filters, (size_2, size_2),#pylint: disable=no-value-for-parameter
-                     activation=activation, padding=padding)(conv_3)
+    def call(self, x):
+        conv_1 = Conv2D(self.base_dim, (1, 1),#pylint: disable=no-value-for-parameter
+                        activation=self.activation, padding=self.padding)(x)
 
-    pool = MaxPooling2D(strides=(1, 1), padding=padding)(x)
-    conv_4 = Conv2D(nb_filters, (1, 1),#pylint: disable=no-value-for-parameter
-                    activation=activation, padding=padding)(pool)
+        conv_2 = Conv2D(self.base_dim, (1, 1),#pylint: disable=no-value-for-parameter
+                        activation=self.activation, padding=self.padding)(x)
+        conv_2a = Conv2D(self.nb_filters, (self.kernel_size_1, self.kernel_size_1),#pylint: disable=no-value-for-parameter
+                         activation=self.activation, padding=self.padding)(conv_2)
 
-    concat = Concatenate(axis=-1)([conv_1, conv_2a, conv_3a, conv_4])
-    return concat
+        conv_3 = Conv2D(self.base_dim, (1, 1),#pylint: disable=no-value-for-parameter
+                        activation=self.activation, padding=self.padding)(x)
+        conv_3a = Conv2D(self.nb_filters, (self.kernel_size_2, self.kernel_size_2),#pylint: disable=no-value-for-parameter
+                         activation=self.activation, padding=self.padding)(conv_3)
+
+        pool = MaxPooling2D(strides=(1, 1), padding=self.padding)(x)
+        conv_4 = Conv2D(self.nb_filters, (1, 1),#pylint: disable=no-value-for-parameter
+                        activation=self.activation, padding=self.padding)(pool)
+
+        return Concatenate(axis=-1)([conv_1, conv_2a, conv_3a, conv_4])
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], input_shape[1], input_shape[2], self.base_dim + 3 * self.nb_filters)
 
 
 def fft(x):
@@ -56,9 +79,9 @@ def fft(x):
     tf fft
     '''
     import tensorflow as tf
-    z = tf.map_fn(tf.transpose, tf.cast(x, dtype=tf.complex64))
-    z2 = tf.cast(tf.abs(tf.fft(z)), dtype=tf.float32)
-    return tf.map_fn(tf.transpose, z2)
+    resh = tf.map_fn(tf.transpose, tf.cast(x, dtype=tf.complex64))
+    res = tf.cast(tf.abs(tf.fft(resh)), dtype=tf.float32)
+    return tf.map_fn(tf.transpose, res)
 
 
 def rfft(x):
@@ -70,11 +93,11 @@ def rfft(x):
     return res[:, :half, :]
 
 
-def crop(x, a, b):
+def crop(x, lc, rc):
     '''
     Crop
     '''
-    return x[:, a: b, :]
+    return x[:, lc: rc, :]
 
 
 def get_ecg(i, fields):
@@ -98,19 +121,17 @@ def back_to_annot(arr, annot):
     return np.array(res)
 
 
-def get_pred_classes(pred, testY, unq_classes):
+def get_pred_classes(pred, y_true, unq_classes):
     '''
     Returns labeled prediction and true labeles
     '''
-    labels = np.zeros(pred.shape, dtype=int)
+    labels = np.zeros(pred_prob.shape, dtype=int)
     for i in range(len(labels)):
         labels[i, np.argmax(pred[i])] = 1
 
     y_pred = back_to_annot(labels, unq_classes)
-    if testY.ndim > 1:
+    if y_true.ndim > 1:
         y_true = back_to_annot(testY, unq_classes)
-    else:
-        y_true = testY
     return y_true, y_pred
 
 
@@ -505,19 +526,19 @@ class EcgBatch(ds.Batch):
         fft_1 = Lambda(rfft)(conv_4)
         shape_fft = fft_1.get_shape().as_list()
         crop_1 = Lambda(crop,
-                        arguments={'a': 0, 'b': int(shape_fft[1] / 3)})(fft_1)
+                        arguments={'lc': 0, 'rc': int(shape_fft[1] / 3)})(fft_1)
 
         shape_1d = crop_1.get_shape().as_list()[1:]
         shape_1d.append(1)
         to2d = Reshape(shape_1d)(crop_1)
 
-        incept_1 = Inception2D(to2d, 4, 4, 3, 5)
+        incept_1 = Inception2D(4, 4, 3, 5)(to2d)
         mp2d_1 = MaxPooling2D(pool_size=(4, 2))(incept_1)
 
-        incept_2 = Inception2D(mp2d_1, 4, 8, 3, 5)
+        incept_2 = Inception2D(4, 8, 3, 5)(mp2d_1)
         mp2d_2 = MaxPooling2D(pool_size=(4, 2))(incept_2)
 
-        incept_3 = Inception2D(mp2d_2, 4, 12, 3, 3)
+        incept_3 = Inception2D(4, 12, 3, 3)(mp2d_2)
 
         pool = GlobalMaxPooling2D()(incept_3)
 
@@ -545,22 +566,22 @@ class EcgBatch(ds.Batch):
         '''
         Get categorical labels
         '''
-        dsY = []
+        labels = []
         for ind in self.indices:
             diag = self._meta[ind]['diag']
             if encode is None:
-                dsY.extend([diag])
+                labels.extend([diag])
             else:
-                dsY.extend([encode[diag]])
+                labels.extend([encode[diag]])
 
         if encode is None:
-            pos_labels = []
+            encode_labels = []
         else:
-            pos_labels = list(np.unique(list(encode.values())))
-        dsY = pos_labels + dsY
-        unq_classes, num_labels = np.unique(dsY, return_inverse=True)
-        catY = np_utils.to_categorical(num_labels)[len(pos_labels):]
-        return catY, unq_classes
+            encode_labels = list(np.unique(list(encode.values())))
+        labels = encode_labels + labels
+        unq_classes, num_labels = np.unique(labels, return_inverse=True)
+        ctg_labels = np_utils.to_categorical(num_labels)[len(encode_labels):]
+        return ctg_labels, unq_classes
 
     @ds.action(model='fft_inception')
     def train_fft_inception(self, model_comp, nb_epoch, batch_size):
@@ -569,15 +590,15 @@ class EcgBatch(ds.Batch):
         '''
         model, hist, code, lr_s = model_comp
         hist['batch_size'] = batch_size
-        trainX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        trainY, _ = self.get_labels(encode=code)
+        train_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
+        train_y, _ = self.get_labels(encode=code)
         epoch_num = len(hist['train_loss'])
         if epoch_num in lr_s[0]:
             new_lr = lr_s[1][lr_s[0].index(epoch_num)]
             opt = Adam(lr=new_lr)
             model.compile(optimizer=opt, loss="categorical_crossentropy")
 
-        res = model.fit(trainX, trainY,
+        res = model.fit(train_x, train_y,
                         epochs=nb_epoch,
                         batch_size=batch_size)
         hist['train_loss'].append(res.history["loss"][0])
@@ -597,14 +618,14 @@ class EcgBatch(ds.Batch):
         Add current val_loss and val_metric to training history
         '''
         model, hist, code, _ = model_comp
-        testX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        testY, unq_classes = self.get_labels(encode=code)
-        pred = model.predict(testX)
+        test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
+        test_y, unq_classes = self.get_labels(encode=code)
+        pred = model.predict(test_x)
         batch_size = hist['batch_size']
-        hist['val_loss'].append(model.evaluate(testX, testY,
+        hist['val_loss'].append(model.evaluate(test_x, test_y,
                                                batch_size=batch_size,
                                                verbose=0))
-        y_true, y_pred = get_pred_classes(pred, testY, unq_classes)
+        y_true, y_pred = get_pred_classes(pred, test_y, unq_classes)
         hist['val_metric'].append(f1_score(y_true, y_pred, average='macro'))
         return self
 
@@ -629,9 +650,9 @@ class EcgBatch(ds.Batch):
         Print accuracy
         '''
         model, _, code, _ = model_comp
-        testX = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        testY, unq_classes = self.get_labels(encode=code)
-        pred = model.predict(testX)
+        test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
+        test_y, unq_classes = self.get_labels(encode=code)
+        pred = model.predict(test_x)
         y_true, y_pred = get_pred_classes(pred, testY, unq_classes)
         print(classification_report(y_true, y_pred))
         print("f1_score", f1_score(y_true, y_pred, average='macro'))
