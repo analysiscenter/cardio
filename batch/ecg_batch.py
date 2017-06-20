@@ -50,7 +50,7 @@ class Inception2D(Layer):
     def build(self, input_shape):
         super(Inception2D, self).build(input_shape)
 
-    def call(self, x):
+    def call(self, x, mask=None):
         conv_1 = Conv2D(self.base_dim, (1, 1),#pylint: disable=no-value-for-parameter
                         activation=self.activation, padding=self.padding)(x)
 
@@ -125,13 +125,13 @@ def get_pred_classes(pred, y_true, unq_classes):
     '''
     Returns labeled prediction and true labeles
     '''
-    labels = np.zeros(pred_prob.shape, dtype=int)
+    labels = np.zeros(pred.shape, dtype=int)
     for i in range(len(labels)):
         labels[i, np.argmax(pred[i])] = 1
 
     y_pred = back_to_annot(labels, unq_classes)
     if y_true.ndim > 1:
-        y_true = back_to_annot(testY, unq_classes)
+        y_true = back_to_annot(y_true, unq_classes)
     return y_true, y_pred
 
 
@@ -385,10 +385,11 @@ class EcgBatch(ds.Batch):
             self._meta = meta
         return self
 
-    def init_parallel(self, *args, **kwargs):#pylint: disable=unused-argument
+    def init_parallel(self, *args, **kwargs):
         '''
         Return array of ecg with index
         '''
+        _ = args, kwargs
         return [[*self[i], i] for i in self.index.indices]
 
     def post_parallel(self, all_results, *args, **kwargs):
@@ -462,28 +463,31 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def resample(self, new_fs):#pylint: disable=unused-argument, no-self-use
+    def resample(self, new_fs):
         """
         Resample all signals in batch to new_fs
         """
+        _ = new_fs
         return resample_signal
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
-    def augment_fs(self, list_of_distr):#pylint: disable=unused-argument, no-self-use
+    def augment_fs(self, list_of_distr):
         """
         Segment all signals
         """
+        _ = list_of_distr
         return augment_fs_signal_mult
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
-    def segment(self, length, step, pad):#pylint: disable=unused-argument, no-self-use
+    def segment(self, length, step, pad):
         """
         Segment all signals
         """
+        _ = length, step, pad
         return segment_signal
 
     @ds.action
@@ -653,7 +657,7 @@ class EcgBatch(ds.Batch):
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         test_y, unq_classes = self.get_labels(encode=code)
         pred = model.predict(test_x)
-        y_true, y_pred = get_pred_classes(pred, testY, unq_classes)
+        y_true, y_pred = get_pred_classes(pred, test_y, unq_classes)
         print(classification_report(y_true, y_pred))
         print("f1_score", f1_score(y_true, y_pred, average='macro'))
         return self
