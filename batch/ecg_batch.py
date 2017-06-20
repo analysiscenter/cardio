@@ -220,8 +220,8 @@ class EcgBatch(ds.Batch):
     """
     Batch of ECG data
     """
-    def __init__(self, index):
-        super().__init__(index)
+    def __init__(self, index, preloaded=None):
+        super().__init__(index, preloaded)
         self._data = (None, {}, dict())
         self.history = []
 
