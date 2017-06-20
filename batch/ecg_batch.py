@@ -13,9 +13,9 @@ from sklearn.metrics import classification_report, f1_score
 from keras.layers import (Input, Conv1D, Conv2D,
                           MaxPooling1D, MaxPooling2D, Lambda,
                           Reshape, Dense, GlobalMaxPooling2D)
-from keras.models import model_from_yaml, Model
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
+from keras.models import model_from_yaml, Model
 from keras.optimizers import Adam
 from keras.utils import np_utils
 from keras.engine.topology import Layer
@@ -472,7 +472,7 @@ class EcgBatch(ds.Batch):
         """
         Resample all signals in batch to new_fs
         """
-        _ = new_Fs
+        _ = new_fs
         return resample_signal
 
     @ds.action
