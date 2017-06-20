@@ -11,12 +11,12 @@ from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
 
 from keras.engine.topology import Layer
-from keras.layers import (Input, Conv1D, Conv2D,
-                          MaxPooling1D, MaxPooling2D, Lambda,
-                          Reshape, Dense, GlobalMaxPooling2D)
+from keras.layers import Input, Conv1D, Conv2D, \
+                         MaxPooling1D, MaxPooling2D, Lambda, \
+                         Reshape, Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
-from keras.models import Model, model_from_yaml#pylint: disable=ungrouped-imports
+from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 from keras.utils import np_utils
 
