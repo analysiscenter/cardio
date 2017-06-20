@@ -1,4 +1,4 @@
 wfdb
 PyWavelets
 hmmlearn
-keras
+Keras>=2.0.0

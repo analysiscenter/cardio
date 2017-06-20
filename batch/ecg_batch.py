@@ -16,7 +16,7 @@ from keras.layers import (Input, Conv1D, Conv2D,
                           Reshape, Dense, GlobalMaxPooling2D)
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
-from keras.models import Model, model_from_yaml
+from keras.models import Model, model_from_yaml#pylint: disable=ungrouped-imports
 from keras.optimizers import Adam
 from keras.utils import np_utils
 
