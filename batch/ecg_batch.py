@@ -13,9 +13,9 @@ from sklearn.metrics import classification_report, f1_score
 from keras.layers import (Input, Conv1D, Conv2D,
                           MaxPooling1D, MaxPooling2D, Lambda,
                           Reshape, Dense, GlobalMaxPooling2D)
+from keras.models import model_from_yaml, Model
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
-from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 from keras.utils import np_utils
 from keras.engine.topology import Layer
@@ -472,6 +472,7 @@ class EcgBatch(ds.Batch):
         """
         Resample all signals in batch to new_fs
         """
+        _ = new_Fs
         return resample_signal
 
     @ds.action
@@ -481,6 +482,7 @@ class EcgBatch(ds.Batch):
         """
         Segment all signals
         """
+        _ = list_of_distr
         return augment_fs_signal_mult
 
     @ds.action
@@ -490,6 +492,7 @@ class EcgBatch(ds.Batch):
         """
         Segment all signals
         """
+        _ = length, step, pad
         return segment_signal
 
     @ds.action
@@ -555,7 +558,7 @@ class EcgBatch(ds.Batch):
                      activation='softmax')(drop)
 
         opt = Adam()
-        model = Model(inputs=input, outputs=fc_2)
+        model = Model(inputs=x, outputs=fc_2)
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
         hist = {'train_loss': [], 'val_loss': [],
