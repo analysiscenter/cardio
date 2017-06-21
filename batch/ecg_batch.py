@@ -27,6 +27,72 @@ import dataset as ds
 
 sys.path.append('..')
 
+class RFFT(Layer):
+    '''
+    Keras fft layer.
+    '''
+    def __init__(self, *agrs, **kwargs):
+        super(RFFT, self).__init__(*agrs, **kwargs)
+
+    def fft(self, x):
+        '''
+        tf fft
+        '''
+        import tensorflow as tf
+        resh = tf.map_fn(tf.transpose, tf.cast(x, dtype=tf.complex64))
+        res = tf.cast(tf.abs(tf.fft(resh)), dtype=tf.float32)
+        return tf.map_fn(tf.transpose, res)
+
+    def call(self, x):
+        res = Lambda(self.fft)(x)
+        half = int(res.get_shape().as_list()[1] / 2)
+        return res[:, :half, :]
+
+    def compute_output_shape(self, input_shape):
+        '''
+        Get output shape of fft layer
+        '''
+        return (input_shape[0], int(input_shape[1] / 2), input_shape[2])
+
+
+class Crop(Layer):
+    '''
+    Keras crop layer.
+    '''
+    def __init__(self, begin, size, *agrs, **kwargs):
+        self.begin = begin
+        self.size = size
+        super(Crop, self).__init__(*agrs, **kwargs)
+
+    def call(self, x):
+        return x[:, self.begin: self.begin + self.size, :]
+
+    def compute_output_shape(self, input_shape):
+        '''
+        Get output shape of fft layer
+        '''
+        return (input_shape[0], self.size, input_shape[2])
+
+
+class To2D(Layer):
+    '''
+    Keras add dim layer.
+    '''
+    def __init__(self, *agrs, **kwargs):
+        super(To2D, self).__init__(*agrs, **kwargs)
+
+    def call(self, x):
+        shape_1d = x.get_shape().as_list()[1:]
+        shape_1d.append(1)
+        to2d = Reshape(shape_1d)(x)
+        return to2d
+
+    def compute_output_shape(self, input_shape):
+        '''
+        Get output shape of fft layer
+        '''
+        return tuple(list(input_shape) + [1])
+
 
 class Inception2D(Layer):
     '''
@@ -74,32 +140,6 @@ class Inception2D(Layer):
         Get output shape of inception layer
         '''
         return (input_shape[0], input_shape[1], input_shape[2], self.base_dim + 3 * self.nb_filters)
-
-
-def fft(x):
-    '''
-    tf fft
-    '''
-    import tensorflow as tf
-    resh = tf.map_fn(tf.transpose, tf.cast(x, dtype=tf.complex64))
-    res = tf.cast(tf.abs(tf.fft(resh)), dtype=tf.float32)
-    return tf.map_fn(tf.transpose, res)
-
-
-def rfft(x):
-    '''
-    tf fft
-    '''
-    res = fft(x)
-    half = int(res.get_shape().as_list()[1] / 2)
-    return res[:, :half, :]
-
-
-def crop(x, lc, rc):
-    '''
-    Crop
-    '''
-    return x[:, lc: rc, :]
 
 
 def get_ecg(i, fields):
@@ -529,14 +569,9 @@ class EcgBatch(ds.Batch):
         mp_3 = MaxPooling1D()(conv_3)
         conv_4 = Conv1D(32, 4, activation='relu')(mp_3)
 
-        fft_1 = Lambda(rfft)(conv_4)
-        shape_fft = fft_1.get_shape().as_list()
-        crop_1 = Lambda(crop,
-                        arguments={'lc': 0, 'rc': int(shape_fft[1] / 3)})(fft_1)
-
-        shape_1d = crop_1.get_shape().as_list()[1:]
-        shape_1d.append(1)
-        to2d = Reshape(shape_1d)(crop_1)
+        fft_1 = RFFT()(conv_4)
+        crop_1 = Crop(0, 128)(fft_1)
+        to2d = To2D()(crop_1)
 
         incept_1 = Inception2D(4, 4, 3, 5)(to2d)
         mp2d_1 = MaxPooling2D(pool_size=(4, 2))(incept_1)
