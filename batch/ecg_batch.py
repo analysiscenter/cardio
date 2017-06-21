@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from scipy.signal import resample_poly
 from sklearn.metrics import classification_report, f1_score
+from numba import jit
 
 from keras.engine.topology import Layer
 from keras.layers import Input, Conv1D, Conv2D, \
@@ -30,7 +31,7 @@ sys.path.append('..')
 class RFFT(Layer):
     '''
     Keras layer for one-dimensional discrete Fourier Transform for real input.
-    Computes rfft transforn on each slice along last dim. 
+    Computes rfft transforn on each slice along last dim.
 
     Arguments
     None
@@ -46,12 +47,20 @@ class RFFT(Layer):
 
     def fft(self, x):
         '''
-        tf fft on each slice along last dim
+        Computes one-dimensional discrete Fourier Transform on each slice along last dim.
+        Returns amplitude spectrum.
+
+        Arguments
+        x: 3D tensor (batch_size, signal_length, nb_channels)
+
+        Retrun
+        out: 3D tensor (batch_size, signal_length, nb_channels) of type tf.float32
         '''
         import tensorflow as tf
         resh = tf.map_fn(tf.transpose, tf.cast(x, dtype=tf.complex64))
-        res = tf.cast(tf.abs(tf.fft(resh)), dtype=tf.float32)
-        return tf.map_fn(tf.transpose, res)
+        spec = tf.cast(tf.abs(tf.fft(resh)), dtype=tf.float32)
+        out = tf.map_fn(tf.transpose, spec)
+        return out
 
     def call(self, x):
         res = Lambda(self.fft)(x)
@@ -120,19 +129,19 @@ class To2D(Layer):
         '''
         Get output shape
         '''
-        return tuple(list(input_shape) + [1])
+        return (*input_shape, 1)
 
 
 class Inception2D(Layer):
     '''
-    Keras layer implements inception block. 
+    Keras layer implements inception block.
 
     Arguments
-    base_dim: nb_filters for the first convolution layers
-    nb_filters: nb_filters for the second convolution layers
-    kernel_size_1: kernel_size for the second convolution layer
-    kernel_size_2: kernel_size for the second convolution layer
-    activation: activation function for each convolution, default is 'linear'
+    base_dim: nb_filters for the first convolution layers.
+    nb_filters: nb_filters for the second convolution layers.
+    kernel_size_1: kernel_size for the second convolution layer.
+    kernel_size_2: kernel_size for the second convolution layer.
+    activation: activation function for each convolution, default is 'linear'.
 
     Input shape
     4D tensor (batch_size, width, height, nb_channels)
@@ -147,10 +156,7 @@ class Inception2D(Layer):
         self.nb_filters = nb_filters
         self.kernel_size_1 = kernel_size_1
         self.kernel_size_2 = kernel_size_2
-        if activation is None:
-            self.activation = 'linear'
-        else:
-            self.activation = activation
+        self.activation = activation if activation is not None else 'linear'
         super(Inception2D, self).__init__(*agrs, **kwargs)
 
     def call(self, x):
@@ -177,33 +183,27 @@ class Inception2D(Layer):
         '''
         Get output shape
         '''
-        return (input_shape[0], input_shape[1], input_shape[2], self.base_dim + 3 * self.nb_filters)
+        return (*input_shape[:-1], self.base_dim + 3 * self.nb_filters)
 
 
-def get_ecg(i, fields):
+@jit(nogil=True)
+def back_to_categorical(data, col_names):
     '''
-    Return ecg signal, annot and meta by index
+    Convert dummy matrix to categorical array. Returns array with categorical labels.
+
+    Arguments
+    data: dummy matrix of shape (num_items, num_labels). Only one element in a row is 1, other
+         elements should be 0.
+    col_names: array or list of len = num_labels. Contains names of each colunm in data.
     '''
-    data, annot, meta = fields
-    pos = meta[i]['__pos']
-    return (data[pos],
-            {k: v[pos] for k, v in annot.items()},
-            meta[i])
+    res = np.array([col_names[x] for x in data.astype(bool)]).ravel()
+    return res
 
 
-def back_to_annot(arr, annot):
-    '''
-    Convert categorical array to labeled array
-    '''
-    res = []
-    for x in arr:
-        res.append(annot[x == 1][0])
-    return np.array(res)
-
-
+@jit(nogil=True)
 def get_pred_classes(pred, y_true, unq_classes):
     '''
-    Returns labeled prediction and true labeles
+    Returns labeled prediction and true labeles.
     '''
     labels = np.zeros(pred.shape, dtype=int)
     for i in range(len(labels)):
@@ -217,44 +217,66 @@ def get_pred_classes(pred, y_true, unq_classes):
 
 def resample_signal(signal, annot, meta, index, new_fs):
     """
-    Resample signal to new_fs
+    Resample signal along axis=1 to new sampling rate. Retruns resampled signal with modified meta.
+    Resampling of annotation will be implemented in the future.
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    new_fs: target signal sampling rate in Hz.
     """
     fs = meta['fs']
     new_len = int(new_fs * len(signal[0]) / fs)
     signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
-    out_meta = meta.copy()
-    out_meta['fs'] = new_fs
+    out_meta = {**meta, 'fs': new_fs}
     return [signal, annot, out_meta, index]
 
 
-def segment_signal(signal, annot, meta, index, length, step, pad):#pylint: disable=too-many-arguments
+#@jit(nogil=True)
+def segment_signal(signal, annot, meta, index, length, step, pad):
     """
-    Segment signal
+    Segment signal along axis=1 with constant step to segments with constant length.
+    If signal is shorter than target segment length, signal is zero-padded on the left if
+    pad is True or raise ValueError if pad is False.
+    Segmentation of annotation will be implemented in the future.
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    length: length of segment.
+    step: step along axis=1.
+    pad: whether to apply zero-padding to short signals.
     """
-    diag = meta['diag']
-    start = 0
-    segments = []
+    if signal.ndim != 2:
+        raise ValueError('Signal should have ndim = 2, found ndim = {0}'.format(signal.ndim))
+
     if len(signal[0]) < length:
         if pad:
             pad_len = length - len(signal[0])
-            segments.append(np.lib.pad(signal, ((0, 0), (pad_len, 0)),
-                                       'constant', constant_values=(0, 0)))
-            return [np.array(segments), {}, {'diag': diag}, index]
+            segments = np.lib.pad(signal, ((0, 0), (pad_len, 0)),
+                                  'constant', constant_values=(0, 0))[np.newaxis, :, :]
+            return [segments, {}, {'diag': meta['diag']}, index]
         else:
             raise ValueError('Signal is shorter than segment length: %i < %i'
                              % (len(signal[0]), length))
-    while start + length <= len(signal[0]):
-        segments.append(signal[:, start: start + length])
-        start += step
+
+    shape = signal.shape[:-1] + (signal.shape[-1] - length + 1, length)
+    strides = signal.strides + (signal.strides[-1],)
+    segments = np.lib.stride_tricks.as_strided(signal, shape=shape,
+                                               strides=strides)[:, ::step, :]
+    segments = np.transpose(segments, (1, 0, 2))
+
     _ = annot
-    out_annot = {} #TODO: resample annotation
-    out_meta = {'diag': diag}
-    return [np.array(segments), out_annot, out_meta, index]
+    out_annot = {} #TODO: segment annotation
+    out_meta = {'diag': meta['diag']}
+    return [segments, out_annot, out_meta, index]
 
 
-def noise_filter(signal, annot, meta, index):
+def drop_noise(signal, annot, meta, index):
     '''
-    Drop signals labeled as noise
+    Drop signals labeled as noise in meta. Retruns input if signal is not labeles as noise and
+    retruns None otherwise.
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
     '''
     if meta['diag'] == '~':
         return None
@@ -262,27 +284,37 @@ def noise_filter(signal, annot, meta, index):
         return [signal, annot, meta, index]
 
 
-def augment_fs_signal(signal, annot, meta, index, distr_type, params):
+def augment_fs_signal(signal, annot, meta, index, distr, params):
     '''
-    Return resampled signal
+    Augmentation of signal to random sampling rate. New sampling rate is sampled
+    from given probability distribution with specified parameters.
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    distr: distribution type, either a name of any distribution from np.random, or
+           callable, or 'none', or 'delta'.
+    params: dict of parameters and values for distr. ignored if distr='none'.
     '''
-    if distr_type == 'none':
+    if hasattr(np.random, distr):
+        distr_fn = getattr(np.random, distr)
+        new_fs = distr_fn(**params)
+    elif callable(distr):
+        new_fs = distr_fn(**params)
+    elif distr == 'none':
         return [signal, annot, meta, index]
-    np.random.seed()
-    if distr_type == 'normal':
-        new_fs = np.random.normal(**params)
-    elif distr_type == 'uniform':
-        new_fs = np.random.uniform(**params)
-    elif distr_type == 'delta':
+    elif distr == 'delta':
         new_fs = params['loc']
-    new_sig, _, new_meta, _ = resample_signal(signal, annot,
-                                              meta, index, new_fs)
-    return [new_sig, {}, new_meta, index]
+    return resample_signal(signal, annot, meta, index, new_fs)
 
 
 def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
     '''
-    Returns many resampled signals
+    Multiple augmentation of signal to random sampling rates. New sampling rates are sampled
+    from list of probability distributions with specified parameters.
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    list_of_distr: list of tuples (distr, params). See augment_fs_signal for details.
     '''
     res = [augment_fs_signal(signal, annot, meta, index, distr_type, params)
            for (distr_type, params) in list_of_distr]
@@ -293,7 +325,7 @@ def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
     return [np.array(out_sig)[:-1], out_annot, out_meta, index]
 
 
-class EcgBatch(ds.Batch):
+class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     """
     Batch of ECG data
     """
@@ -357,7 +389,6 @@ class EcgBatch(ds.Batch):
         # of arrays and removing the last item (empty array)
         list_of_arrs.append(np.array([]))
         self._signal = np.array(list_of_arrs)[:-1]
-        #self._signal = np.array(list(itertools.chain([x for y in list_of_arrs for x in y])))
         # ATTENTION!
         # Annotation should be loaded with a separate function
         self._annotation = list_of_annotations
@@ -379,20 +410,13 @@ class EcgBatch(ds.Batch):
         list_of_annotations = {}
         meta = {}
         for ecg in self.index.indices:
-            if src is None:
-                path = self.index.get_fullpath(ecg)
-            else:
-                path = src[ecg]
-            record = wfdb.rdsamp(os.path.splitext(path)[0])
+            path = self.index.get_fullpath(ecg) if src is None else src[ecg]
+            fullpath, _ = os.path.splitext(path)
+            record = wfdb.rdsamp(fullpath)
             signal = record.__dict__.pop('p_signals')
             fields = record.__dict__
             signal = signal.T
-            # try:
-            #     annot = wfdb.rdann(path, "atr")
-            # except FileNotFoundError:
-            #     annot = {}
             list_of_arrs.append(signal)
-            # list_of_annotations.append(annot)
             meta.update({ecg: fields})
 
         return list_of_arrs, list_of_annotations, meta
@@ -408,7 +432,7 @@ class EcgBatch(ds.Batch):
             if src is None:
                 path = self.index.get_fullpath(ecg)
             else:
-                path = src + '/' + ecg + '.npz'
+                path = os.path.join(src, ecg + '.npz')
             data = np.load(path)
             list_of_arrs.append(data["signal"])
             list_of_annotations.append(data["annotation"].tolist())
@@ -445,6 +469,7 @@ class EcgBatch(ds.Batch):
     def __getitem__(self, index):
         try:
             pos = np.where(self.index.indices == index)[0][0]
+            #pos = self.index.get_pos(index)
         except IndexError:
             raise IndexError("There is no such index in the batch: {0}"
                              .format(index))
@@ -477,8 +502,8 @@ class EcgBatch(ds.Batch):
         '''
         Build ecg_batch from a list of items either [signal, annot, meta] or None.
         All Nones are ignored.
-        Signal can be either a single signal or a list of signals. 
-        If signal is a list of signals, annot and meta can be a single annot and meta 
+        Signal can be either a single signal or a list of signals.
+        If signal is a list of signals, annot and meta can be a single annot and meta
         or a list of annots and metas of the same lentgh as the list of signals. In the
         first case annot and meta are broadcasted to each signal in the list of signals.
 
@@ -504,17 +529,14 @@ class EcgBatch(ds.Batch):
             ind = ds.DatasetIndex(index=np.arange(sum(list_of_lens), dtype=int))
         out_batch = EcgBatch(ind)
 
+        if list_of_arrs[0].ndim > 3:
+            raise ValueError('Signal is expected to have ndim = 1, 2 or 3, found ndim = {0}'
+                             .format(list_of_arrs[0].ndim))
         if list_of_arrs[0].ndim in [1, 3]:
             list_of_arrs = list(itertools.chain([x for y in list_of_arrs
                                                  for x in y]))
-            list_of_arrs.append([])
-            batch_data = np.array(list_of_arrs)[:-1]
-        elif list_of_arrs[0].ndim == 2:
-            list_of_arrs.append([])
-            batch_data = np.array(list_of_arrs)[:-1]
-        else:
-            raise ValueError('Signal is expected to have ndim = 1, 2 or 3, found ndim = {0}'
-                             .format(list_of_arrs[0].ndim))
+        list_of_arrs.append([])
+        batch_data = np.array(list_of_arrs)[:-1]
 
         if len(ind.indices) == len(list_of_origs):
             origins = list_of_origs
@@ -550,9 +572,13 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
     def resample(self, new_fs):
-        """
-        Resample all signals in batch to new_fs
-        """
+        '''
+        Resample all signals in batch along axis=1 to new sampling rate. Retruns resampled batch with modified meta.
+        Resampling of annotation will be implemented in the future.
+
+        Arguments
+        new_fs: target signal sampling rate in Hz.
+        '''
         _ = new_fs
         return resample_signal
 
@@ -560,9 +586,13 @@ class EcgBatch(ds.Batch):
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
     def augment_fs(self, list_of_distr):
-        """
-        Segment all signals
-        """
+        '''
+        Multiple augmentation of signals in batch to random sampling rates. New sampling rates are sampled
+        from list of probability distributions with specified parameters.
+
+        Arguments
+        list_of_distr: list of tuples (distr, params). See augment_fs_signal for details.
+        '''
         _ = list_of_distr
         return augment_fs_signal_mult
 
@@ -571,7 +601,15 @@ class EcgBatch(ds.Batch):
                          target='mpc')
     def segment(self, length, step, pad):
         """
-        Segment all signals to target length
+        Segment signals in batch along axis=1 with constant step to segments with constant length.
+        If signal is shorter than target segment length, signal is zero-padded on the left if
+        pad is True or raise ValueError if pad is False.
+        Segmentation of annotation will be implemented in the future.
+
+        Arguments
+        length: length of segment.
+        step: step along axis=1 of the signal.
+        pad: whether to apply zero-padding to short signals.
         """
         _ = length, step, pad
         return segment_signal
@@ -580,73 +618,32 @@ class EcgBatch(ds.Batch):
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
     def drop_noise(self):
-        """
-        Drop noise from batch
-        """
-        return noise_filter
+        '''
+        Drop signals labeled as noise from the batch. 
+
+        Arguments
+        None
+        '''
+        return drop_noise
 
     @ds.action
-    def add_ref(self, path):
+    def load_labels(self, path):
         """
-        Load labels from file REFERENCE.csv
+        Load labels from file with signal labels. File should have a csv format
+        and contain 2 columns: index of ecg and label.
+
+        Arguments
+        path: path to the file with labels
         """
         ref = pd.read_csv(path, header=None)
-        ref.columns = ['file', 'diag']
-        ref = ref.set_index('file')  #pylint: disable=no-member
+        ref.columns = ['index', 'diag']
+        ref = ref.set_index('index')  #pylint: disable=no-member
         for ecg in self.index.indices:
             self._meta[ecg]['diag'] = ref.ix[ecg]['diag']
         return self
 
     @ds.model()
-    def fft_inception():#pylint: disable=too-many-locals, no-method-argument
-        '''
-        fft inception model
-        '''
-        x = Input((3000, 1))
-
-        conv_1 = Conv1D(4, 4, activation='relu')(x)
-        mp_1 = MaxPooling1D()(conv_1)
-
-        conv_2 = Conv1D(8, 4, activation='relu')(mp_1)
-        mp_2 = MaxPooling1D()(conv_2)
-        conv_3 = Conv1D(16, 4, activation='relu')(mp_2)
-        mp_3 = MaxPooling1D()(conv_3)
-        conv_4 = Conv1D(32, 4, activation='relu')(mp_3)
-
-        fft_1 = RFFT()(conv_4)
-        crop_1 = Crop(0, 128)(fft_1)
-        to2d = To2D()(crop_1)
-
-        incept_1 = Inception2D(4, 4, 3, 5, activation='relu')(to2d)
-        mp2d_1 = MaxPooling2D(pool_size=(4, 2))(incept_1)
-
-        incept_2 = Inception2D(4, 8, 3, 5, activation='relu')(mp2d_1)
-        mp2d_2 = MaxPooling2D(pool_size=(4, 2))(incept_2)
-
-        incept_3 = Inception2D(4, 12, 3, 3, activation='relu')(mp2d_2)
-
-        pool = GlobalMaxPooling2D()(incept_3)
-
-        fc_1 = Dense(8, kernel_initializer='uniform', activation='relu')(pool)
-        drop = Dropout(0.2)(fc_1)
-
-        fc_2 = Dense(2, kernel_initializer='uniform',
-                     activation='softmax')(drop)
-
-        opt = Adam()
-        model = Model(inputs=x, outputs=fc_2)
-        model.compile(optimizer=opt, loss="categorical_crossentropy")
-
-        hist = {'train_loss': [], 'val_loss': [],
-                'val_metric': [], 'batch_size': None}
-        diag_code = {'A': 'A', 'N': 'nonA', 'O': 'nonA'}
-
-        lr_schedule = [[0, 50, 100], [0.01, 0.001, 0.0001]]
-
-        return model, hist, diag_code, lr_schedule
-
-    @ds.model()
-    def fft_inception_copy():#pylint: disable=too-many-locals, no-method-argument
+    def fft_inception():#pylint: disable=too-many-locals
         '''
         fft inception model
         '''
@@ -694,22 +691,26 @@ class EcgBatch(ds.Batch):
         return model, hist, diag_code, lr_schedule
 
     @ds.action()
-    def get_labels(self, encode=None):
+    def get_categorical_labels(self, new_labels=None):
         '''
-        Get categorical labels
+        Returns a dummy matrix given an array of categorical variables and list of categories.
+        Original labels will be replaced by new labels if encode is not None. 
+
+        Arguments
+        encode: None or dict with new labels
         '''
         labels = []
         for ind in self.indices:
             diag = self._meta[ind]['diag']
-            if encode is None:
+            if new_labels is None:
                 labels.extend([diag])
             else:
-                labels.extend([encode[diag]])
+                labels.extend([new_labels[diag]])
 
-        if encode is None:
+        if new_labels is None:
             encode_labels = []
         else:
-            encode_labels = list(np.unique(list(encode.values())))
+            encode_labels = list(np.unique(list(new_labels.values())))
         labels = encode_labels + labels
         unq_classes, num_labels = np.unique(labels, return_inverse=True)
         ctg_labels = np_utils.to_categorical(num_labels)[len(encode_labels):]
@@ -724,7 +725,7 @@ class EcgBatch(ds.Batch):
         model, hist, code, lr_s = model_comp
         hist['batch_size'] = batch_size
         train_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        train_y, _ = self.get_labels(encode=code)
+        train_y, _ = self.get_categorical_labels(encode=code)
         epoch_num = len(hist['train_loss'])
         if epoch_num in lr_s[0]:
             new_lr = lr_s[1][lr_s[0].index(epoch_num)]
@@ -755,7 +756,7 @@ class EcgBatch(ds.Batch):
         model_comp = self.get_model_by_name(model_name)
         model, hist, code, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        test_y, unq_classes = self.get_labels(encode=code)
+        test_y, unq_classes = self.get_categorical_labels(encode=code)
         pred = model.predict(test_x)
         batch_size = hist['batch_size']
         hist['val_loss'].append(model.evaluate(test_x, test_y,
@@ -789,7 +790,7 @@ class EcgBatch(ds.Batch):
         model_comp = self.get_model_by_name(model_name)
         model, _, code, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        test_y, unq_classes = self.get_labels(encode=code)
+        test_y, unq_classes = self.get_categorical_labels(encode=code)
         pred = model.predict(test_x)
         y_true, y_pred = get_pred_classes(pred, test_y, unq_classes)
         print(classification_report(y_true, y_pred))
