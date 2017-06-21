@@ -29,14 +29,24 @@ sys.path.append('..')
 
 class RFFT(Layer):
     '''
-    Keras fft layer.
+    Keras layer for one-dimensional discrete Fourier Transform for real input.
+    Computes rfft transforn on each slice along last dim. 
+
+    Arguments
+    None
+
+    Input shape
+    3D tensor (batch_size, signal_length, nb_channels)
+
+    Output shape
+    3D tensor (batch_size, int(signal_length / 2), nb_channels)
     '''
     def __init__(self, *agrs, **kwargs):
         super(RFFT, self).__init__(*agrs, **kwargs)
 
     def fft(self, x):
         '''
-        tf fft
+        tf fft on each slice along last dim
         '''
         import tensorflow as tf
         resh = tf.map_fn(tf.transpose, tf.cast(x, dtype=tf.complex64))
@@ -50,14 +60,24 @@ class RFFT(Layer):
 
     def compute_output_shape(self, input_shape):
         '''
-        Get output shape of fft layer
+        Get output shape
         '''
         return (input_shape[0], int(input_shape[1] / 2), input_shape[2])
 
 
 class Crop(Layer):
     '''
-    Keras crop layer.
+    Keras layer returns cropped signal.
+
+    Arguments
+    begin: begin of the cropped segment
+    size: size of the cropped segment
+
+    Input shape
+    3D tensor (batch_size, signal_length, nb_channels)
+
+    Output shape
+    3D tensor (batch_size, size, nb_channels)
     '''
     def __init__(self, begin, size, *agrs, **kwargs):
         self.begin = begin
@@ -69,14 +89,23 @@ class Crop(Layer):
 
     def compute_output_shape(self, input_shape):
         '''
-        Get output shape of fft layer
+        Get output shape
         '''
         return (input_shape[0], self.size, input_shape[2])
 
 
 class To2D(Layer):
     '''
-    Keras add dim layer.
+    Keras layer add dim to 1D signal and returns 2D image.
+
+    Arguments
+    None
+
+    Input shape
+    3D tensor (batch_size, signal_length, nb_channels)
+
+    Output shape
+    4D tensor (batch_size, size, nb_channels, 1)
     '''
     def __init__(self, *agrs, **kwargs):
         super(To2D, self).__init__(*agrs, **kwargs)
@@ -89,18 +118,31 @@ class To2D(Layer):
 
     def compute_output_shape(self, input_shape):
         '''
-        Get output shape of fft layer
+        Get output shape
         '''
         return tuple(list(input_shape) + [1])
 
 
 class Inception2D(Layer):
     '''
-    Keras inception layer.
+    Keras layer implements inception block. 
+
+    Arguments
+    base_dim: nb_filters for the first convolution layers
+    nb_filters: nb_filters for the second convolution layers
+    kernel_size_1: kernel_size for the second convolution layer
+    kernel_size_2: kernel_size for the second convolution layer
+    activation: activation function for each convolution, default is 'linear'
+
+    Input shape
+    4D tensor (batch_size, width, height, nb_channels)
+
+    Output shape
+    4D tensor (batch_size, width, height, 3 * nb_filters + base_dim)
     '''
     def __init__(self, base_dim, nb_filters,#pylint: disable=too-many-arguments
                  kernel_size_1, kernel_size_2,
-                 activation=None, padding=None, *agrs, **kwargs):
+                 activation=None, *agrs, **kwargs):
         self.base_dim = base_dim
         self.nb_filters = nb_filters
         self.kernel_size_1 = kernel_size_1
@@ -109,35 +151,31 @@ class Inception2D(Layer):
             self.activation = 'linear'
         else:
             self.activation = activation
-        if padding is None:
-            self.padding = 'same'
-        else:
-            self.padding = padding
         super(Inception2D, self).__init__(*agrs, **kwargs)
 
     def call(self, x):
         conv_1 = Conv2D(self.base_dim, (1, 1),
-                        activation=self.activation, padding=self.padding)(x)
+                        activation=self.activation, padding='same')(x)
 
         conv_2 = Conv2D(self.base_dim, (1, 1),
-                        activation=self.activation, padding=self.padding)(x)
+                        activation=self.activation, padding='same')(x)
         conv_2a = Conv2D(self.nb_filters, (self.kernel_size_1, self.kernel_size_1),
-                         activation=self.activation, padding=self.padding)(conv_2)
+                         activation=self.activation, padding='same')(conv_2)
 
         conv_3 = Conv2D(self.base_dim, (1, 1),
-                        activation=self.activation, padding=self.padding)(x)
+                        activation=self.activation, padding='same')(x)
         conv_3a = Conv2D(self.nb_filters, (self.kernel_size_2, self.kernel_size_2),
-                         activation=self.activation, padding=self.padding)(conv_3)
+                         activation=self.activation, padding='same')(conv_3)
 
-        pool = MaxPooling2D(strides=(1, 1), padding=self.padding)(x)
+        pool = MaxPooling2D(strides=(1, 1), padding='same')(x)
         conv_4 = Conv2D(self.nb_filters, (1, 1),
-                        activation=self.activation, padding=self.padding)(pool)
+                        activation=self.activation, padding='same')(pool)
 
         return Concatenate(axis=-1)([conv_1, conv_2a, conv_3a, conv_4])
 
     def compute_output_shape(self, input_shape):
         '''
-        Get output shape of inception layer
+        Get output shape
         '''
         return (input_shape[0], input_shape[1], input_shape[2], self.base_dim + 3 * self.nb_filters)
 
@@ -189,8 +227,7 @@ def resample_signal(signal, annot, meta, index, new_fs):
     return [signal, annot, out_meta, index]
 
 
-def segment_signal(signal, annot, meta, index, length, step, pad):
-    #pylint: disable=too-many-arguments
+def segment_signal(signal, annot, meta, index, length, step, pad):#pylint: disable=too-many-arguments
     """
     Segment signal
     """
@@ -438,8 +475,15 @@ class EcgBatch(ds.Batch):
         #pylint: disable=too-many-locals
         #pylint: disable=too-many-branches
         '''
-        Build ecg_batch
-        Broadcasting is supported
+        Build ecg_batch from a list of items either [signal, annot, meta] or None.
+        All Nones are ignored.
+        Signal can be either a single signal or a list of signals. 
+        If signal is a list of signals, annot and meta can be a single annot and meta 
+        or a list of annots and metas of the same lentgh as the list of signals. In the
+        first case annot and meta are broadcasted to each signal in the list of signals.
+
+        Arguments
+        all results: list of items either [signal, annot, meta] or None
         '''
         _ = args, kwargs
         if any([isinstance(res, Exception) for res in all_results]):
@@ -527,7 +571,7 @@ class EcgBatch(ds.Batch):
                          target='mpc')
     def segment(self, length, step, pad):
         """
-        Segment all signals
+        Segment all signals to target length
         """
         _ = length, step, pad
         return segment_signal
@@ -537,7 +581,7 @@ class EcgBatch(ds.Batch):
                          target='mpc')
     def drop_noise(self):
         """
-        Segment all signals
+        Drop noise from batch
         """
         return noise_filter
 
@@ -573,13 +617,61 @@ class EcgBatch(ds.Batch):
         crop_1 = Crop(0, 128)(fft_1)
         to2d = To2D()(crop_1)
 
-        incept_1 = Inception2D(4, 4, 3, 5)(to2d)
+        incept_1 = Inception2D(4, 4, 3, 5, activation='relu')(to2d)
         mp2d_1 = MaxPooling2D(pool_size=(4, 2))(incept_1)
 
-        incept_2 = Inception2D(4, 8, 3, 5)(mp2d_1)
+        incept_2 = Inception2D(4, 8, 3, 5, activation='relu')(mp2d_1)
         mp2d_2 = MaxPooling2D(pool_size=(4, 2))(incept_2)
 
-        incept_3 = Inception2D(4, 12, 3, 3)(mp2d_2)
+        incept_3 = Inception2D(4, 12, 3, 3, activation='relu')(mp2d_2)
+
+        pool = GlobalMaxPooling2D()(incept_3)
+
+        fc_1 = Dense(8, kernel_initializer='uniform', activation='relu')(pool)
+        drop = Dropout(0.2)(fc_1)
+
+        fc_2 = Dense(2, kernel_initializer='uniform',
+                     activation='softmax')(drop)
+
+        opt = Adam()
+        model = Model(inputs=x, outputs=fc_2)
+        model.compile(optimizer=opt, loss="categorical_crossentropy")
+
+        hist = {'train_loss': [], 'val_loss': [],
+                'val_metric': [], 'batch_size': None}
+        diag_code = {'A': 'A', 'N': 'nonA', 'O': 'nonA'}
+
+        lr_schedule = [[0, 50, 100], [0.01, 0.001, 0.0001]]
+
+        return model, hist, diag_code, lr_schedule
+
+    @ds.model()
+    def fft_inception_copy():#pylint: disable=too-many-locals, no-method-argument
+        '''
+        fft inception model
+        '''
+        x = Input((3000, 1))
+
+        conv_1 = Conv1D(4, 4, activation='relu')(x)
+        mp_1 = MaxPooling1D()(conv_1)
+
+        conv_2 = Conv1D(8, 4, activation='relu')(mp_1)
+        mp_2 = MaxPooling1D()(conv_2)
+        conv_3 = Conv1D(16, 4, activation='relu')(mp_2)
+        mp_3 = MaxPooling1D()(conv_3)
+        conv_4 = Conv1D(32, 4, activation='relu')(mp_3)
+
+        fft_1 = RFFT()(conv_4)
+        crop_1 = Crop(0, 128)(fft_1)
+        to2d = To2D()(crop_1)
+
+        incept_1 = Inception2D(4, 4, 3, 5, activation='relu')(to2d)
+        mp2d_1 = MaxPooling2D(pool_size=(4, 2))(incept_1)
+
+        incept_2 = Inception2D(4, 8, 3, 5, activation='relu')(mp2d_1)
+        mp2d_2 = MaxPooling2D(pool_size=(4, 2))(incept_2)
+
+        incept_3 = Inception2D(4, 12, 3, 3, activation='relu')(mp2d_2)
 
         pool = GlobalMaxPooling2D()(incept_3)
 
@@ -623,11 +715,12 @@ class EcgBatch(ds.Batch):
         ctg_labels = np_utils.to_categorical(num_labels)[len(encode_labels):]
         return ctg_labels, unq_classes
 
-    @ds.action(model='fft_inception')
-    def train_fft_inception(self, model_comp, nb_epoch, batch_size):
+    @ds.action()
+    def train_model(self, model_name, nb_epoch, batch_size):
         '''
-        fft_incaption model
+        Train model
         '''
+        model_comp = self.get_model_by_name(model_name)
         model, hist, code, lr_s = model_comp
         hist['batch_size'] = batch_size
         train_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
@@ -644,19 +737,22 @@ class EcgBatch(ds.Batch):
         hist['train_loss'].append(res.history["loss"][0])
         return self
 
-    @ds.action(model='fft_inception')
-    def print_summary(self, model_comp):
+    @ds.action()
+    def model_summary(self, model_name):
         '''
         Print model layers
         '''
+        model_comp = self.get_model_by_name(model_name)
+        print(model_name)
         print(model_comp[0].summary())
         return self
 
-    @ds.action(model='fft_inception')
-    def calc_loss(self, model_comp):
+    @ds.action()
+    def calc_loss(self, model_name):
         '''
         Add current val_loss and val_metric to training history
         '''
+        model_comp = self.get_model_by_name(model_name)
         model, hist, code, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         test_y, unq_classes = self.get_labels(encode=code)
@@ -669,11 +765,12 @@ class EcgBatch(ds.Batch):
         hist['val_metric'].append(f1_score(y_true, y_pred, average='macro'))
         return self
 
-    @ds.action(model='fft_inception')
-    def train_report(self, model_comp):
+    @ds.action()
+    def train_report(self, model_name):
         '''
         Print loss and metrics at the end of epoch
         '''
+        model_comp = self.get_model_by_name(model_name)
         hist = model_comp[1]
         if len(hist['train_loss']) == 0:
             print('Train history is empty')
@@ -684,11 +781,12 @@ class EcgBatch(ds.Batch):
                      hist['val_metric'][-1]))
         return self
 
-    @ds.action(model='fft_inception')
-    def print_accuracy(self, model_comp):
+    @ds.action()
+    def print_accuracy(self, model_name):
         '''
         Print accuracy
         '''
+        model_comp = self.get_model_by_name(model_name)
         model, _, code, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         test_y, unq_classes = self.get_labels(encode=code)
@@ -698,11 +796,12 @@ class EcgBatch(ds.Batch):
         print("f1_score", f1_score(y_true, y_pred, average='macro'))
         return self
 
-    @ds.action(model='fft_inception')
-    def show_loss(self, model_comp):
+    @ds.action()
+    def show_loss(self, model_name):
         '''
         Plot train and validation loss
         '''
+        model_comp = self.get_model_by_name(model_name)
         hist = model_comp[1]
         plt.plot(hist["train_loss"], "r", label="train loss")
         plt.plot(hist["val_loss"], "b", label="validation loss")
@@ -713,11 +812,12 @@ class EcgBatch(ds.Batch):
         plt.show()
         return self
 
-    @ds.action(model='fft_inception')
-    def save_model(self, model_comp, fname):
+    @ds.action()
+    def save_model(self, model_name, fname):
         '''
         Save model layers and weights
         '''
+        model_comp = self.get_model_by_name(model_name)
         model = model_comp[0]
         model.save_weights(fname)
         yaml_string = model.to_yaml()
@@ -726,11 +826,12 @@ class EcgBatch(ds.Batch):
         fout.close()
         return self
 
-    @ds.action(model='fft_inception')
-    def load_model(self, model_comp, fname):
+    @ds.action()
+    def load_model(self, model_name, fname):
         '''
         Load model layers and weights
         '''
+        model_comp = self.get_model_by_name(model_name)
         model = model_comp[0]
         fin = open(fname + ".layers", "r")
         yaml_string = fin.read()
