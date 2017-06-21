@@ -624,7 +624,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
                          target='mpc')
     def drop_noise(self):
         '''
-        Drop signals labeled as noise from the batch. 
+        Drop signals labeled as noise from the batch.
 
         Arguments
         None
@@ -699,7 +699,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     def get_categorical_labels(self, new_labels=None):
         '''
         Returns a dummy matrix given an array of categorical variables and list of categories.
-        Original labels will be replaced by new labels if encode is not None. 
+        Original labels will be replaced by new labels if encode is not None.
 
         Arguments
         encode: None or dict with new labels
