@@ -193,7 +193,7 @@ def back_to_categorical(data, col_names):
 
     Arguments
     data: dummy matrix of shape (num_items, num_labels). Only one element in a row is 1, other
-         elements should be 0.
+          elements should be 0.
     col_names: array or list of len = num_labels. Contains names of each colunm in data.
     '''
     res = np.array([col_names[x] for x in data.astype(bool)]).ravel()
@@ -203,15 +203,20 @@ def back_to_categorical(data, col_names):
 @jit(nogil=True)
 def get_pred_classes(pred, y_true, unq_classes):
     '''
-    Returns labeled prediction and true labeles.
+    Returns predicted and true labeles.
+
+    Arguments
+    pred: ndarray of shape (nb_items, nb_classes) with probability of each class for each item.
+    y_true: dummy matrix or array with true classes.
+    unq_classes: rray or list of len = nb_classes. Contains names of each colunm in pred.
     '''
     labels = np.zeros(pred.shape, dtype=int)
     for i in range(len(labels)):
         labels[i, np.argmax(pred[i])] = 1
 
-    y_pred = back_to_annot(labels, unq_classes)
+    y_pred = back_to_categorical(labels, unq_classes)
     if y_true.ndim > 1:
-        y_true = back_to_annot(y_true, unq_classes)
+        y_true = back_to_categorical(y_true, unq_classes)
     return y_true, y_pred
 
 
@@ -725,7 +730,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model, hist, code, lr_s = model_comp
         hist['batch_size'] = batch_size
         train_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        train_y, _ = self.get_categorical_labels(encode=code)
+        train_y, _ = self.get_categorical_labels(new_labels=code)
         epoch_num = len(hist['train_loss'])
         if epoch_num in lr_s[0]:
             new_lr = lr_s[1][lr_s[0].index(epoch_num)]
@@ -756,7 +761,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model_comp = self.get_model_by_name(model_name)
         model, hist, code, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        test_y, unq_classes = self.get_categorical_labels(encode=code)
+        test_y, unq_classes = self.get_categorical_labels(new_labels=code)
         pred = model.predict(test_x)
         batch_size = hist['batch_size']
         hist['val_loss'].append(model.evaluate(test_x, test_y,
@@ -790,7 +795,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model_comp = self.get_model_by_name(model_name)
         model, _, code, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        test_y, unq_classes = self.get_categorical_labels(encode=code)
+        test_y, unq_classes = self.get_categorical_labels(new_labels=code)
         pred = model.predict(test_x)
         y_true, y_pred = get_pred_classes(pred, test_y, unq_classes)
         print(classification_report(y_true, y_pred))
