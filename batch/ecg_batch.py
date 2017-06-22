@@ -5,11 +5,9 @@ import sys
 import itertools
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from scipy.signal import resample_poly
-from sklearn.metrics import classification_report, f1_score, log_loss
-from numba import jit
+from sklearn.metrics import f1_score, log_loss
 
 from keras.engine.topology import Layer
 from keras.layers import Input, Conv1D, Conv2D, \
@@ -186,7 +184,6 @@ class Inception2D(Layer):
         return (*input_shape[:-1], self.base_dim + 3 * self.nb_filters)
 
 
-#@jit(nogil=True)
 def back_to_categorical(data, col_names):
     '''
     Convert dummy matrix to categorical array. Returns array with categorical labels.
@@ -200,7 +197,6 @@ def back_to_categorical(data, col_names):
     return res
 
 
-#@jit(nogil=True)
 def get_pred_classes(pred, y_true, unq_classes):
     '''
     Returns predicted and true labeles.
@@ -236,7 +232,6 @@ def resample_signal(signal, annot, meta, index, new_fs):
     return [signal, annot, out_meta, index]
 
 
-#@jit(nogil=True)
 def segment_signal(signal, annot, meta, index, length, step, pad):
     """
     Segment signal along axis=1 with constant step to segments with constant length.
@@ -749,7 +744,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Validate model
         '''
         model_comp = self.get_model_by_name(model_name)
-        model, hist, code, lr_s = model_comp
+        model, hist, code, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         test_y, unq_classes = self.get_categorical_labels(new_labels=code)
         pred = model.predict(test_x)
