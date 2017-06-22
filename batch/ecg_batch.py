@@ -325,13 +325,62 @@ def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
     return [np.array(out_sig)[:-1], out_annot, out_meta, index]
 
 
+def load_ecg(index, src, fmt):
+    """
+    Load signal and meta, loading of annotation should be added
+    """
+    if fmt == 'wfdb':
+        return load_wfdb(index, src[index])
+    elif fmt == 'npz':
+        return load_npz(index, src[index])
+    else:
+        raise TypeError("Incorrect type of source")
+
+
+def load_wfdb(index, path):
+    """
+    Load signal and meta, loading of annotation should be added
+    """
+    record = wfdb.rdsamp(path)
+    signal = record.__dict__.pop('p_signals')
+    fields = record.__dict__
+    signal = signal.T
+    meta = {index: fields}
+    return [signal, {}, meta, index]
+
+
+def load_npz(index, path):
+    """
+    Load signal and meta, loading of annotation should be added
+    """
+    data = np.load(path)
+    signal = data["signal"]
+    annot = data["annotation"].tolist()
+    fields = data["meta"].tolist()
+    meta = {index: fields}
+    return [signal, annot, meta, index]
+
+
+def dump_ecg(signal, annot, meta, index, path, fmt):
+    """
+    Save ecg in a separate file as 'path/<index>.<fmt>'
+    """
+    if fmt == "npz":
+        np.savez(os.path.join(path, index + "." + fmt),
+                 signal=signal,
+                 annotation=ann,
+                 meta=meta)
+    else:
+        raise NotImplementedError("The format is not supported yet")
+    return [signal, annot, meta, index]
+
 class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     """
     Batch of ECG data
     """
     def __init__(self, index, preloaded=None):
         super().__init__(index, preloaded)
-        self._data = (None, {}, dict())
+        self._data = (np.array([]), {}, dict())
         self.history = []
 
     @property
@@ -371,100 +420,21 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         self._data = data
 
     @ds.action
-    def load(self, src=None, fmt="wfdb"):
+    @ds.inbatch_parallel(init="init_parallel_empty", post="post_parallel", target='mpc')
+    def load(self, src, fmt):
         """
         Loads data from different sources
         src is not used yet, so files locations are defined by the index
         """
-        if fmt == "wfdb":
-            list_of_arrs, list_of_annotations, meta = self._load_wfdb(src)
-        elif fmt == "npz":
-            list_of_arrs, list_of_annotations, meta = self._load_npz(src)
-        else:
-            raise TypeError("Incorrect type of source")
-
-        # ATTENTION!
-        # Construction below is used to overcome numpy bug:
-        # adding empty array to list of arrays, then generating array
-        # of arrays and removing the last item (empty array)
-        list_of_arrs.append(np.array([]))
-        self._signal = np.array(list_of_arrs)[:-1]
-        # ATTENTION!
-        # Annotation should be loaded with a separate function
-        self._annotation = list_of_annotations
-        self._meta = meta
-
-        # add info in self.history
-        info = dict()
-        info['method'] = 'load'
-        info['params'] = {}
-        self.history.append(info)
-
-        return self
-
-    def _load_wfdb(self, src):
-        """
-        Load signal and meta, loading of annotation should be added
-        """
-        list_of_arrs = []
-        list_of_annotations = {}
-        meta = {}
-        for ecg in self.index.indices:
-            path = self.index.get_fullpath(ecg) if src is None else src[ecg]
-            fullpath, _ = os.path.splitext(path)
-            record = wfdb.rdsamp(fullpath)
-            signal = record.__dict__.pop('p_signals')
-            fields = record.__dict__
-            signal = signal.T
-            list_of_arrs.append(signal)
-            meta.update({ecg: fields})
-
-        return list_of_arrs, list_of_annotations, meta
-
-    def _load_npz(self, src):
-        """
-        Load signal and meta, loading of annotation should be added
-        """
-        list_of_arrs = []
-        list_of_annotations = []
-        meta = {}
-        for ecg in self.index.indices:
-            if src is None:
-                path = self.index.get_fullpath(ecg)
-            else:
-                path = os.path.join(src, ecg + '.npz')
-            data = np.load(path)
-            list_of_arrs.append(data["signal"])
-            list_of_annotations.append(data["annotation"].tolist())
-            fields = data["meta"].tolist()
-            meta.update({ecg: fields})
-
-        keys = list(list_of_annotations[0].keys())
-        annot = {k: [] for k in keys}
-        for x in list_of_annotations:
-            for k in keys:
-                annot[k].append(x[k])
-        for k in keys:
-            annot[k].append(np.array([]))
-            annot[k] = np.array(annot[k])[:-1]
-
-        return list_of_arrs, annot, meta
+        return load_ecg
 
     @ds.action
-    def dump(self, dst, fmt="npz"):
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    def dump(self, path, fmt):
         """
-        Save each ecg in a separate file as '<ecg_index>.<fmt>'
+        Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
-        if fmt == "npz":
-            for ecg in self.indices:
-                signal, ann, meta = self[ecg]
-                np.savez(os.path.join(dst, ecg + "." + fmt),
-                         signal=signal,
-                         annotation=ann,
-                         meta=meta)
-        else:
-            raise NotImplementedError("The format is not supported yet")
-        return self
+        return dump_ecg
 
     def __getitem__(self, index):
         try:
@@ -495,6 +465,13 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         '''
         _ = args, kwargs
         return [[*self[i], i] for i in self.index.indices]
+
+    def init_parallel_empty(self, *args, **kwargs):
+        '''
+        Return array of ecg with index
+        '''
+        _ = args, kwargs
+        return self.index.indices
 
     def post_parallel(self, all_results, *args, **kwargs):
         #pylint: disable=too-many-locals
