@@ -368,7 +368,7 @@ def dump_ecg(signal, annot, meta, index, path, fmt):
     if fmt == "npz":
         np.savez(os.path.join(path, index + "." + fmt),
                  signal=signal,
-                 annotation=ann,
+                 annotation=annot,
                  meta=meta)
     else:
         raise NotImplementedError("The format is not supported yet")
@@ -426,6 +426,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Loads data from different sources
         src is not used yet, so files locations are defined by the index
         """
+        _ = src, fmt
         return load_ecg
 
     @ds.action
@@ -434,6 +435,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         """
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
+        _ = path, fmt
         return dump_ecg
 
     def __getitem__(self, index):
