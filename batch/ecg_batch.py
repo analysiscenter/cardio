@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from scipy.signal import resample_poly
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report, f1_score, log_loss
 from numba import jit
 
 from keras.engine.topology import Layer
@@ -186,7 +186,7 @@ class Inception2D(Layer):
         return (*input_shape[:-1], self.base_dim + 3 * self.nb_filters)
 
 
-@jit(nogil=True)
+#@jit(nogil=True)
 def back_to_categorical(data, col_names):
     '''
     Convert dummy matrix to categorical array. Returns array with categorical labels.
@@ -200,7 +200,7 @@ def back_to_categorical(data, col_names):
     return res
 
 
-@jit(nogil=True)
+#@jit(nogil=True)
 def get_pred_classes(pred, y_true, unq_classes):
     '''
     Returns predicted and true labeles.
@@ -687,8 +687,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model = Model(inputs=x, outputs=fc_2)
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
-        hist = {'train_loss': [], 'val_loss': [],
-                'val_metric': [], 'batch_size': None}
+        hist = {'train_loss': [], 'train_metric': [],
+                'val_loss': [], 'val_metric': []}
         diag_code = {'A': 'A', 'N': 'nonA', 'O': 'nonA'}
 
         lr_schedule = [[0, 50, 100], [0.01, 0.001, 0.0001]]
@@ -722,25 +722,40 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         return ctg_labels, unq_classes
 
     @ds.action()
-    def train_model(self, model_name, nb_epoch, batch_size):
+    def train_on_batch(self, model_name):
         '''
         Train model
         '''
         model_comp = self.get_model_by_name(model_name)
         model, hist, code, lr_s = model_comp
-        hist['batch_size'] = batch_size
         train_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        train_y, _ = self.get_categorical_labels(new_labels=code)
+        train_y, unq_classes = self.get_categorical_labels(new_labels=code)
         epoch_num = len(hist['train_loss'])
         if epoch_num in lr_s[0]:
             new_lr = lr_s[1][lr_s[0].index(epoch_num)]
             opt = Adam(lr=new_lr)
             model.compile(optimizer=opt, loss="categorical_crossentropy")
 
-        res = model.fit(train_x, train_y,
-                        epochs=nb_epoch,
-                        batch_size=batch_size)
-        hist['train_loss'].append(res.history["loss"][0])
+        res = model.train_on_batch(train_x, train_y)
+        pred = model.predict(train_x)
+        y_true, y_pred = get_pred_classes(pred, train_y, unq_classes)
+        hist['train_loss'].append(res)
+        hist['train_metric'].append(f1_score(y_true, y_pred, average='macro'))
+        return self
+
+    @ds.action()
+    def validate_on_batch(self, model_name):
+        '''
+        Validate model
+        '''
+        model_comp = self.get_model_by_name(model_name)
+        model, hist, code, lr_s = model_comp
+        test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
+        test_y, unq_classes = self.get_categorical_labels(new_labels=code)
+        pred = model.predict(test_x)
+        y_true, y_pred = get_pred_classes(pred, test_y, unq_classes)
+        hist['val_loss'].append(log_loss(test_y, pred))
+        hist['val_metric'].append(f1_score(y_true, y_pred, average='macro'))
         return self
 
     @ds.action()
@@ -751,71 +766,6 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model_comp = self.get_model_by_name(model_name)
         print(model_name)
         print(model_comp[0].summary())
-        return self
-
-    @ds.action()
-    def calc_loss(self, model_name):
-        '''
-        Add current val_loss and val_metric to training history
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model, hist, code, _ = model_comp
-        test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        test_y, unq_classes = self.get_categorical_labels(new_labels=code)
-        pred = model.predict(test_x)
-        batch_size = hist['batch_size']
-        hist['val_loss'].append(model.evaluate(test_x, test_y,
-                                               batch_size=batch_size,
-                                               verbose=0))
-        y_true, y_pred = get_pred_classes(pred, test_y, unq_classes)
-        hist['val_metric'].append(f1_score(y_true, y_pred, average='macro'))
-        return self
-
-    @ds.action()
-    def train_report(self, model_name):
-        '''
-        Print loss and metrics at the end of epoch
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        hist = model_comp[1]
-        if len(hist['train_loss']) == 0:
-            print('Train history is empty')
-        else:
-            print('Epoch', len(hist['train_loss']))
-            print('train_loss: %3.4f   val_loss: %3.4f   val_metric: %3.4f'
-                  % (hist['train_loss'][-1], hist['val_loss'][-1],
-                     hist['val_metric'][-1]))
-        return self
-
-    @ds.action()
-    def print_accuracy(self, model_name):
-        '''
-        Print accuracy
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model, _, code, _ = model_comp
-        test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        test_y, unq_classes = self.get_categorical_labels(new_labels=code)
-        pred = model.predict(test_x)
-        y_true, y_pred = get_pred_classes(pred, test_y, unq_classes)
-        print(classification_report(y_true, y_pred))
-        print("f1_score", f1_score(y_true, y_pred, average='macro'))
-        return self
-
-    @ds.action()
-    def show_loss(self, model_name):
-        '''
-        Plot train and validation loss
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        hist = model_comp[1]
-        plt.plot(hist["train_loss"], "r", label="train loss")
-        plt.plot(hist["val_loss"], "b", label="validation loss")
-        plt.legend()
-        plt.title("Model loss")
-        plt.ylabel("Loss")
-        plt.xlabel("Epoch")
-        plt.show()
         return self
 
     @ds.action()
