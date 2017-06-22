@@ -1,9 +1,12 @@
+""" contain tools to train and validates models """
+
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+
+from keras.optimizers import Adam
 
 
-def preprocess(dataset, scr, dir_ecg):
+def preprocess_fft_inceprion(dataset, src, dir_ecg):
     '''
     Preprocess for fft_inception model
     '''
@@ -17,10 +20,11 @@ def preprocess(dataset, scr, dir_ecg):
             .segment(3000, 3000, pad=True))
 
 
-def show_loss(batch, model_name):
+def show_loss(dataset, model_name):
     '''
     Show loss and metric for train and validation parts
     '''
+    batch = dataset.next_batch(1)
     model_comp = batch.get_model_by_name(model_name)
     hist = model_comp[1]
 
@@ -40,10 +44,11 @@ def show_loss(batch, model_name):
     return metrics, values
 
 
-def learning_rate_sheduler(batch, model_name, epoch, lr_s):
+def learning_rate_sheduler(dataset, model_name, epoch, lr_s):
     '''
     Schedule learning rate
     '''
+    batch = dataset.next_batch(1)
     model_comp = batch.get_model_by_name(model_name)
     model = model_comp[0]
     if epoch in lr_s[0]:
@@ -72,16 +77,16 @@ def train_model(dataset, model_name, preprocess,#pylint: disable=too-many-argume
     for epoch in range(nb_epoch):
         start_time = time.time()
         if lr_schedule is not None:
-            LearningRateSheduler(dataset.next_batch(1), model_name, epoch, lr_schedule)
+            learning_rate_sheduler(dataset, model_name, epoch, lr_schedule)
         ppt.next_batch(batch_size=batch_size,
-                      shuffle=True, n_epochs=1, prefetch=prefetch)
+                       shuffle=True, n_epochs=1, prefetch=prefetch)
         ppv.next_batch(batch_size=batch_size,
                        shuffle=True, n_epochs=1, prefetch=prefetch)
         if callback_list is not None:
             for callback in callback_list:
-                callback(b2, model_name)
+                callback(dataset, model_name)
         print('Epoch {0}/{1}   finished in {2:.1f}s'.format(epoch + 1, nb_epoch, time.time() - start_time))
-        metrics, values = show_loss(dataset.next_batch(1), model_name)
+        metrics, values = show_loss(dataset, model_name)
         hist.append(values)
     hist = np.array(hist).T
     return {k: v for (k, v) in zip(metrics, hist)}
