@@ -273,6 +273,17 @@ def drop_noise(signal, annot, meta, index):
         return [signal, annot, meta, index]
 
 
+def replace_labels_in_meta(signal, annot, meta, index, new_labels):
+    '''
+    Replaces diag label by new label.
+
+    Arguments
+    new_labels: dict of previous and corresponding new labels.
+    '''
+    meta.update({'diag': new_labels[meta['diag']]})
+    return [signal, annot, meta, index]
+
+
 def augment_fs_signal(signal, annot, meta, index, distr, params):
     '''
     Augmentation of signal to random sampling rate. New sampling rate is sampled
@@ -669,19 +680,27 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     @ds.action()
     def replace_labels(self, model_name, new_labels):
         '''
-        Returns a dummy matrix given an array of categorical variables and list of categories.
-        Original labels will be replaced by new labels if encode is not None.
+        Replace original labels by new labels.
 
         Arguments
         model_name: name of the model where to replece labels.
         new_labels: new labels to replace previous.
         '''
-        model_comp = self.get_model_by_name(model_name)
+        model_comp = list(self.get_model_by_name(model_name))
         model_comp[2] = list(new_labels.values())
-        for ind in self.indices:
-            meta = self._meta[ind]
-            meta.update({'diag': new_labels[meta['diag']]})
-        return self
+        return self.replace_all_labels(new_labels)
+
+    @ds.action()
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
+                         target='mpc')
+    def replace_all_labels(self, new_labels):
+        '''
+        Replace original labels by new labels.
+
+        Arguments
+        new_labels: dict of previous and corresponding new labels.
+        '''
+        return replace_labels_in_meta
 
     @ds.action()
     def get_categorical_labels(self, model_name):
