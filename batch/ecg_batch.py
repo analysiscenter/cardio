@@ -19,7 +19,6 @@ from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
 from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
-from keras.utils import np_utils
 import keras.backend as K
 
 import wfdb
@@ -188,6 +187,12 @@ class Inception2D(Layer):
 
 @njit(nogil=True)
 def get_pos_of_max(pred):
+    '''
+    Returns position of maximal element in a row.
+
+    Arguments
+    pred: 2d array.
+    '''
     labels = np.zeros(pred.shape)
     for i in range(len(labels)):
         labels[i, pred[i].argmax()] = 1
@@ -403,7 +408,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel_empty", post="post_parallel", target='threads')
-    def load(self, index, src, fmt):#pylint: disable=signature-differs
+    def load(self, index, src, fmt):#pylint: disable=signature-differs, arguments-differ
         """
         Loads data from different sources
         src is not used yet, so files locations are defined by the index
@@ -506,9 +511,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             metas = list_of_meta
         else:
             metas = []
-            for i in range(len(list_of_lens)):
-                rep = list_of_lens[i]
-                for j in range(rep):
+            for i, rep in enumerate(list_of_lens):
+                for j in range(rep):#pylint: disable=unused-variable
                     metas.append(copy.deepcopy(list_of_meta[i]))
             metas = np.array(metas)
         for i in range(len(batch_data)):
@@ -519,9 +523,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             annots = list_of_annot
         else:
             annots = []
-            for i in range(len(list_of_lens)):
-                rep = list_of_lens[i]
-                for j in range(rep):
+            for i, rep in enumerate(list_of_lens):
+                for j in range(rep):#pylint: disable=unused-variable
                     annots.append(copy.deepcopy(list_of_annot[i]))
             annots = np.array(annots)
         if len(annots) > 0:
@@ -674,8 +677,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         new_labels: new labels to replace previous.
         '''
         model_comp = self.get_model_by_name(model_name)
-        classes = model_comp[2]
-        classes = list(new_labels.values())
+        model_comp[2] = list(new_labels.values())
         for ind in self.indices:
             meta = self._meta[ind]
             meta.update({'diag': new_labels[meta['diag']]})
