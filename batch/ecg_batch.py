@@ -700,6 +700,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Arguments
         new_labels: dict of previous and corresponding new labels.
         '''
+        _ = new_labels
         return replace_labels_in_meta
 
     @ds.action()
