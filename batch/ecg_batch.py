@@ -2,12 +2,14 @@
 
 import os
 import sys
+import copy
 import itertools
 import numpy as np
 import pandas as pd
 
 from scipy.signal import resample_poly
 from sklearn.metrics import f1_score, log_loss
+from numba import njit
 
 from keras.engine.topology import Layer
 from keras.layers import Input, Conv1D, Conv2D, \
@@ -18,6 +20,7 @@ from keras.layers.merge import Concatenate
 from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 from keras.utils import np_utils
+import keras.backend as K
 
 import wfdb
 
@@ -54,10 +57,9 @@ class RFFT(Layer):
         Retrun
         out: 3D tensor (batch_size, signal_length, nb_channels) of type tf.float32
         '''
-        import tensorflow as tf
-        resh = tf.map_fn(tf.transpose, tf.cast(x, dtype=tf.complex64))
-        spec = tf.cast(tf.abs(tf.fft(resh)), dtype=tf.float32)
-        out = tf.map_fn(tf.transpose, spec)
+        resh = K.tf.map_fn(K.tf.transpose, K.tf.cast(x, dtype=K.tf.complex64))
+        spec = K.tf.cast(K.tf.abs(K.tf.fft(resh)), dtype=K.tf.float32)
+        out = K.tf.map_fn(K.tf.transpose, spec)
         return out
 
     def call(self, x):
@@ -184,36 +186,12 @@ class Inception2D(Layer):
         return (*input_shape[:-1], self.base_dim + 3 * self.nb_filters)
 
 
-def back_to_categorical(data, col_names):
-    '''
-    Convert dummy matrix to categorical array. Returns array with categorical labels.
-
-    Arguments
-    data: dummy matrix of shape (num_items, num_labels). Only one element in a row is 1, other
-          elements should be 0.
-    col_names: array or list of len = num_labels. Contains names of each colunm in data.
-    '''
-    res = np.array([col_names[x] for x in data.astype(bool)]).ravel()
-    return res
-
-
-def get_pred_classes(pred, y_true, unq_classes):
-    '''
-    Returns predicted and true labeles.
-
-    Arguments
-    pred: ndarray of shape (nb_items, nb_classes) with probability of each class for each item.
-    y_true: dummy matrix or array with true classes.
-    unq_classes: rray or list of len = nb_classes. Contains names of each colunm in pred.
-    '''
-    labels = np.zeros(pred.shape, dtype=int)
+@njit(nogil=True)
+def get_pos_of_max(pred):
+    labels = np.zeros(pred.shape)
     for i in range(len(labels)):
-        labels[i, np.argmax(pred[i])] = 1
-
-    y_pred = back_to_categorical(labels, unq_classes)
-    if y_true.ndim > 1:
-        y_true = back_to_categorical(y_true, unq_classes)
-    return y_true, y_pred
+        labels[i, pred[i].argmax()] = 1
+    return labels
 
 
 def resample_signal(signal, annot, meta, index, new_fs):
@@ -232,7 +210,7 @@ def resample_signal(signal, annot, meta, index, new_fs):
     return [signal, annot, out_meta, index]
 
 
-def segment_signal(signal, annot, meta, index, length, step, pad):
+def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
     """
     Segment signal along axis=1 with constant step to segments with constant length.
     If signal is shorter than target segment length, signal is zero-padded on the left if
@@ -244,19 +222,24 @@ def segment_signal(signal, annot, meta, index, length, step, pad):
     length: length of segment.
     step: step along axis=1.
     pad: whether to apply zero-padding to short signals.
+    return_copy: if True, a copy of segments is returned and segments become intependent. If False,
+                 segments are not independent, but segmentation runtime becomes almost indepentent on
+                 signal length.
+
+    Attention: segmentation of meta and annotation is not implemented yet.
     """
     if signal.ndim != 2:
         raise ValueError('Signal should have ndim = 2, found ndim = {0}'.format(signal.ndim))
 
-    if len(signal[0]) < length:
+    if signal.shape[1] < length:
         if pad:
-            pad_len = length - len(signal[0])
+            pad_len = length - signal.shape[1]
             segments = np.lib.pad(signal, ((0, 0), (pad_len, 0)),
                                   'constant', constant_values=(0, 0))[np.newaxis, :, :]
-            return [segments, {}, {'diag': meta['diag']}, index]
+            return [segments, {}, meta, index]
         else:
             raise ValueError('Signal is shorter than segment length: %i < %i'
-                             % (len(signal[0]), length))
+                             % (signal.shape[1], length))
 
     shape = signal.shape[:-1] + (signal.shape[-1] - length + 1, length)
     strides = signal.strides + (signal.strides[-1],)
@@ -265,9 +248,10 @@ def segment_signal(signal, annot, meta, index, length, step, pad):
     segments = np.transpose(segments, (1, 0, 2))
 
     _ = annot
-    out_annot = {} #TODO: segment annotation
-    out_meta = {'diag': meta['diag']}
-    return [segments, out_annot, out_meta, index]
+    if return_copy:
+        return [segments.copy(), {}, meta, index]
+    else:
+        return [segments, {}, meta, index]
 
 
 def drop_noise(signal, annot, meta, index):
@@ -343,9 +327,8 @@ def load_wfdb(index, path):
     """
     record = wfdb.rdsamp(path)
     signal = record.__dict__.pop('p_signals')
-    fields = record.__dict__
+    meta = record.__dict__
     signal = signal.T
-    meta = {index: fields}
     return [signal, {}, meta, index]
 
 
@@ -356,8 +339,7 @@ def load_npz(index, path):
     data = np.load(path)
     signal = data["signal"]
     annot = data["annotation"].tolist()
-    fields = data["meta"].tolist()
-    meta = {index: fields}
+    meta = data["meta"].tolist()
     return [signal, annot, meta, index]
 
 
@@ -420,18 +402,17 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         self._data = data
 
     @ds.action
-    @ds.inbatch_parallel(init="init_parallel_empty", post="post_parallel", target='mpc')
-    def load(self, src, fmt):
+    @ds.inbatch_parallel(init="init_parallel_empty", post="post_parallel", target='threads')
+    def load(self, index, src, fmt):#pylint: disable=signature-differs
         """
         Loads data from different sources
         src is not used yet, so files locations are defined by the index
         """
-        _ = src, fmt
-        return load_ecg
+        return load_ecg(index, src, fmt)
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def dump(self, path, fmt):
+    def dump(self, path, fmt):#pylint: disable=signature-differs
         """
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
@@ -440,8 +421,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
     def __getitem__(self, index):
         try:
-            pos = np.where(self.index.indices == index)[0][0]
-            #pos = self.index.get_pos(index)
+            pos = self.get_pos(None, None, index)
         except IndexError:
             raise IndexError("There is no such index in the batch: {0}"
                              .format(index))
@@ -466,14 +446,14 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Return array of ecg with index
         '''
         _ = args, kwargs
-        return [[*self[i], i] for i in self.index.indices]
+        return [[*self[i], i] for i in self.indices]
 
     def init_parallel_empty(self, *args, **kwargs):
         '''
         Return array of ecg with index
         '''
         _ = args, kwargs
-        return self.index.indices
+        return self.indices
 
     def post_parallel(self, all_results, *args, **kwargs):
         #pylint: disable=too-many-locals
@@ -525,7 +505,12 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         if len(ind.indices) == len(list_of_meta):
             metas = list_of_meta
         else:
-            metas = np.repeat(list_of_meta, list_of_lens)
+            metas = []
+            for i in range(len(list_of_lens)):
+                rep = list_of_lens[i]
+                for j in range(rep):
+                    metas.append(copy.deepcopy(list_of_meta[i]))
+            metas = np.array(metas)
         for i in range(len(batch_data)):
             metas[i].update({'origin': origins[i]})
         batch_meta = dict(zip(ind.indices, metas))
@@ -533,7 +518,12 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         if len(ind.indices) == len(list_of_annot):
             annots = list_of_annot
         else:
-            annots = np.repeat(list_of_annot, list_of_lens)
+            annots = []
+            for i in range(len(list_of_lens)):
+                rep = list_of_lens[i]
+                for j in range(rep):
+                    annots.append(copy.deepcopy(list_of_annot[i]))
+            annots = np.array(annots)
         if len(annots) > 0:
             keys = list(annots[0].keys())
         else:
@@ -578,9 +568,9 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
-    def segment(self, length, step, pad):
+    def split_to_segments(self, length, step, pad, return_copy):
         """
-        Segment signals in batch along axis=1 with constant step to segments with constant length.
+        Split signals along axis=1 to segments with constant length.
         If signal is shorter than target segment length, signal is zero-padded on the left if
         pad is True or raise ValueError if pad is False.
         Segmentation of annotation will be implemented in the future.
@@ -589,8 +579,11 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         length: length of segment.
         step: step along axis=1 of the signal.
         pad: whether to apply zero-padding to short signals.
+        return_copy: if True, a copy of segments is returned and segments become intependent. If False,
+                 segments are not independent, but segmentation runtime becomes almost indepentent on
+                 signal length.
         """
-        _ = length, step, pad
+        _ = length, step, pad, return_copy
         return segment_signal
 
     @ds.action
@@ -624,7 +617,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     @ds.model()
     def fft_inception():#pylint: disable=too-many-locals
         '''
-        fft inception model
+        FFT inception model. Includes initial convolution layers, then FFT transform, then
+        a series of inception blocks.
         '''
         x = Input((3000, 1))
 
@@ -663,37 +657,43 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
         hist = {'train_loss': [], 'train_metric': [],
                 'val_loss': [], 'val_metric': []}
-        diag_code = {'A': 'A', 'N': 'nonA', 'O': 'nonA'}
+        diag_classes = ['A', 'NonA']
 
         lr_schedule = [[0, 50, 100], [0.01, 0.001, 0.0001]]
 
-        return model, hist, diag_code, lr_schedule
+        return model, hist, diag_classes, lr_schedule
 
     @ds.action()
-    def get_categorical_labels(self, new_labels=None):
+    def replace_labels(self, model_name, new_labels):
         '''
         Returns a dummy matrix given an array of categorical variables and list of categories.
         Original labels will be replaced by new labels if encode is not None.
 
         Arguments
-        encode: None or dict with new labels
+        model_name: name of the model where to replece labels.
+        new_labels: new labels to replace previous.
         '''
-        labels = []
+        model_comp = self.get_model_by_name(model_name)
+        classes = model_comp[2]
+        classes = list(new_labels.values())
         for ind in self.indices:
-            diag = self._meta[ind]['diag']
-            if new_labels is None:
-                labels.extend([diag])
-            else:
-                labels.extend([new_labels[diag]])
+            meta = self._meta[ind]
+            meta.update({'diag': new_labels[meta['diag']]})
+        return self
 
-        if new_labels is None:
-            encode_labels = []
-        else:
-            encode_labels = list(np.unique(list(new_labels.values())))
-        labels = encode_labels + labels
-        unq_classes, num_labels = np.unique(labels, return_inverse=True)
-        ctg_labels = np_utils.to_categorical(num_labels)[len(encode_labels):]
-        return ctg_labels, unq_classes
+    @ds.action()
+    def get_categorical_labels(self, model_name):
+        '''
+        Returns a dummy matrix given an array of categorical variables and list of categories.
+        Original labels will be replaced by new labels if encode is not None.
+
+        Arguments
+        labels: array of categorical variables
+        classes: all possible classes
+        '''
+        classes = self.get_model_by_name(model_name)[2]
+        labels = [self._meta[ind]['diag'] for ind in self.indices]
+        return pd.get_dummies(classes + labels).as_matrix()[len(classes):]
 
     @ds.action()
     def train_on_batch(self, model_name):
@@ -701,9 +701,9 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Train model
         '''
         model_comp = self.get_model_by_name(model_name)
-        model, hist, code, lr_s = model_comp
+        model, hist, _, lr_s = model_comp
         train_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        train_y, unq_classes = self.get_categorical_labels(new_labels=code)
+        train_y = self.get_categorical_labels(model_name)
         epoch_num = len(hist['train_loss'])
         if epoch_num in lr_s[0]:
             new_lr = lr_s[1][lr_s[0].index(epoch_num)]
@@ -712,9 +712,9 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
         res = model.train_on_batch(train_x, train_y)
         pred = model.predict(train_x)
-        y_true, y_pred = get_pred_classes(pred, train_y, unq_classes)
+        y_pred = get_pos_of_max(pred)
         hist['train_loss'].append(res)
-        hist['train_metric'].append(f1_score(y_true, y_pred, average='macro'))
+        hist['train_metric'].append(f1_score(train_y, y_pred, average='macro'))
         return self
 
     @ds.action()
@@ -723,13 +723,13 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Validate model
         '''
         model_comp = self.get_model_by_name(model_name)
-        model, hist, code, _ = model_comp
+        model, hist, _, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
-        test_y, unq_classes = self.get_categorical_labels(new_labels=code)
+        test_y = self.get_categorical_labels(model_name)
         pred = model.predict(test_x)
-        y_true, y_pred = get_pred_classes(pred, test_y, unq_classes)
+        y_pred = get_pos_of_max(pred)
         hist['val_loss'].append(log_loss(test_y, pred))
-        hist['val_metric'].append(f1_score(y_true, y_pred, average='macro'))
+        hist['val_metric'].append(f1_score(test_y, y_pred, average='macro'))
         return self
 
     @ds.action()
