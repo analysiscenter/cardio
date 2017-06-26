@@ -828,12 +828,18 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
     @ds.action()
     def save_hmm_model(self, model_name, fname):
+        '''
+        Save hmm model
+        '''
         model = self.get_model_by_name(model_name)
         joblib.dump(model, fname + '.pkl')
         return self
 
     @ds.action()
     def load_hmm_model(self, model_name, fname):
-        model = self.get_model_by_name(model_name)
+        '''
+        Load hmm model
+        '''
+        model = self.get_model_by_name(model_name)#pylint: disable=unused-variable
         model = joblib.load(fname + '.pkl')
         return self
