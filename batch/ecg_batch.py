@@ -421,7 +421,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='threads')
-    def dump(self, signal, annot, meta, index, path, fmt):#pylint: disable=signature-differs
+    def dump(self, signal, annot, meta, index, path, fmt):#pylint: disable=signature-differs, arguments-differ
         """
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
