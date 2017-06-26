@@ -4,14 +4,43 @@ import sys
 import numpy as np
 import wfdb
 sys.path.append('..')
-from dataset import Batch, action, inbatch_parallel
+import dataset as ds
 
-
-class EcgBatch(Batch):
-
+class Error(Exception):
+    """Base class for custom errors
     """
 
-    Сlass for storing batch of ECG (electrocardiogram)
+    def __init__(self, message):
+        self.message = message
+
+class InputDataError(Error):
+    """Class for errors that raised at input data 
+    evaluation stage.
+    
+    """
+
+    def __init__():
+        super().__init__(self, message)
+
+class ProcessedDataError(Error):
+    """Class for errors that raised after processing
+    data. 
+    
+    """
+
+    def __init__():
+        super().__init__(self, message)
+
+class TestError(Error)
+    """Class for errors to be raised if test for batch class methods 
+    are failed.
+    """
+
+    def __init__():
+        super().__init__(self, message)
+
+class EcgBatch(Batch):
+    """Сlass for storing batch of ECG (electrocardiogram)
     signals.
     Derived from base class Batch
 
@@ -42,24 +71,22 @@ class EcgBatch(Batch):
             in format defined by fmt.
             returns self
 
-
     """
 
     def __init__(self, index, preloaded=None):
 
         super().__init__(index, preloaded)
         self.signal = np.ndarray(self.indices.shape, dtype=object)
-        self.annotation = {}
-        self.meta = {}
+        self.annotation = dict()
+        self.meta = dict()
 
     @property
     def components(self):
         return "signal", "annotation", "meta"
 
-    @action
+    @ds.action
     def load(self, src=None, fmt="wfdb"):
-        """
-        Load signals, annotations and metadata from files into EcgBatch.
+        """Load signals, annotations and metadata from files into EcgBatch.
 
         Args:
             src - dict with indice-path pairs, not needed if index is created
@@ -83,8 +110,8 @@ class EcgBatch(Batch):
 
         return self
 
-    @action
-    @inbatch_parallel(init='indices', target='threads')
+    @ds.action
+    @ds.inbatch_parallel(init='indices', target='threads')
     def _load_wfdb(self, index, src=None):
         pos = self.index.get_pos(index)
         if src:
@@ -104,8 +131,8 @@ class EcgBatch(Batch):
         except FileNotFoundError:
             self.annotation[pos] = None
 
-    @action
-    @inbatch_parallel(init='indices', target='threads')
+    @ds.action
+    @ds.inbatch_parallel(init='indices', target='threads')
     def _load_npz(self, index, src=None):
         pos = self.index.get_pos(index)
         if src:
@@ -118,11 +145,9 @@ class EcgBatch(Batch):
         self.annotation[pos] = data_npz["annotation"]
         self.meta[pos] = data_npz["meta"].item()
 
-    @action
+    @ds.action
     def dump(self, dst, fmt="npz"):
-
-        """
-        Save each record with annotations and metadata
+        """Save each record with annotations and metadata
         in separate files as 'dst/<index>.<fmt>'
 
         Args:
@@ -143,8 +168,8 @@ class EcgBatch(Batch):
 
         return self
 
-    @action
-    @inbatch_parallel(init='indices', target='threads')
+    @ds.action
+    @ds.inbatch_parallel(init='indices', target='threads')
     def _dump_npz(self, index, dst):
         signal, ann, meta = self[index]
         np.savez(
@@ -153,3 +178,22 @@ class EcgBatch(Batch):
             annotation=ann,
             meta=meta)
 
+    def input_check_post(self, all_results, *args, **kwargs):
+        if any_action_failed(all_results):
+            all_errors = self.get_errors(all_results)
+            print(all_errors)
+            traceback.print_tb(all_errors[0].__traceback__)
+            raise ValueError("Checkup failed: failed to assemble results.")
+
+        ok = np.all(np.array(all_results)[:,0])
+        if !ok:
+            print('Error in function: ', all_results[0][0])
+            raise InputDataError('Error with input data!')
+
+        return self
+
+    @ds.action
+    @ds.inbatch_parallel(init='indices', post='input_check_post', target='threads')
+    def check_signal_length(self, index, operator=np.greater_equal, length=0):
+        pos = self.index.get_pos(index)
+        return operator(self.signal[pos].shape[1],lenght),sys._getframe().f_code.co_name
