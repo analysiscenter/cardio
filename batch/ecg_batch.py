@@ -45,24 +45,25 @@ class RFFT(Layer):
     def __init__(self, *agrs, **kwargs):
         super(RFFT, self).__init__(*agrs, **kwargs)
 
-    def fft(self, x):
+    def fft(self, x, fft_call):
         '''
         Computes one-dimensional discrete Fourier Transform on each slice along last dim.
         Returns amplitude spectrum.
 
         Arguments
         x: 3D tensor (batch_size, signal_length, nb_channels)
+        fft_call: function that performs fft
 
         Retrun
         out: 3D tensor (batch_size, signal_length, nb_channels) of type tf.float32
         '''
-        resh = K.tf.map_fn(K.tf.transpose, K.tf.cast(x, dtype=K.tf.complex64))
-        spec = K.tf.cast(K.tf.abs(K.tf.fft(resh)), dtype=K.tf.float32)
-        out = K.tf.map_fn(K.tf.transpose, spec)
+        resh = K.cast(K.map_fn(K.transpose, x), dtype='complex64')
+        spec = K.abs(K.map_fn(fft_call, resh))
+        out = K.cast(K.map_fn(K.transpose, spec), dtype='float32')
         return out
 
     def call(self, x):
-        res = Lambda(self.fft)(x)
+        res = Lambda(self.fft, arguments={'fft_call': K.tf.fft})(x)
         half = int(res.get_shape().as_list()[1] / 2)
         return res[:, :half, :]
 
@@ -254,9 +255,8 @@ def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
 
     _ = annot
     if return_copy:
-        return [segments.copy(), {}, meta, index]
-    else:
-        return [segments, {}, meta, index]
+        segments = segments.copy()
+    return [segments, {}, meta, index]
 
 
 def drop_noise(signal, annot, meta, index):
@@ -323,18 +323,6 @@ def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
     out_meta = [x[2] for x in res]
     out_sig.append([])
     return [np.array(out_sig)[:-1], out_annot, out_meta, index]
-
-
-def load_ecg(index, src, fmt):
-    """
-    Load signal and meta, loading of annotation should be added
-    """
-    if fmt == 'wfdb':
-        return load_wfdb(index, src[index])
-    elif fmt == 'npz':
-        return load_npz(index, src[index])
-    else:
-        raise TypeError("Incorrect type of source")
 
 
 def load_wfdb(index, path):
@@ -424,16 +412,20 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Loads data from different sources
         src is not used yet, so files locations are defined by the index
         """
-        return load_ecg(index, src, fmt)
+        if fmt == 'wfdb':
+            return load_wfdb(index, src[index])
+        elif fmt == 'npz':
+            return load_npz(index, src[index])
+        else:
+            raise TypeError("Incorrect type of source")
 
     @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='threads')
     def dump(self, path, fmt):#pylint: disable=signature-differs
         """
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
-        _ = path, fmt
-        return dump_ecg
+        return dump_ecg(signal, annot, meta, index, path, fmt)
 
     def __getitem__(self, index):
         try:
@@ -466,7 +458,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
     def init_parallel_empty(self, *args, **kwargs):
         '''
-        Return array of ecg with index
+        Return ecg indices
         '''
         _ = args, kwargs
         return self.indices
@@ -706,12 +698,10 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     @ds.action()
     def get_categorical_labels(self, model_name):
         '''
-        Returns a dummy matrix given an array of categorical variables and list of categories.
-        Original labels will be replaced by new labels if encode is not None.
+        Returns a dummy matrix given an array of categorical labels.
 
         Arguments
-        labels: array of categorical variables
-        classes: all possible classes
+        model_name: name of the model that will use dummy martix.
         '''
         classes = self.get_model_by_name(model_name)[2]
         labels = [self._meta[ind]['diag'] for ind in self.indices]
