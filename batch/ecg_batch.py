@@ -4,11 +4,13 @@ import os
 import sys
 import copy
 import itertools
+import warnings
 import numpy as np
 import pandas as pd
 
 from scipy.signal import resample_poly
 from sklearn.metrics import f1_score, log_loss
+from sklearn.externals import joblib
 from numba import njit
 
 from keras.engine.topology import Layer
@@ -22,6 +24,7 @@ from keras.optimizers import Adam
 import keras.backend as K
 
 import wfdb
+from hmmlearn import hmm
 
 import dataset as ds
 
@@ -324,6 +327,13 @@ def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
     out_sig.append([])
     return [np.array(out_sig)[:-1], out_annot, out_meta, index]
 
+def predict_hmm_classes(signal, annot, meta, index, model):
+    '''
+    Get hmm predicted classes
+    '''
+    res = np.array(model.predict(signal.T)).reshape((1, -1))
+    annot.update({'hmm_predict': res})
+    return [signal, annot, meta, index]
 
 def load_wfdb(index, path):
     """
@@ -406,7 +416,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         self._data = data
 
     @ds.action
-    @ds.inbatch_parallel(init="init_parallel_empty", post="post_parallel", target='threads')
+    @ds.inbatch_parallel(init='init_parallel_empty', post="post_parallel", target='threads')
     def load(self, index, src, fmt):#pylint: disable=signature-differs, arguments-differ
         """
         Loads data from different sources
@@ -621,6 +631,18 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         return self
 
     @ds.model()
+    def hmm_learn():
+        """
+        Find n_components in signal
+        """
+        n_components = 3
+        n_iter = 10
+        warnings.filterwarnings("ignore")
+        model = hmm.GaussianHMM(n_components=n_components, covariance_type="full",
+                                n_iter=n_iter)
+        return model
+
+    @ds.model()
     def fft_inception():#pylint: disable=too-many-locals
         '''
         FFT inception model. Includes initial convolution layers, then FFT transform, then
@@ -665,9 +687,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
                 'val_loss': [], 'val_metric': []}
         diag_classes = ['A', 'NonA']
 
-        lr_schedule = [[0, 50, 100], [0.01, 0.001, 0.0001]]
-
-        return model, hist, diag_classes, lr_schedule
+        return model, hist, diag_classes
 
     @ds.action()
     def replace_labels(self, model_name, new_labels):
@@ -713,15 +733,9 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Train model
         '''
         model_comp = self.get_model_by_name(model_name)
-        model, hist, _, lr_s = model_comp
+        model, hist, _ = model_comp
         train_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         train_y = self.get_categorical_labels(model_name)
-        epoch_num = len(hist['train_loss'])
-        if epoch_num in lr_s[0]:
-            new_lr = lr_s[1][lr_s[0].index(epoch_num)]
-            opt = Adam(lr=new_lr)
-            model.compile(optimizer=opt, loss="categorical_crossentropy")
-
         res = model.train_on_batch(train_x, train_y)
         pred = model.predict(train_x)
         y_pred = get_pos_of_max(pred)
@@ -735,7 +749,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Validate model
         '''
         model_comp = self.get_model_by_name(model_name)
-        model, hist, _, _ = model_comp
+        model, hist, _ = model_comp
         test_x = np.array([x for x in self._signal]).reshape((-1, 3000, 1))
         test_y = self.get_categorical_labels(model_name)
         pred = model.predict(test_x)
@@ -780,4 +794,46 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         fin.close()
         model = model_from_yaml(yaml_string)
         model.load_weights(fname)
+        return self
+
+    @ds.action()
+    def train_hmm(self, model_name):
+        '''
+        Train hmm model on the whole batch
+        '''
+        warnings.filterwarnings("ignore")
+        model = self.get_model_by_name(model_name)
+        train_x = np.concatenate(self._signal, axis=1).T
+        lengths = [x.shape[1] for x in self._signal]
+        model.fit(train_x, lengths)
+        return self
+
+    @ds.action()
+    def predict_hmm(self, model_name):
+        '''
+        Get hmm predictited classes
+        '''
+        model = self.get_model_by_name(model_name)
+        return self.predict_all_hmm(model)
+
+    @ds.action()
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
+                         target='mpc')
+    def predict_all_hmm(self, model):
+        '''
+        Get hmm predictited classes
+        '''
+        _ = model
+        return predict_hmm_classes
+
+    @ds.action()
+    def save_hmm_model(self, model_name, fname):
+        model = self.get_model_by_name(model_name)
+        joblib.dump(model, fname + '.pkl')
+        return self
+
+    @ds.action()
+    def load_hmm_model(self, model_name, fname):
+        model = self.get_model_by_name(model_name)
+        model = joblib.load(fname + '.pkl')
         return self
