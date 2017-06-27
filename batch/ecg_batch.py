@@ -335,6 +335,55 @@ def predict_hmm_classes(signal, annot, meta, index, model):
     annot.update({'hmm_predict': res})
     return [signal, annot, meta, index]
 
+def get_gradient(signal, annot, meta, index, order):
+    '''
+    Compute derivative of given order
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    order: order of derivative to compute.
+    '''
+    grad = np.gradient(signal, axis=1)
+    for i in range(order - 1):
+        grad = np.gradient(grad, axis=1)
+    annot.update({'grad_{0}'.format(order): grad})
+    return [signal, annot, meta, index]
+
+def convolve_layer(signal, annot, meta, index, layer, kernel):
+    '''
+    Convolve squared data with kernel
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    layer: name of layer that will be convolved. Can be 'signal' or key from annotation keys.
+    kernel: kernel for convolution.
+    '''
+    if layer == 'signal':
+        data = signal
+    else:
+        data = annot[layer]
+    res = np.apply_along_axis(np.convolve, 1, data**2, v=kernel, mode='same')
+    annot.update({layer + '_conv': res})
+    return [signal, annot, meta, index]
+
+def merge_list_of_layers(signal, annot, meta, index, list_of_layers):
+    '''
+    Merge layers from list of layers to signal
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    list_of_layers: list of name layers that will be merged. Can contain 'signal' or keys from annotation.
+    '''
+    res = []
+    for layer in list_of_layers:
+        if layer == 'signal':
+            data = signal
+        else:
+            data = annot[layer]
+        res.append(data)
+    res = np.concatenate(res, axis=0)
+    return [res, annot, meta, index]
+
 def load_wfdb(index, path):
     """
     Load signal and meta, loading of annotation should be added
@@ -642,6 +691,19 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
                                 n_iter=n_iter)
         return model
 
+    @ds.action()
+    def set_new_model(self, model_name, new_model):
+        '''
+        Replace base model by new model.
+
+        Arguments
+        model_name: name of the model where to set new model.
+        new_model: new model to replace previous.
+        '''
+        model = self.get_model_by_name(model_name)#pylint: disable=unused-variable
+        model = new_model
+        return self
+
     @ds.model()
     def fft_inception():#pylint: disable=too-many-locals
         '''
@@ -843,3 +905,30 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model = self.get_model_by_name(model_name)#pylint: disable=unused-variable
         model = joblib.load(fname + '.pkl')
         return self
+
+    @ds.action()
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
+                         target='mpc')
+    def gradient(self, order):
+        """
+        Compute derivative of given order and add it to annotation
+        """
+        return get_gradient
+
+    @ds.action()
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
+                         target='mpc')
+    def convolve(self, layer, kernel):
+        """
+        Convolve layer with kernel
+        """
+        return convolve_layer
+
+    @ds.action()
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
+                         target='mpc')
+    def merge_layers(self, list_of_layers):
+        """
+        Merge layers from list of layers to signal
+        """
+        return merge_list_of_layers
