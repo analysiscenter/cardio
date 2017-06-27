@@ -344,7 +344,7 @@ def get_gradient(signal, annot, meta, index, order):
     order: order of derivative to compute.
     '''
     grad = np.gradient(signal, axis=1)
-    for i in range(order - 1):
+    for i in range(order - 1):#pylint: disable=unused-variable
         grad = np.gradient(grad, axis=1)
     annot.update({'grad_{0}'.format(order): grad})
     return [signal, annot, meta, index]
@@ -913,6 +913,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         """
         Compute derivative of given order and add it to annotation
         """
+        _ = order
         return get_gradient
 
     @ds.action()
@@ -922,6 +923,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         """
         Convolve layer with kernel
         """
+        _ = layer, kernel
         return convolve_layer
 
     @ds.action()
@@ -931,4 +933,5 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         """
         Merge layers from list of layers to signal
         """
+        _ = list_of_layers
         return merge_list_of_layers
