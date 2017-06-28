@@ -6,8 +6,8 @@ import itertools
 import numpy as np
 import pandas as pd
 
-from keras.layers import Convolution1D, MaxPooling1D, Merge,\
-GlobalMaxPooling1D, Input, Dense, Dropout, Flatten
+from keras.layers import Convolution1D, MaxPooling1D, \
+GlobalMaxPooling1D, Input, Dense, Dropout
 from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 import keras.backend as K
@@ -15,13 +15,10 @@ import keras.backend as K
 from scipy.signal import resample_poly
 from sklearn.metrics import f1_score, log_loss
 from numba import njit
-import wfdb
-sys.path.append('..')
-import dataset as ds
-import wfdb
-sys.path.append('..')
-import dataset as ds
 
+import dataset as ds
+import wfdb
+sys.path.append('..')
 
 @njit(nogil=True)
 def get_pos_of_max(pred):
@@ -44,14 +41,14 @@ def resample_signal(signal, annot, meta, index, new_fs):
     signal, annot, meta, index: componets of ecg signal.
     new_fs: target signal sampling rate in Hz.
     """
-    fs = meta['fs']
-    new_len = int(new_fs * len(signal[0]) / fs)
+    old_fs = meta['fs']
+    new_len = int(new_fs * len(signal[0]) / old_fs)
     signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
     out_meta = {**meta, 'fs': new_fs}
     return [signal, annot, out_meta, index]
 
 
-def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
+def segment_signal(signal, annot, meta, index, length, step, pad, return_copy): #pylint:disable=too-many-arguments
     """
     Segment signal along axis=1 with constant step to segments with constant length.
     If signal is shorter than target segment length, signal is zero-padded on the left if
@@ -189,7 +186,7 @@ class Error(Exception):
 
 
 class InputDataError(Error):
-    """Class for errors that raised at input data 
+    """Class for errors that raised at input data
     evaluation stage.
 
     """
@@ -198,20 +195,20 @@ class InputDataError(Error):
 
 class ProcessedDataError(Error):
     """Class for errors that raised after processing
-    data. 
+    data.
 
     """
     pass
 
 
 class TestError(Error):
-    """Class for errors to be raised if test for batch class methods 
+    """Class for errors to be raised if test for batch class methods
     are failed.
     """
     pass
 
 
-class EcgBatch(ds.Batch):
+class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
     """Сlass for storing batch of ECG (electrocardiogram)
     signals.
     Derived from base class Batch
@@ -251,39 +248,6 @@ class EcgBatch(ds.Batch):
         self.signal = np.ndarray(self.indices.shape, dtype=object)
         self.annotation = dict()
         self.meta = dict()
-
-    @ds.model()
-    def model_conformal():  #pylint: disable=too-many-locals
-        '''
-        Simple conv model to test conformal prediction
-        '''
-        x = Input((3000, 1))
-        conv_1 = Convolution1D(4, 4, activation=selu)(x)
-        mp_1 = MaxPooling1D()(conv_1)
-        conv_2 = Convolution1D(8, 4, activation=selu)(mp_1)
-        mp_2 = MaxPooling1D()(conv_2)
-        conv_3 = Convolution1D(16, 4, activation=selu)(mp_2)
-        mp_3 = MaxPooling1D()(conv_3)
-        conv_4 = Convolution1D(32, 4, activation=selu)(mp_3)
-        pool = GlobalMaxPooling1D()(conv_4)
-        fc_1 = Dense(8, kernel_initializer='uniform', activation='relu')(pool)
-        drop = Dropout(0.2)(fc_1)
-        fc_2 = Dense(
-            2, kernel_initializer='uniform', activation='softmax')(drop)
-
-        opt = Adam()
-        model = Model(inputs=x, outputs=fc_2)
-        model.compile(optimizer=opt, loss="categorical_crossentropy")
-
-        hist = {
-            'train_loss': [],
-            'train_metric': [],
-            'val_loss': [],
-            'val_metric': []
-        }
-        diag_classes = ['A', 'NonA']
-
-        return model, hist, diag_classes
 
     @property
     def components(self):
@@ -389,10 +353,11 @@ class EcgBatch(ds.Batch):
             meta=meta)
 
     def input_check_post(self, all_results, *args, **kwargs):
+        """ Post function to gather and handle results of check-ups
+        """
         if ds.any_action_failed(all_results):
             all_errors = self.get_errors(all_results)
             print(all_errors)
-            traceback.print_tb(all_errors[0].__traceback__)
             raise ValueError("Checkup failed: failed to assemble results.")
 
         all_good = np.all(np.array(all_results, dtype="object")[:, 0])
@@ -422,16 +387,16 @@ class EcgBatch(ds.Batch):
         return self
 
     def init_parallel(self, *args, **kwargs):
-        '''
+        """
         Return array of ecg with index
-        '''
+        """
         _ = args, kwargs
         return [[*self[i], i] for i in self.indices]
 
     def post_parallel(self, all_results, *args, **kwargs):
         #pylint: disable=too-many-locals
         #pylint: disable=too-many-branches
-        '''
+        """
         Build ecg_batch from a list of items either [signal, annot, meta] or None.
         All Nones are ignored.
         Signal can be either a single signal or a list of signals.
@@ -440,12 +405,11 @@ class EcgBatch(ds.Batch):
         first case annot and meta are broadcasted to each signal in the list of signals.
         Arguments
         all results: list of items either [signal, annot, meta] or None
-        '''
+        """
         _ = args, kwargs
         if ds.any_action_failed(all_results):
             all_errors = self.get_errors(all_results)
             print(all_errors)
-            traceback.print_tb(all_errors[0].__traceback__)
             raise ValueError("Parallelism failed: failed to assemble results.")
 
         valid_results = [res for res in all_results if res is not None]
@@ -508,20 +472,20 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(
         init="init_parallel", post="post_parallel", target='mpc')
-    def resample(self, new_fs):
-        '''
+    def resample(self, new_fs): #pylint: disable=no-self-use
+        """
         Resample all signals in batch along axis=1 to new sampling rate. Retruns resampled batch with modified meta.
         Resampling of annotation will be implemented in the future.
         Arguments
         new_fs: target signal sampling rate in Hz.
-        '''
+        """
         _ = new_fs
         return resample_signal
 
     @ds.action
     @ds.inbatch_parallel(
         init="init_parallel", post="post_parallel", target='mpc')
-    def augment_fs(self, list_of_distr):
+    def augment_fs(self, list_of_distr): #pylint: disable=no-self-use
         '''
         Multiple augmentation of signals in batch to random sampling rates. New sampling rates are sampled
         from list of probability distributions with specified parameters.
@@ -534,7 +498,7 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(
         init="init_parallel", post="post_parallel", target='mpc')
-    def split_to_segments(self, length, step, pad, return_copy):
+    def split_to_segments(self, length, step, pad, return_copy): #pylint: disable=no-self-use
         """
         Split signals along axis=1 to segments with constant length.
         If signal is shorter than target segment length, signal is zero-padded on the left if
@@ -616,6 +580,40 @@ class EcgBatch(ds.Batch):
             self.meta[self.index.get_pos(ind)]['diag'] for ind in self.indices
         ]
         return pd.get_dummies(classes + labels).as_matrix()[len(classes):]
+
+    @ds.model()
+    def model_conformal():  #pylint: disable=too-many-locals,no-method-argument
+        '''
+        Simple conv model to test conformal prediction
+        '''
+        x = Input((3000, 1))
+        conv_1 = Convolution1D(4, 4, activation=selu)(x)
+        mp_1 = MaxPooling1D()(conv_1)
+        conv_2 = Convolution1D(8, 4, activation=selu)(mp_1)
+        mp_2 = MaxPooling1D()(conv_2)
+        conv_3 = Convolution1D(16, 4, activation=selu)(mp_2)
+        mp_3 = MaxPooling1D()(conv_3)
+        conv_4 = Convolution1D(32, 4, activation=selu)(mp_3)
+        pool = GlobalMaxPooling1D()(conv_4)
+        fc_1 = Dense(8, kernel_initializer='uniform', activation='relu')(pool)
+        drop = Dropout(0.2)(fc_1)
+        fc_2 = Dense(
+            2, kernel_initializer='uniform', activation='softmax')(drop)
+
+        opt = Adam()
+        model = Model(inputs=x, outputs=fc_2)
+        model.compile(optimizer=opt, loss="categorical_crossentropy")
+
+        hist = {
+            'train_loss': [],
+            'train_metric': [],
+            'val_loss': [],
+            'val_metric': []
+        }
+        diag_classes = ['A', 'NonA']
+
+        return model, hist, diag_classes
+
 
     @ds.action()
     def train_on_batch(self, model_name):
