@@ -355,6 +355,7 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
     def input_check_post(self, all_results, *args, **kwargs):
         """ Post function to gather and handle results of check-ups
         """
+        _ = args, kwargs
         if ds.any_action_failed(all_results):
             all_errors = self.get_errors(all_results)
             print(all_errors)
@@ -370,9 +371,14 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
     @ds.inbatch_parallel(
         init='indices', post='input_check_post', target='threads')
     def check_signal_length(self, index, operator=np.greater_equal, length=0):
+        """Check if real length of the signal is appropriate.
+        Args:
+        operator - operator to use in check-up (np.greater_equal by default)
+        length - value to compare with real signal length
+        """
         pos = self.index.get_pos(index)
         return operator(self.signal[pos].shape[1],
-                        length), sys._getframe().f_code.co_name
+                        length), sys._getframe().f_code.co_name #pylint: disable=protected-access
 
     def update(self, data=None, annot=None, meta=None):
         """
@@ -518,7 +524,7 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(
         init="init_parallel", post="post_parallel", target='mpc')
-    def drop_noise(self):
+    def drop_noise(self): #pylint: disable=no-self-use
         '''
         Drop signals labeled as noise from the batch.
         Arguments
@@ -557,7 +563,7 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
     @ds.action()
     @ds.inbatch_parallel(
         init="init_parallel", post="post_parallel", target='mpc')
-    def replace_all_labels(self, new_labels):
+    def replace_all_labels(self, new_labels): #pylint: disable=no-self-use
         '''
         Replace original labels by new labels.
         Arguments
@@ -601,7 +607,7 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
             2, kernel_initializer='uniform', activation='softmax')(drop)
 
         opt = Adam()
-        model = Model(inputs=x, outputs=fc_2)
+        model = Model(inputs=x, outputs=fc_2) #pylint:disable=no-value-for-parameter,unexpected-keyword-arg
         model.compile(optimizer=opt, loss="categorical_crossentropy")
 
         hist = {
