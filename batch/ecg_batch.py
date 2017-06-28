@@ -5,6 +5,7 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
+import wfdb
 
 from keras.layers import Convolution1D, MaxPooling1D, \
 GlobalMaxPooling1D, Input, Dense, Dropout
@@ -16,10 +17,10 @@ from sklearn.metrics import f1_score, log_loss
 from numba import njit
 
 import dataset as ds
-import wfdb
 
 
 sys.path.append('..')
+
 
 @njit(nogil=True)
 def get_pos_of_max(pred):
