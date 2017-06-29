@@ -180,7 +180,11 @@ def selu(x):
     scale = 1.0507009873554804934193349852946
     return scale * K.elu(x, alpha)
 
-def get_activations(model, model_inputs, print_shape_only=False, layer_name=None):
+def get_activations(model, model_inputs, layer_name=None):
+    """Retrieve activation values from a layer of a model given
+    the input.
+    """
+    
     activations = []
     inp = model.input
 
