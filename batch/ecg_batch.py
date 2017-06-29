@@ -48,20 +48,20 @@ class RFFT(Layer):
     def __init__(self, *agrs, **kwargs):
         super(RFFT, self).__init__(*agrs, **kwargs)
 
-    def fft(self, x, fft_call):
+    def fft(self, x, fft_fn):
         '''
         Computes one-dimensional discrete Fourier Transform on each slice along last dim.
         Returns amplitude spectrum.
 
         Arguments
         x: 3D tensor (batch_size, signal_length, nb_channels)
-        fft_call: function that performs fft
+        fft_fn: function that performs fft
 
         Retrun
         out: 3D tensor (batch_size, signal_length, nb_channels) of type tf.float32
         '''
         resh = K.cast(K.map_fn(K.transpose, x), dtype='complex64')
-        spec = K.abs(K.map_fn(fft_call, resh))
+        spec = K.abs(K.map_fn(fft_fn, resh))
         out = K.cast(K.map_fn(K.transpose, spec), dtype='float32')
         return out
 
@@ -188,7 +188,6 @@ class Inception2D(Layer):
         '''
         return (*input_shape[:-1], self.base_dim + 3 * self.nb_filters)
 
-
 @njit(nogil=True)
 def get_pos_of_max(pred):
     '''
@@ -201,7 +200,6 @@ def get_pos_of_max(pred):
     for i in range(len(labels)):
         labels[i, pred[i].argmax()] = 1
     return labels
-
 
 def resample_signal(signal, annot, meta, index, new_fs):
     """
@@ -217,7 +215,6 @@ def resample_signal(signal, annot, meta, index, new_fs):
     signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
     out_meta = {**meta, 'fs': new_fs}
     return [signal, annot, out_meta, index]
-
 
 def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
     """
@@ -261,7 +258,6 @@ def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
         segments = segments.copy()
     return [segments, {}, meta, index]
 
-
 def drop_noise(signal, annot, meta, index):
     '''
     Drop signals labeled as noise in meta. Retruns input if signal is not labeles as noise and
@@ -275,7 +271,6 @@ def drop_noise(signal, annot, meta, index):
     else:
         return [signal, annot, meta, index]
 
-
 def replace_labels_in_meta(signal, annot, meta, index, new_labels):
     '''
     Replaces diag label by new label.
@@ -285,7 +280,6 @@ def replace_labels_in_meta(signal, annot, meta, index, new_labels):
     '''
     meta.update({'diag': new_labels[meta['diag']]})
     return [signal, annot, meta, index]
-
 
 def augment_fs_signal(signal, annot, meta, index, distr, params):
     '''
@@ -308,7 +302,6 @@ def augment_fs_signal(signal, annot, meta, index, distr, params):
     elif distr == 'delta':
         new_fs = params['loc']
     return resample_signal(signal, annot, meta, index, new_fs)
-
 
 def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
     '''
@@ -394,7 +387,6 @@ def load_wfdb(index, path):
     signal = signal.T
     return [signal, {}, meta, index]
 
-
 def load_npz(index, path):
     """
     Load signal and meta, loading of annotation should be added
@@ -404,7 +396,6 @@ def load_npz(index, path):
     annot = data["annotation"].tolist()
     meta = data["meta"].tolist()
     return [signal, annot, meta, index]
-
 
 def dump_ecg_signal(signal, annot, meta, index, path, fmt):
     """
