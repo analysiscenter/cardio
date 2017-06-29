@@ -406,7 +406,7 @@ def load_npz(index, path):
     return [signal, annot, meta, index]
 
 
-def dump_ecg(signal, annot, meta, index, path, fmt):
+def dump_ecg_signal(signal, annot, meta, index, path, fmt):
     """
     Save ecg in a separate file as 'path/<index>.<fmt>'
     """
@@ -465,8 +465,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         self._data = data
 
     @ds.action
-    @ds.inbatch_parallel(init='init_parallel_empty', post="post_parallel", target='threads')
-    def load(self, index, src, fmt):#pylint: disable=signature-differs, arguments-differ
+    @ds.inbatch_parallel(init='indices', post="post_parallel", target='threads')
+    def load_ecg(self, index, src, fmt):
         """
         Loads data from different sources
         src is not used yet, so files locations are defined by the index
@@ -480,11 +480,11 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='threads')
-    def dump(self, signal, annot, meta, index, path, fmt):#pylint: disable=signature-differs, arguments-differ
+    def dump_ecg(self, signal, annot, meta, index, path, fmt):
         """
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
-        return dump_ecg(signal, annot, meta, index, path, fmt)
+        return dump_ecg_signal(signal, annot, meta, index, path, fmt)
 
     def __getitem__(self, index):
         try:
@@ -514,13 +514,6 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         '''
         _ = args, kwargs
         return [[*self[i], i] for i in self.indices]
-
-    def init_parallel_empty(self, *args, **kwargs):
-        '''
-        Return ecg indices
-        '''
-        _ = args, kwargs
-        return self.indices
 
     def post_parallel(self, all_results, *args, **kwargs):
         #pylint: disable=too-many-locals
@@ -675,14 +668,14 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         ref = pd.read_csv(path, header=None)
         ref.columns = ['index', 'diag']
         ref = ref.set_index('index')  #pylint: disable=no-member
-        for ecg in self.index.indices:
+        for ecg in self.indices:
             self._meta[ecg]['diag'] = ref.ix[ecg]['diag']
         return self
 
     @ds.model()
     def hmm_learn():
         """
-        Find n_components in signal
+        Hidden Markov Model to find n_components in signal
         """
         n_components = 3
         n_iter = 10
