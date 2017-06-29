@@ -9,7 +9,7 @@ import wfdb
 
 from keras.layers import Convolution1D, MaxPooling1D, \
 GlobalMaxPooling1D, Input, Dense, Dropout
-from keras.models import Model, model_from_yaml, load_model
+from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 import keras.backend as K
 from scipy.signal import resample_poly
@@ -181,10 +181,8 @@ def selu(x):
     return scale * K.elu(x, alpha)
 
 def get_activations(model, model_inputs, layer_name=None):
-    """Retrieve activation values from a layer of a model given
-    the input.
+    """Retrieve activation values from a layer of a model given the input.
     """
-    
     activations = []
     inp = model.input
 
