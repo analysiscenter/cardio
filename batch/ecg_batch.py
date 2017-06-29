@@ -9,7 +9,7 @@ import wfdb
 
 from keras.layers import Convolution1D, MaxPooling1D, \
 GlobalMaxPooling1D, Input, Dense, Dropout
-from keras.models import Model, model_from_yaml
+from keras.models import Model, model_from_yaml, load_model
 from keras.optimizers import Adam
 import keras.backend as K
 from scipy.signal import resample_poly
@@ -179,6 +179,34 @@ def selu(x):
     alpha = 1.6732632423543772848170429916717
     scale = 1.0507009873554804934193349852946
     return scale * K.elu(x, alpha)
+
+def get_activations(model, model_inputs, print_shape_only=False, layer_name=None):
+    activations = []
+    inp = model.input
+
+    model_multi_inputs_cond = True
+    if not isinstance(inp, list):
+        # only one input! wrap it in a list.
+        inp = [inp]
+        model_multi_inputs_cond = False
+
+    outputs = [layer.output for layer in model.layers if
+               layer.name == layer_name or layer_name is None]  # all layer outputs
+
+    funcs = [K.function(inp + [K.learning_phase()], [out]) for out in outputs]  # evaluation functions
+
+    if model_multi_inputs_cond:
+        list_inputs = []
+        list_inputs.extend(model_inputs)
+        list_inputs.append(1.)
+    else:
+        list_inputs = [model_inputs, 1.]
+
+    layer_outputs = [func(list_inputs)[0] for func in funcs]
+    for layer_activations in layer_outputs:
+        activations.append(layer_activations)
+
+    return np.array(activations)
 
 
 class Error(Exception):
