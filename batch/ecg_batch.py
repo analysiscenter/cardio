@@ -412,6 +412,16 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
         return operator(self.signal[pos].shape[1],
                         length), sys._getframe().f_code.co_name #pylint: disable=protected-access
 
+    @ds.action
+    @ds.inbatch_parallel(
+        init='indices', post='input_check_post', target='threads')
+    def check_signal_fs(self, index, fs=None):
+        """Check if sampling rate of the signal equals to desired
+        sampling rate.
+        """
+        pos = self.index.get_pos(index)
+        return self.meta[pos]['fs']==fs, sys._getframe().f_code.co_name #pylint: disable=protected-access
+
     def update(self, data=None, annot=None, meta=None):
         """
         Update content of ecg_batch
