@@ -508,8 +508,23 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
             data=batch_data, annot=batch_annot, meta=batch_meta)
 
     @ds.action
+    @ds.inbatch_parallel(init="init_parallel", 
+                         post="post_parallel", target='threads')
+    def bandpass_filter(self, sig, annot, meta, index, low, high):
+        freq = meta['fs']
+        sig_rfft = np.fft.rfft(sig)
+        sig_freq = np.fft.rfftfreq(sig.shape[1], 1/freq)
+        mask = np.zeros(len(sig_freq), dtype=bool)
+        if low is not None:
+            mask |= (sig_freq <= low)
+        if high is not None:
+            mask |= (sig_freq >= high)
+        sig_rfft[:,mask] = 0
+        return [np.fft.irfft(sig_rfft), annot, meta, index]   
+    
+    @ds.action
     @ds.inbatch_parallel(
-        init="init_parallel", post="post_parallel", target='mpc')
+            init="init_parallel", post="post_parallel", target='mpc')
     def resample(self, new_fs): #pylint: disable=no-self-use
         """
         Resample all signals in batch along axis=1 to new sampling rate. Retruns resampled batch with modified meta.
