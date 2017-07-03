@@ -135,7 +135,7 @@ class To2D(Layer):
         return (*input_shape, 1)
 
 
-class Inception2D(Layer):
+class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
     '''
     Keras layer implements inception block.
 
@@ -164,36 +164,38 @@ class Inception2D(Layer):
 
     def build(self, input_shape):
         x = Input(input_shape[1:])
-        self.conv_1 = Conv2D(self.base_dim, (1, 1),
-                             activation=self.activation, padding='same') 
+        self.conv_1 = Conv2D(self.base_dim, (1, 1),#pylint: disable=attribute-defined-outside-init
+                             activation=self.activation, padding='same')
         _ = self.conv_1(x)
         self.trainable_weights.extend(self.conv_1.trainable_weights)
 
-        self.conv_2 = Conv2D(self.base_dim, (1, 1),
+        self.conv_2 = Conv2D(self.base_dim, (1, 1),#pylint: disable=attribute-defined-outside-init
                              activation=self.activation, padding='same')
         out = self.conv_2(x)
         self.trainable_weights.extend(self.conv_2.trainable_weights)
-        self.conv_2a = Conv2D(self.nb_filters, (self.kernel_size_1, self.kernel_size_1),
+        self.conv_2a = Conv2D(self.nb_filters,#pylint: disable=attribute-defined-outside-init
+                              (self.kernel_size_1, self.kernel_size_1),
                               activation=self.activation, padding='same')
         out = self.conv_2a(out)
         self.trainable_weights.extend(self.conv_2a.trainable_weights)
 
-        self.conv_3 = Conv2D(self.base_dim, (1, 1),
+        self.conv_3 = Conv2D(self.base_dim, (1, 1),#pylint: disable=attribute-defined-outside-init
                              activation=self.activation, padding='same')
         out = self.conv_3(x)
         self.trainable_weights.extend(self.conv_3.trainable_weights)
-        self.conv_3a = Conv2D(self.nb_filters, (self.kernel_size_2, self.kernel_size_2),
+        self.conv_3a = Conv2D(self.nb_filters,#pylint: disable=attribute-defined-outside-init
+                              (self.kernel_size_2, self.kernel_size_2),
                               activation=self.activation, padding='same')
         out = self.conv_3a(out)
         self.trainable_weights.extend(self.conv_3a.trainable_weights)
 
-        self.conv_4 = Conv2D(self.nb_filters, (1, 1),
+        self.conv_4 = Conv2D(self.nb_filters, (1, 1),#pylint: disable=attribute-defined-outside-init
                              activation=self.activation, padding='same')
         _ = self.conv_4(x)
         self.trainable_weights.extend(self.conv_4.trainable_weights)
 
-        return super(Inception2D, self).build(input_shape) 
-        
+        return super(Inception2D, self).build(input_shape)
+
     def call(self, x):
         conv_1 = self.conv_1(x)
 
