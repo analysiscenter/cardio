@@ -10,15 +10,15 @@ def preprocess(dataset, src, dir_ecg):
     '''
     Preprocess for fft_inception model
     '''
-	return (data_source.p
-			.load_ecg(src, 'wfdb')
-			.load_labels(DIR_ECG + 'REFERENCE.csv')
-			.drop_noise()
-			.augment_fs([('delta', {'loc': 250}),
-						 ('delta', {'loc': 350}),
-						 ('none', {})])
-			.split_to_segments(3000, 3000, pad=True, return_copy=False)
-			.replace_labels('fft_inception', {'A': 'A', 'N': 'nonA', 'O': 'nonA'}))
+    return (data_source.p
+            .load_ecg(src, 'wfdb')
+            .load_labels(DIR_ECG + 'REFERENCE.csv')
+            .drop_noise()
+            .augment_fs([('delta', {'loc': 250}),
+                         ('delta', {'loc': 350}),
+                         ('none', {})])
+            .split_to_segments(3000, 3000, pad=True, return_copy=False)
+            .replace_labels('fft_inception', {'A': 'A', 'N': 'NonA', 'O': 'NonA'}))
 
 
 def show_loss(dataset, model_name):
