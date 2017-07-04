@@ -1,16 +1,9 @@
 """ contain tools for processing ECGs """
 
 import os
-import sys
-import copy
-import itertools
-import warnings
 import numpy as np
-import pandas as pd
 
 from scipy.signal import resample_poly
-from sklearn.metrics import f1_score, log_loss
-from sklearn.externals import joblib
 from numba import njit
 
 import wfdb

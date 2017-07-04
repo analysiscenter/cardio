@@ -1,6 +1,5 @@
 """ contain Batch class for processing ECGs """
 
-import os
 import sys
 import copy
 import itertools
@@ -8,16 +7,13 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from scipy.signal import resample_poly
 from sklearn.metrics import f1_score, log_loss
 from sklearn.externals import joblib
-from numba import njit
 
-from keras.layers import Input, Conv1D, Conv2D, \
-                         MaxPooling1D, MaxPooling2D, Lambda, \
-                         Reshape, Dense, GlobalMaxPooling2D
+from keras.layers import Input, Conv1D, \
+                         MaxPooling1D, MaxPooling2D, \
+                         Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
-from keras.layers.merge import Concatenate
 from keras.models import Model, model_from_yaml
 from keras.optimizers import Adam
 
@@ -69,7 +65,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
         return bt.dump_ecg_signal(signal, annot, meta, index, path, fmt)
-    
+
     def __getitem__(self, index):
         try:
             pos = self.get_pos(None, None, index)
@@ -79,7 +75,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         return (self.signal[pos],
                 {k: v[pos] for k, v in self.annotation.items()},
                 self.meta[index])
-    
+
     def update(self, data=None, annot=None, meta=None):
         """
         Update content of ecg_batch

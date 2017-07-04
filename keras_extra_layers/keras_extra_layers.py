@@ -1,13 +1,11 @@
 """ contain keras custom layers """
 
 from keras.engine.topology import Layer
-from keras.layers import Input, Conv1D, Conv2D, \
-                         MaxPooling1D, MaxPooling2D, Lambda, \
-                         Reshape, Dense, GlobalMaxPooling2D
-from keras.layers.core import Dropout
+from keras.layers import Input, Conv2D, \
+                         MaxPooling2D, Lambda, \
+                         Reshape 
+        GlobalMaxPooling2D
 from keras.layers.merge import Concatenate
-from keras.models import Model, model_from_yaml
-from keras.optimizers import Adam
 import keras.backend as K
 
 class RFFT(Layer):
