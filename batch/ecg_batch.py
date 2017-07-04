@@ -33,7 +33,10 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     """
     def __init__(self, index, preloaded=None):
         super().__init__(index, preloaded)
-        self._data = (np.array([]), {}, dict())
+        self._data = (None, None, None)
+        self.signal = np.array([])
+        self.annotation = {}
+        self.meta = dict()
         self.history = []
 
     @property
