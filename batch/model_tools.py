@@ -25,7 +25,7 @@ def show_loss(dataset, model_name):
     '''
     Show loss and metric for train and validation parts
     '''
-	batch = dataset.next_batch(1)
+    batch = dataset.next_batch(1)
     model_comp = batch.get_model_by_name(model_name)
     model, hist, _ = model_comp
 
@@ -49,7 +49,7 @@ def learning_rate_scheduler(dataset, model_name, epoch, lr_s):
     '''
     Schedule learning rate
     '''
-	batch = dataset.next_batch(1)
+    batch = dataset.next_batch(1)
     model_comp = batch.get_model_by_name(model_name)
     model = model_comp[0]
     if epoch in lr_s[0]:
