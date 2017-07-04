@@ -18,7 +18,7 @@ def preprocess(dataset, src, dir_ecg):
 						 ('delta', {'loc': 350}),
 						 ('none', {})])
 			.split_to_segments(3000, 3000, pad=True, return_copy=False)
-			.replace_labels('fft_inception', {'A': 'A', 'N': 'NonA', 'O': 'NonA'}))
+			.replace_labels('fft_inception', {'A': 'A', 'N': 'nonA', 'O': 'nonA'}))
 
 
 def show_loss(dataset, model_name):
