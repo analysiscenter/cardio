@@ -27,7 +27,7 @@ def show_loss(dataset, model_name):
     '''
     batch = dataset.next_batch(1)
     model_comp = batch.get_model_by_name(model_name)
-    model, hist, _ = model_comp
+    hist = model_comp[1]
 
     metrics = ['train_loss',
                'train_metric',
@@ -69,8 +69,8 @@ def train_model(dataset, model_name, preprocess,#pylint: disable=too-many-argume
     else:
         dataset.cv_split(1)
 
-    ppt = preprocess_fft_inception(dataset.train).train_on_batch(model_name)
-    ppv = preprocess_fft_inception(dataset.test).validate_on_batch(model_name)
+    ppt = preprocess(dataset.train).train_on_batch(model_name)
+    ppv = preprocess(dataset.test).validate_on_batch(model_name)
 
     hist = []
 
