@@ -267,7 +267,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
                                 n_iter=n_iter)
         return model
 
-    @ds.action()
+    @ds.action
     def set_new_model(self, model_name, new_model):
         '''
         Replace base model by new model.
@@ -327,7 +327,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
         return model, hist, diag_classes
 
-    @ds.action()
+    @ds.action
     def replace_labels(self, model_name, new_labels):
         '''
         Replace original labels by new labels.
@@ -340,7 +340,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model_comp[2] = list(new_labels.values())
         return self.replace_all_labels(new_labels)
 
-    @ds.action()
+    @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
     def replace_all_labels(self, new_labels):
@@ -353,7 +353,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         _ = new_labels
         return bt.replace_labels_in_meta
 
-    @ds.action()
+    @ds.action
     def get_categorical_labels(self, model_name):
         '''
         Returns a dummy matrix given an array of categorical labels.
@@ -365,7 +365,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         labels = [self.meta[ind]['diag'] for ind in self.indices]
         return pd.get_dummies(classes + labels).as_matrix()[len(classes):]
 
-    @ds.action()
+    @ds.action
     def train_on_batch(self, model_name):
         '''
         Train model
@@ -381,7 +381,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         hist['train_metric'].append(f1_score(train_y, y_pred, average='macro'))
         return self
 
-    @ds.action()
+    @ds.action
     def validate_on_batch(self, model_name):
         '''
         Validate model
@@ -396,7 +396,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         hist['val_metric'].append(f1_score(test_y, y_pred, average='macro'))
         return self
 
-    @ds.action()
+    @ds.action
     def model_summary(self, model_name):
         '''
         Print model layers
@@ -406,7 +406,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         print(model_comp[0].summary())
         return self
 
-    @ds.action()
+    @ds.action
     def save_model(self, model_name, fname):
         '''
         Save model layers and weights
@@ -420,7 +420,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         fout.close()
         return self
 
-    @ds.action()
+    @ds.action
     def load_model(self, model_name, fname):
         '''
         Load model layers and weights
@@ -434,7 +434,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model.load_weights(fname)
         return self
 
-    @ds.action()
+    @ds.action
     def train_hmm(self, model_name):
         '''
         Train hmm model on the whole batch
@@ -446,7 +446,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model.fit(train_x, lengths)
         return self
 
-    @ds.action()
+    @ds.action
     def predict_hmm(self, model_name):
         '''
         Get hmm predictited classes
@@ -454,9 +454,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model = self.get_model_by_name(model_name)
         return self.predict_all_hmm(model)
 
-    @ds.action()
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
+    @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
     def predict_all_hmm(self, model):
         '''
         Get hmm predictited classes
@@ -464,7 +463,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         _ = model
         return bt.predict_hmm_classes
 
-    @ds.action()
+    @ds.action
     def save_hmm_model(self, model_name, fname):
         '''
         Save hmm model
@@ -473,7 +472,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         joblib.dump(model, fname + '.pkl')
         return self
 
-    @ds.action()
+    @ds.action
     def load_hmm_model(self, model_name, fname):
         '''
         Load hmm model
@@ -482,9 +481,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         model = joblib.load(fname + '.pkl')
         return self
 
-    @ds.action()
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
+    @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
     def gradient(self, order):
         """
         Compute derivative of given order and add it to annotation
@@ -492,9 +490,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         _ = order
         return bt.get_gradient
 
-    @ds.action()
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
+    @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
     def convolve(self, layer, kernel):
         """
         Convolve layer with kernel
@@ -502,7 +499,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         _ = layer, kernel
         return bt.convolve_layer
 
-    @ds.action()
+    @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
                          target='mpc')
     def merge_layers(self, list_of_layers):

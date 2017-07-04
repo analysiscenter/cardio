@@ -136,53 +136,45 @@ class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
         self.kernel_size_1 = kernel_size_1
         self.kernel_size_2 = kernel_size_2
         self.activation = activation if activation is not None else 'linear'
+        self.layers = {}
         super(Inception2D, self).__init__(*agrs, **kwargs)
 
     def build(self, input_shape):
         x = Input(input_shape[1:])
-        self.conv_1 = Conv2D(self.base_dim, (1, 1),#pylint: disable=attribute-defined-outside-init
-                             activation=self.activation, padding='same')
-        _ = self.conv_1(x)
-        self.trainable_weights.extend(self.conv_1.trainable_weights)
+        self.layers.update({'conv_1': Conv2D(self.base_dim, (1, 1), activation=self.activation, padding='same')})
+        _ = self.layers['conv_1'](x)
 
-        self.conv_2 = Conv2D(self.base_dim, (1, 1),#pylint: disable=attribute-defined-outside-init
-                             activation=self.activation, padding='same')
-        out = self.conv_2(x)
-        self.trainable_weights.extend(self.conv_2.trainable_weights)
-        self.conv_2a = Conv2D(self.nb_filters,#pylint: disable=attribute-defined-outside-init
-                              (self.kernel_size_1, self.kernel_size_1),
-                              activation=self.activation, padding='same')
-        out = self.conv_2a(out)
-        self.trainable_weights.extend(self.conv_2a.trainable_weights)
+        self.layers.update({'conv_2': Conv2D(self.base_dim, (1, 1), activation=self.activation, padding='same')})
+        out = self.layers['conv_2'](x)
+        self.layers.update({'conv_2a': Conv2D(self.nb_filters, (self.kernel_size_1, self.kernel_size_1),
+                                              activation=self.activation, padding='same')})
+        out = self.layers['conv_2a'](out)
 
-        self.conv_3 = Conv2D(self.base_dim, (1, 1),#pylint: disable=attribute-defined-outside-init
-                             activation=self.activation, padding='same')
-        out = self.conv_3(x)
-        self.trainable_weights.extend(self.conv_3.trainable_weights)
-        self.conv_3a = Conv2D(self.nb_filters,#pylint: disable=attribute-defined-outside-init
-                              (self.kernel_size_2, self.kernel_size_2),
-                              activation=self.activation, padding='same')
-        out = self.conv_3a(out)
-        self.trainable_weights.extend(self.conv_3a.trainable_weights)
+        self.layers.update({'conv_3': Conv2D(self.base_dim, (1, 1), activation=self.activation, padding='same')})
+        out = self.layers['conv_3'](x)
+        self.layers.update({'conv_3a': Conv2D(self.nb_filters, (self.kernel_size_2, self.kernel_size_2),
+                                              activation=self.activation, padding='same')})
+        out = self.layers['conv_3a'](out)
 
-        self.conv_4 = Conv2D(self.nb_filters, (1, 1),#pylint: disable=attribute-defined-outside-init
-                             activation=self.activation, padding='same')
-        _ = self.conv_4(x)
-        self.trainable_weights.extend(self.conv_4.trainable_weights)
+        self.layers.update({'conv_4': Conv2D(self.nb_filters, (1, 1), activation=self.activation, padding='same')})
+        _ = self.layers['conv_4'](x)
+
+        for layer in self.layers.values():
+            self.trainable_weights.extend(layer.trainable_weights)
 
         return super(Inception2D, self).build(input_shape)
 
     def call(self, x):
-        conv_1 = self.conv_1(x)
+        conv_1 = self.layers['conv_1'](x)
 
-        conv_2 = self.conv_2(x)
-        conv_2a = self.conv_2a(conv_2)
+        conv_2 = self.layers['conv_2'](x)
+        conv_2a = self.layers['conv_2a'](conv_2)
 
-        conv_3 = self.conv_3(x)
-        conv_3a = self.conv_3a(conv_3)
+        conv_3 = self.layers['conv_3'](x)
+        conv_3a = self.layers['conv_3a'](conv_3)
 
         pool = MaxPooling2D(strides=(1, 1), padding='same')(x)
-        conv_4 = self.conv_4(pool)
+        conv_4 = self.layers['conv_4'](pool)
 
         return Concatenate(axis=-1)([conv_1, conv_2a, conv_3a, conv_4])
 
