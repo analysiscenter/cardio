@@ -391,17 +391,11 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
         if ds.any_action_failed(all_results):
             all_errors = self.get_errors(all_results)
             print(all_errors)
-            raise ValueError("Checkup failed: failed to assemble results.")
-
-        all_good = np.all(np.array(all_results, dtype="object")[:, 0])
-        if not all_good:
-            raise InputDataError(
-                'Error with input data in function %s' % all_results[0][1])
-        return self
+            raise ValueError("Checkup failed")
 
     @ds.action
     @ds.inbatch_parallel(
-        init='indices', post='input_check_post', target='threads')
+        init='indices', post='input_check_post')
     def check_signal_length(self, index, operator=np.greater_equal, length=0):
         """Check if real length of the signal is appropriate.
         Args:
@@ -409,18 +403,23 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
         length - value to compare with real signal length
         """
         pos = self.index.get_pos(index)
-        return operator(self.signal[pos].shape[1],
-                        length), sys._getframe().f_code.co_name #pylint: disable=protected-access
+        if operator(self.signal[pos].shape[1], length):
+            return True
+        else:
+            raise InputDataError('Signal length is wrong')
 
     @ds.action
     @ds.inbatch_parallel(
-        init='indices', post='input_check_post', target='threads')
+        init='indices', post='input_check_post')
     def check_signal_fs(self, index, desired_fs=None):
         """Check if sampling rate of the signal equals to desired
         sampling rate.
         """
         pos = self.index.get_pos(index)
-        return np.equals(self.meta[pos]['fs'], desired_fs), sys._getframe().f_code.co_name #pylint: disable=protected-access
+        if np.equals(self.meta[pos]['fs'], desired_fs):
+            return True
+        else:
+            raise InputDataError('Signal sampling rate is wrong')
 
     def update(self, data=None, annot=None, meta=None):
         """
