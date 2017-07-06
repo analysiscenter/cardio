@@ -1,41 +1,53 @@
-import pytest
-import dataset as ds
+"""Module for testing ecg_batch methods
+"""
+
 import os
-from ecg_batch2 import *
+
+import pytest
 from copy import deepcopy
+import numpy as np
+
+import dataset as ds
+import ecg_batch2 as eb
 
 
 @pytest.fixture(scope="module")
 def setup_module_load(request):
+    '''
+    '''
     print("\nModule setup")
-    PATH = 'data/'
-    files = os.listdir(PATH)
-    # TODO: make better test for presence of files .hea and 
+    path = 'data/'
+    files = ["A00001.hea", "A00004.hea", "A00001.mat", "A00004.mat", "REFERENCE.csv"]
+    # TODO: make better test for presence of files .hea and
     # REFERENCE.csv
-    if ("A00001.mat" in files) and ("A00004.mat" in files):
-        PATH = 'data/'
-        ind = ds.FilesIndex(path=PATH + '*.hea', no_ext=True, sort=True)
-        batch_init = EcgBatch(ind)
+    if np.all([os.path.isfile(path+file) for file in files]):
+        ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
+        batch_init = eb.EcgBatch(ind)
     else:
         raise ValueError('Something wrong with test data!')
 
     def teardown_module_load():
-        print("\nModule teardown")
-        os.remove(PATH + "A00001.npz")
-        os.remove(PATH + "A00004.npz")
+        '''
+        '''
+        print("Module teardown")
+        os.remove(path + "A00001.npz")
+        os.remove(path + "A00004.npz")
 
     request.addfinalizer(teardown_module_load)
-    return batch_init, PATH
-
+    return batch_init, path
 
 @pytest.fixture(scope="class")
 def setup_class_methods(request):
+    '''
+    '''
     print("\nClass setup")
-    PATH = 'data/'
-    ind = ds.FilesIndex(path=PATH + '*.hea', no_ext=True, sort=True)
-    batch_loaded = EcgBatch(ind).load(src=None, fmt="wfdb")
+    path = 'data/'
+    ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
+    batch_loaded = eb.EcgBatch(ind).load(src=None, fmt="wfdb")
 
     def teardown_class_methods():
+        '''
+        '''
         print("\nClass teardown")
 
     request.addfinalizer(teardown_class_methods)
@@ -46,7 +58,9 @@ class TestEcgBatchLoad():
     '''
     '''
 
-    def test_load_wfdb(self, setup_module_load):
+    def test_load_wfdb(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
+        '''
+        '''
         batch = deepcopy(setup_module_load[0])
         batch = batch.load(src=None, fmt='wfdb')
         assert isinstance(batch.signal, np.ndarray)
@@ -58,20 +72,24 @@ class TestEcgBatchLoad():
         assert len(batch[batch.indices[0]]) == 3
         del batch
 
-    def test_dump(self, setup_module_load):
+    def test_dump(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
+        '''
+        '''
         batch = deepcopy(setup_module_load[0])
-        PATH = setup_module_load[1]
+        path = setup_module_load[1]
         batch = batch.load(src=None, fmt='wfdb')
-        batch = batch.dump(dst=PATH, fmt='npz')
-        files = os.listdir(PATH)
-        assert ("A00001.npz" in files)
-        assert ("A00004.npz" in files)
+        batch = batch.dump(dst=path, fmt='npz')
+        files = os.listdir(path)
+        assert "A00001.npz" in files
+        assert "A00004.npz" in files
         del batch
 
-    def test_load_npz(self, setup_module_load):
-        PATH = setup_module_load[1]
-        ind = ds.FilesIndex(path=PATH + '*.npz', no_ext=True, sort=True)
-        batch = EcgBatch(ind)
+    def test_load_npz(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
+        '''
+        '''
+        path = setup_module_load[1]
+        ind = ds.FilesIndex(path=path + '*.npz', no_ext=True, sort=True)
+        batch = eb.EcgBatch(ind)
         batch = batch.load(src=None, fmt='npz')
         assert isinstance(batch.signal, np.ndarray)
         assert isinstance(batch.meta, dict)
@@ -85,22 +103,27 @@ class TestEcgBatchLoad():
 
 
 @pytest.mark.usefixtures("setup_class_methods")
-class TestEcgBatch_single_methods:
+class TestEcgBatchSingleMethods:
     '''
     '''
 
-    def test_load_labels(self, setup_module_load, setup_class_methods):
+    def test_load_labels(self, setup_module_load, 
+                         setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
+        '''
+        '''
         batch = deepcopy(setup_class_methods)
-        PATH = setup_module_load[1]
+        path = setup_module_load[1]
         batch = batch.load(
-            fmt="wfdb", src=None).load_labels(PATH + "REFERENCE.csv")
+            fmt="wfdb", src=None).load_labels(path + "REFERENCE.csv")
         if "diag" in batch["A00001"][2].keys():
             assert batch["A00001"][2]['diag'] == 'N'
             assert batch["A00004"][2]['diag'] == 'A'
         else:
             raise ValueError("No key 'diag' in meta!")
 
-    def test_split_to_segments(self, setup_class_methods):
+    def test_split_to_segments(self, setup_class_methods): #pylint: disable=no-self-use,redefined-outer-name
+        '''
+        '''
         batch = deepcopy(setup_class_methods)
         batch = batch.split_to_segments(
             4500, 4499, pad=True, return_copy=False)
