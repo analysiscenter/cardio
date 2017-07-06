@@ -150,7 +150,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         else:
             metas = []
             for i, rep in enumerate(list_of_lens):
-                for j in range(rep):#pylint: disable=unused-variable
+                for _ in range(rep):
                     metas.append(copy.deepcopy(list_of_meta[i]))
             metas = np.array(metas)
         for i in range(len(batch_data)):
@@ -162,7 +162,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         else:
             annots = []
             for i, rep in enumerate(list_of_lens):
-                for j in range(rep):#pylint: disable=unused-variable
+                for _ in range(rep):
                     annots.append(copy.deepcopy(list_of_annot[i]))
             annots = np.array(annots)
         if len(annots) > 0:
