@@ -2,18 +2,19 @@
 """
 
 import os
-
-import pytest
 from copy import deepcopy
+
 import numpy as np
+import pytest
 
 import dataset as ds
-import ecg_batch2 as eb
+import ecg_batch as eb
 
 
 @pytest.fixture(scope="module")
 def setup_module_load(request):
     '''
+    Fixture to setup module
     '''
     print("\nModule setup")
     path = 'data/'
@@ -28,6 +29,7 @@ def setup_module_load(request):
 
     def teardown_module_load():
         '''
+        Teardown module
         '''
         print("Module teardown")
         os.remove(path + "A00001.npz")
@@ -39,6 +41,7 @@ def setup_module_load(request):
 @pytest.fixture(scope="class")
 def setup_class_methods(request):
     '''
+    Fixture to setup class
     '''
     print("\nClass setup")
     path = 'data/'
@@ -47,6 +50,7 @@ def setup_class_methods(request):
 
     def teardown_class_methods():
         '''
+        Teardown class
         '''
         print("\nClass teardown")
 
@@ -56,10 +60,12 @@ def setup_class_methods(request):
 
 class TestEcgBatchLoad():
     '''
+    Class for test of load / dump methods
     '''
 
     def test_load_wfdb(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
         '''
+        Test of wfdb loader
         '''
         batch = deepcopy(setup_module_load[0])
         batch = batch.load(src=None, fmt='wfdb')
@@ -74,6 +80,7 @@ class TestEcgBatchLoad():
 
     def test_dump(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
         '''
+        Test of dump to npz
         '''
         batch = deepcopy(setup_module_load[0])
         path = setup_module_load[1]
@@ -86,6 +93,7 @@ class TestEcgBatchLoad():
 
     def test_load_npz(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
         '''
+        Test of npz loader
         '''
         path = setup_module_load[1]
         ind = ds.FilesIndex(path=path + '*.npz', no_ext=True, sort=True)
@@ -105,11 +113,25 @@ class TestEcgBatchLoad():
 @pytest.mark.usefixtures("setup_class_methods")
 class TestEcgBatchSingleMethods:
     '''
+    Class for testing other single methods of EcgBatch class
     '''
 
-    def test_load_labels(self, setup_module_load, 
+    def test_augment_fs(self, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
+        '''
+        Testing augmentation of sampling rate
+        '''
+        batch = deepcopy(setup_class_methods)
+        old_fs = batch[batch.indices[0]][2]['fs']
+        new_fs = old_fs+50
+        batch = batch.augment_fs([("delta", {'loc': new_fs})])
+        assert batch.indices.shape == (2,)
+        assert batch["A00001"][2]['fs'] == new_fs
+        assert batch["A00004"][2]['fs'] == new_fs
+
+    def test_load_labels(self, setup_module_load,
                          setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
         '''
+        Testing of labels loader
         '''
         batch = deepcopy(setup_class_methods)
         path = setup_module_load[1]
@@ -123,6 +145,7 @@ class TestEcgBatchSingleMethods:
 
     def test_split_to_segments(self, setup_class_methods): #pylint: disable=no-self-use,redefined-outer-name
         '''
+        Testing of segmentator
         '''
         batch = deepcopy(setup_class_methods)
         batch = batch.split_to_segments(
@@ -130,6 +153,38 @@ class TestEcgBatchSingleMethods:
         assert batch.indices.shape == (4, )
         assert batch.signal[0].shape == (1, 4500)
 
-    #def test_augment_fs(self, setup_class_methods):
-    #    batch = setup_class_methods[0]
-    #    batch = batch.augment_fs([("delta", {})])
+    def test_replace_all_labels(self, setup_class_methods,
+                                setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
+        '''
+        Testing of label replacer
+        '''
+        batch = deepcopy(setup_class_methods)
+        path = setup_module_load[1]
+        batch = batch.load_labels(path + "REFERENCE.csv")
+        batch = batch.replace_all_labels({"A":"A","N":"NonA"})
+        assert batch["A00001"][2]['diag'] == "NonA"
+        assert batch["A00004"][2]['diag'] == "A"
+
+    def test_update(self, setup_class_methods): #pylint: disable=no-self-use,redefined-outer-name
+        '''
+        Testing of updater
+        '''
+        batch = deepcopy(setup_class_methods)
+
+        s1 = np.array([1,2,3]).reshape(1,-1)
+        s2 = np.array([1,2,3,4]).reshape(1,-1)
+        data = np.array([s1,s2,[]],dtype=object)[:-1]
+        annotation = None
+        meta = dict(zip([0,1],[{"new_meta":True},{"new_meta":True}]))
+        batch.update(data, annotation, meta)
+        assert batch["A00001"][0].shape == (1,3)
+        assert batch["A00004"][0].shape == (1,4)
+        assert batch["A00001"][2]["new_meta"]
+        assert batch["A00004"][2]["new_meta"]
+
+# list_of_methods_to_implement = [
+#  'init_parallel',
+#  'post_parallel',
+#  'check_signal_fs',
+#  'check_signal_length'
+# ]
