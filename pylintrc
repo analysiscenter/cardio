@@ -1,3 +1,6 @@
+[BASIC]
+good-names=_,i,j,t,x,y,z
+
 [MASTER]
 extension-pkg-whitelist=numpy
 
