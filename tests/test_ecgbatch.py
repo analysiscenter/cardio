@@ -128,8 +128,7 @@ class TestEcgBatchSingleMethods:
         assert batch["A00001"][2]['fs'] == new_fs
         assert batch["A00004"][2]['fs'] == new_fs
 
-    def test_load_labels(self, setup_module_load,
-                         setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
+    def test_load_labels(self, setup_module_load, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
         '''
         Testing of labels loader
         '''
@@ -153,15 +152,14 @@ class TestEcgBatchSingleMethods:
         assert batch.indices.shape == (4, )
         assert batch.signal[0].shape == (1, 4500)
 
-    def test_replace_all_labels(self, setup_class_methods,
-                                setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
+    def test_replace_all_labels(self, setup_class_methods, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
         '''
         Testing of label replacer
         '''
         batch = deepcopy(setup_class_methods)
         path = setup_module_load[1]
         batch = batch.load_labels(path + "REFERENCE.csv")
-        batch = batch.replace_all_labels({"A":"A","N":"NonA"})
+        batch = batch.replace_all_labels({"A":"A", "N":"NonA"})
         assert batch["A00001"][2]['diag'] == "NonA"
         assert batch["A00004"][2]['diag'] == "A"
 
@@ -171,14 +169,14 @@ class TestEcgBatchSingleMethods:
         '''
         batch = deepcopy(setup_class_methods)
 
-        s1 = np.array([1,2,3]).reshape(1,-1)
-        s2 = np.array([1,2,3,4]).reshape(1,-1)
-        data = np.array([s1,s2,[]],dtype=object)[:-1]
+        seq1 = np.array([1, 2, 3]).reshape(1, -1)
+        seq2 = np.array([1, 2, 3, 4]).reshape(1, -1)
+        data = np.array([seq1, seq2, []], dtype=object)[:-1]
         annotation = None
-        meta = dict(zip([0,1],[{"new_meta":True},{"new_meta":True}]))
+        meta = dict(zip([0, 1], [{"new_meta":True}, {"new_meta":True}]))
         batch.update(data, annotation, meta)
-        assert batch["A00001"][0].shape == (1,3)
-        assert batch["A00004"][0].shape == (1,4)
+        assert batch["A00001"][0].shape == (1, 3)
+        assert batch["A00004"][0].shape == (1, 4)
         assert batch["A00001"][2]["new_meta"]
         assert batch["A00004"][2]["new_meta"]
 
