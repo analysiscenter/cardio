@@ -346,7 +346,7 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
         else:
             path = self.index.get_fullpath(index)
 
-        data_npz = np.load(path + '.npz')
+        data_npz = np.load(path)
         self.signal[pos] = data_npz["signal"]
         self.annotation[pos] = data_npz["annotation"]
         self.meta[pos] = data_npz["meta"].item()

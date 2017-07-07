@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 import dataset as ds
-import ecg_batch as eb
+from batch import ecg_batch as eb
 
 
 @pytest.fixture(scope="module")
