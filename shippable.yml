@@ -12,8 +12,8 @@ build:
     image_tag: $TAG
   ci:
     - pip3 install -r requirements.txt
-    - find . -not -path './dataset/*' -iname "*.py" | xargs -r pylint3 -rn --rcfile pylintrc
-    - nosetests test_ecgbatch.py --with-xunit --xunit-file=shippable/testresults/nosetests.xml
+    #- find . -not -path './dataset/*' -iname "*.py" | xargs -r pylint3 -rn --rcfile pylintrc
+    - pytest -v --junitxml=shippable/testresults/pytests.xml
 
 integrations:
   hub:
