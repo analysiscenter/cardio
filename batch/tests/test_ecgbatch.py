@@ -8,9 +8,10 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-sys.path.append("../..")
+sys.path.append("..")
+sys.path.append(".")
 import dataset as ds
-from .. import ecg_batch as eb
+from batch import EcgBatch
 
 
 @pytest.fixture(scope="module")
@@ -25,7 +26,7 @@ def setup_module_load(request):
     # REFERENCE.csv
     if np.all([os.path.isfile(path+file) for file in files]):
         ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
-        batch_init = eb.EcgBatch(ind)
+        batch_init = EcgBatch(ind)
     else:
         raise ValueError('Something wrong with test data!')
 
@@ -48,7 +49,7 @@ def setup_class_methods(request):
     print("\nClass setup")
     path = 'data/'
     ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
-    batch_loaded = eb.EcgBatch(ind).load(src=None, fmt="wfdb")
+    batch_loaded = EcgBatch(ind).load(src=None, fmt="wfdb")
 
     def teardown_class_methods():
         '''
@@ -99,7 +100,7 @@ class TestEcgBatchLoad():
         '''
         path = setup_module_load[1]
         ind = ds.FilesIndex(path=path + '*.npz', no_ext=True, sort=True)
-        batch = eb.EcgBatch(ind)
+        batch = EcgBatch(ind)
         batch = batch.load(src=None, fmt='npz')
         assert isinstance(batch.signal, np.ndarray)
         assert isinstance(batch.meta, dict)

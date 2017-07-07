@@ -16,10 +16,8 @@ from scipy.signal import resample_poly
 from sklearn.metrics import f1_score, log_loss
 from numba import njit
 
-import dataset as ds
-
-
 sys.path.append('..')
+import dataset as ds
 
 
 @njit(nogil=True)
