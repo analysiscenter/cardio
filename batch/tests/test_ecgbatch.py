@@ -2,13 +2,15 @@
 """
 
 import os
+import sys
 from copy import deepcopy
 
 import numpy as np
 import pytest
 
+sys.path.append("../..")
 import dataset as ds
-from batch import ecg_batch as eb
+from .. import ecg_batch as eb
 
 
 @pytest.fixture(scope="module")
