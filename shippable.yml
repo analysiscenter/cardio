@@ -13,7 +13,7 @@ build:
   ci:
     - pip3 install -r requirements.txt
     - find . -not -path './dataset/*' -iname "*.py" | xargs -r pylint3 -rn --rcfile pylintrc
-    - pytest
+    - py.test -v --color=yes --exitfirst --showlocals --durations=5
 
 integrations:
   hub:
