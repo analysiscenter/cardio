@@ -8,6 +8,9 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
+sys.path.append("..")
+sys.path.append(".")
+
 import dataset as ds
 from batch import EcgBatch
 
