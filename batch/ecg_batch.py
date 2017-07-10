@@ -17,6 +17,7 @@ from sklearn.metrics import f1_score, log_loss
 from numba import njit
 
 sys.path.append('..')
+sys.path.append('.')
 import dataset as ds
 
 
@@ -281,6 +282,8 @@ class EcgBatch(ds.Batch): #pylint:disable=too-many-public-methods
 
     @property
     def components(self):
+        """Establishing components of the data attribute.
+        """
         return "signal", "annotation", "meta"
 
     @ds.action
