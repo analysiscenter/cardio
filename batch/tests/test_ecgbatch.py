@@ -8,8 +8,6 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-sys.path.append("..")
-sys.path.append(".")
 import dataset as ds
 from batch import EcgBatch
 
@@ -20,7 +18,7 @@ def setup_module_load(request):
     Fixture to setup module
     '''
     print("\nModule setup")
-    path = os.getcwd()+'/data/'
+    path = os.path.dirname(os.path.realpath(__file__))+'/data/'
     files = ["A00001.hea", "A00004.hea", "A00001.mat", "A00004.mat", "REFERENCE.csv"]
     # TODO: make better test for presence of files .hea and
     # REFERENCE.csv
@@ -47,7 +45,7 @@ def setup_class_methods(request):
     Fixture to setup class
     '''
     print("\nClass setup")
-    path = os.getcwd()+'/data/'
+    path = os.path.dirname(os.path.realpath(__file__))+'/data/'
     ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
     batch_loaded = EcgBatch(ind).load(src=None, fmt="wfdb")
 
