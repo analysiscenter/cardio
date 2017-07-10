@@ -17,8 +17,7 @@ from sklearn.metrics import f1_score, log_loss
 from numba import njit
 
 sys.path.append('..')
-sys.path.append('.')
-import dataset as ds
+import dataset as ds #pylint: disable=import-error
 
 
 @njit(nogil=True)
