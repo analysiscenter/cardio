@@ -21,7 +21,7 @@ def setup_module_load(request):
     Fixture to setup module
     '''
     print("\nModule setup")
-    path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'data/')
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     files = ["A00001.hea", "A00004.hea", "A00001.mat", "A00004.mat", "REFERENCE.csv"]
     # TODO: make better test for presence of files .hea and
     # REFERENCE.csv
@@ -48,7 +48,7 @@ def setup_class_methods(request):
     Fixture to setup class
     '''
     print("\nClass setup")
-    path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'data/')
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
     batch_loaded = EcgBatch(ind).load(src=None, fmt="wfdb")
 

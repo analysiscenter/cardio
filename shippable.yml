@@ -12,7 +12,7 @@ build:
     image_tag: $TAG
   ci:
     - pip3 install -r requirements-shippable.txt
-    - find . -path './batch/*' -iname "*.py" | xargs -r pylint3 -rn --rcfile pylintrc
+    - pylint3 -rn --rcfile pylintrc batch
     - pytest -v --junitxml=shippable/testresults/pytests.xml
 
 integrations:
