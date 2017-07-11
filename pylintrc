@@ -2,7 +2,7 @@
 good-names=_,i,j,t,x,y,z
 
 [MASTER]
-init-hook='sys.path.append("./ecg")'
+init-hook="import sys; sys.path.append('./ecg'); sys.path.append('..')"
 extension-pkg-whitelist=numpy
 
 [FORMAT]
