@@ -118,6 +118,9 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             return self
 
         valid_results = [res for res in all_results if res is not None]
+		if len(valid_results) == 0:
+            print('Error: all resulta are None')
+            return self
 
         list_of_arrs = [x[0] for x in valid_results]
         list_of_lens = np.array([len(x[0]) for x in valid_results])
@@ -126,7 +129,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         list_of_origs = np.array([x[3] for x in valid_results]).ravel()
 
         if max(list_of_lens) <= 1:
-            ind = ds.DatasetIndex(index=np.array(list_of_origs))
+            ind = ds.DatasetIndex(index=list_of_origs)
         else:
             ind = ds.DatasetIndex(index=np.arange(sum(list_of_lens), dtype=int))
         out_batch = EcgBatch(ind)
@@ -135,6 +138,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             raise ValueError('Signal is expected to have ndim = 1, 2 or 3, found ndim = {0}'
                              .format(list_of_arrs[0].ndim))
         if list_of_arrs[0].ndim in [1, 3]:
+			#list_of_arrs[0] has shape (nb_signals, nb_channels, siglen)
+			#ndim = 3 for signals with similar siglens and 1 for signals with differenr siglens
             list_of_arrs = list(itertools.chain([x for y in list_of_arrs
                                                  for x in y]))
         list_of_arrs.append([])

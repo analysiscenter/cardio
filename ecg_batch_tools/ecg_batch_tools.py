@@ -34,7 +34,7 @@ def resample_signal(signal, annot, meta, index, new_fs):
     fs = meta['fs']
     new_len = int(new_fs * len(signal[0]) / fs)
     signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
-    out_meta = {**meta, 'fs': new_fs}
+    out_meta = {**meta, 'fs': new_fs, 'siglen': new_len}
     return [signal, annot, out_meta, index]
 
 def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
@@ -77,7 +77,8 @@ def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
     _ = annot
     if return_copy:
         segments = segments.copy()
-    return [segments, {}, meta, index]
+	out_meta = {**meta, 'siglen': new_len}
+    return [segments, {}, out_meta, index]
 
 def drop_noise(signal, annot, meta, index):
     '''
@@ -122,6 +123,8 @@ def augment_fs_signal(signal, annot, meta, index, distr, params):
         return [signal, annot, meta, index]
     elif distr == 'delta':
         new_fs = params['loc']
+	if new_fs <= 0:
+        return None
     return resample_signal(signal, annot, meta, index, new_fs)
 
 def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
@@ -195,7 +198,7 @@ def merge_list_of_layers(signal, annot, meta, index, list_of_layers):
         else:
             data = annot[layer]
         res.append(data)
-    res = np.concatenate(res, axis=0)
+    res = np.concatenate(res, axis=0)[np.newaxis, :, :]
     return [res, annot, meta, index]
 
 def load_wfdb(index, path):
@@ -212,7 +215,7 @@ def load_npz(index, path):
     """
     Load signal and meta, loading of annotation should be added
     """
-    data = np.load(path)
+    data = np.load(path + ".npz")
     signal = data["signal"]
     annot = data["annotation"].tolist()
     meta = data["meta"].tolist()
@@ -223,7 +226,7 @@ def dump_ecg_signal(signal, annot, meta, index, path, fmt):
     Save ecg in a separate file as 'path/<index>.<fmt>'
     """
     if fmt == "npz":
-        np.savez(os.path.join(path, index + "." + fmt),
+        np.savez(os.path.join(path, str(index) + "." + fmt),
                  signal=signal,
                  annotation=annot,
                  meta=meta)
