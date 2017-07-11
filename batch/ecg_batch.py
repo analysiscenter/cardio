@@ -1,7 +1,6 @@
 """ contain Batch class for processing ECGs """
 import os
 import copy
-import sys
 import itertools
 import numpy as np
 import pandas as pd
@@ -16,7 +15,6 @@ from scipy.signal import resample_poly
 from sklearn.metrics import f1_score, log_loss
 from numba import njit
 
-sys.path.append('./ecg')
 import dataset as ds
 
 
