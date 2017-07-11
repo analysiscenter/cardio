@@ -118,7 +118,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             return self
 
         valid_results = [res for res in all_results if res is not None]
-		if len(valid_results) == 0:
+        if len(valid_results) == 0:
             print('Error: all resulta are None')
             return self
 
