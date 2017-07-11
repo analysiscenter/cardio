@@ -77,7 +77,7 @@ def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
     _ = annot
     if return_copy:
         segments = segments.copy()
-	out_meta = {**meta, 'siglen': new_len}
+    out_meta = {**meta, 'siglen': new_len}
     return [segments, {}, out_meta, index]
 
 def drop_noise(signal, annot, meta, index):

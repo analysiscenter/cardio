@@ -20,7 +20,7 @@ from keras.optimizers import Adam
 from hmmlearn import hmm
 
 import dataset as ds
-from .ecg_batch_tools import *:#pylint: disable=wildcard-import
+from .ecg_batch_tools import *#pylint: disable=wildcard-import
 from keras_extra_layers import RFFT, Crop, Inception2D, To2D
 
 
