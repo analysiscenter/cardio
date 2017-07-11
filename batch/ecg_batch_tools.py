@@ -123,7 +123,7 @@ def augment_fs_signal(signal, annot, meta, index, distr, params):
         return [signal, annot, meta, index]
     elif distr == 'delta':
         new_fs = params['loc']
-	if new_fs <= 0:
+    if new_fs <= 0:
         return None
     return resample_signal(signal, annot, meta, index, new_fs)
 
