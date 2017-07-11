@@ -338,7 +338,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Replace original labels by new labels.
 
         Arguments
-        model_name: name of the model where to replece labels.
+        model_name: name of the model where to replace labels.
         new_labels: new labels to replace previous.
         '''
         model_comp = list(self.get_model_by_name(model_name))
@@ -358,7 +358,6 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         _ = new_labels
         return replace_labels_in_meta
 
-    @ds.action
     def get_categorical_labels(self, model_name):
         '''
         Returns a dummy matrix given an array of categorical labels.

@@ -33,6 +33,9 @@ def resample_signal(signal, annot, meta, index, new_fs):
     """
     fs = meta['fs']
     new_len = int(new_fs * len(signal[0]) / fs)
+    if new_len < 1:
+        print('Error: new_len should be >= 1. Try to change new_fs')
+		return None
     signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
     out_meta = {**meta, 'fs': new_fs, 'siglen': new_len}
     return [signal, annot, out_meta, index]
