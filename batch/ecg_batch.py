@@ -1,6 +1,5 @@
 """ contain Batch class for processing ECGs """
 import os
-import sys
 import copy
 import itertools
 import numpy as np
@@ -16,10 +15,6 @@ from scipy.signal import resample_poly
 from sklearn.metrics import f1_score, log_loss
 from numba import njit
 
-#sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../'))
-#sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), './'))
-#sys.path.append('..')
-#sys.path.append('.')
 from ecg import dataset as ds
 
 
