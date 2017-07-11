@@ -63,21 +63,20 @@ def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
             pad_len = length - signal.shape[1]
             segments = np.lib.pad(signal, ((0, 0), (pad_len, 0)),
                                   'constant', constant_values=(0, 0))[np.newaxis, :, :]
-            return [segments, {}, meta, index]
         else:
             raise ValueError('Signal is shorter than segment length: %i < %i'
                              % (signal.shape[1], length))
-
-    shape = signal.shape[:-1] + (signal.shape[-1] - length + 1, length)
-    strides = signal.strides + (signal.strides[-1],)
-    segments = np.lib.stride_tricks.as_strided(signal, shape=shape,
-                                               strides=strides)[:, ::step, :]
-    segments = np.transpose(segments, (1, 0, 2))
+    else:
+        shape = signal.shape[:-1] + (signal.shape[-1] - length + 1, length)
+        strides = signal.strides + (signal.strides[-1],)
+        segments = np.lib.stride_tricks.as_strided(signal, shape=shape,
+                                                   strides=strides)[:, ::step, :]
+        segments = np.transpose(segments, (1, 0, 2))
 
     _ = annot
     if return_copy:
         segments = segments.copy()
-    out_meta = {**meta, 'siglen': new_len}
+    out_meta = {**meta, 'siglen': length}
     return [segments, {}, out_meta, index]
 
 def drop_noise(signal, annot, meta, index):
