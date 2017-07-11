@@ -20,7 +20,7 @@ from keras.optimizers import Adam
 from hmmlearn import hmm
 
 import dataset as ds
-import ecg_batch_tools as bt
+from .ecg_batch_tools import *:#pylint: disable=wildcard-import
 from keras_extra_layers import RFFT, Crop, Inception2D, To2D
 
 
@@ -55,9 +55,9 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         fmt: format of ecg files. Supported formats: 'wfdb', 'npz'.
         """
         if fmt == 'wfdb':
-            return bt.load_wfdb(index, src[index])
+            return load_wfdb(index, src[index])
         elif fmt == 'npz':
-            return bt.load_npz(index, src[index])
+            return load_npz(index, src[index])
         else:
             raise TypeError("Incorrect type of source")
 
@@ -67,7 +67,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         """
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
-        return bt.dump_ecg_signal(signal, annot, meta, index, path, fmt)
+        return dump_ecg_signal(signal, annot, meta, index, path, fmt)
 
     def __getitem__(self, index):
         try:
@@ -195,7 +195,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         new_fs: target signal sampling rate in Hz.
         '''
         _ = new_fs
-        return bt.resample_signal
+        return resample_signal
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
@@ -209,7 +209,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         list_of_distr: list of tuples (distr, params). See augment_fssignal for details.
         '''
         _ = list_of_distr
-        return bt.augment_fs_signal_mult
+        return augment_fs_signal_mult
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
@@ -230,7 +230,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
                  signal length.
         """
         _ = length, step, pad, return_copy
-        return bt.segment_signal
+        return segment_signal
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
@@ -242,7 +242,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Arguments
         None
         '''
-        return bt.drop_noise
+        return drop_noise
 
     @ds.action
     def load_labels(self, path):
@@ -356,7 +356,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         new_labels: dict of previous and corresponding new labels.
         '''
         _ = new_labels
-        return bt.replace_labels_in_meta
+        return replace_labels_in_meta
 
     @ds.action
     def get_categorical_labels(self, model_name):
@@ -381,7 +381,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         train_y = self.get_categorical_labels(model_name)
         res = model.train_on_batch(train_x, train_y)
         pred = model.predict(train_x)
-        y_pred = bt.get_pos_of_max(pred)
+        y_pred = get_pos_of_max(pred)
         hist['train_loss'].append(res)
         hist['train_metric'].append(f1_score(train_y, y_pred, average='macro'))
         return self
@@ -396,7 +396,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         test_x = np.array([x for x in self.signal]).reshape((-1, 3000, 1))
         test_y = self.get_categorical_labels(model_name)
         pred = model.predict(test_x)
-        y_pred = bt.get_pos_of_max(pred)
+        y_pred = get_pos_of_max(pred)
         hist['val_loss'].append(log_loss(test_y, pred))
         hist['val_metric'].append(f1_score(test_y, y_pred, average='macro'))
         return self
@@ -466,7 +466,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Get hmm predictited classes
         '''
         _ = model
-        return bt.predict_hmm_classes
+        return predict_hmm_classes
 
     @ds.action
     def save_hmm_model(self, model_name, fname):
@@ -493,7 +493,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Compute derivative of given order and add it to annotation
         """
         _ = order
-        return bt.get_gradient
+        return get_gradient
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
@@ -502,7 +502,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Convolve layer with kernel
         """
         _ = layer, kernel
-        return bt.convolve_layer
+        return convolve_layer
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
@@ -512,4 +512,4 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Merge layers from list of layers to signal
         """
         _ = list_of_layers
-        return bt.merge_list_of_layers
+        return merge_list_of_layers
