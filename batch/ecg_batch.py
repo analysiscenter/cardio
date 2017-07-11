@@ -16,8 +16,9 @@ from scipy.signal import resample_poly
 from sklearn.metrics import f1_score, log_loss
 from numba import njit
 
-sys.path.append('..')
-import dataset as ds #pylint: disable=import-error
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../'))
+#sys.path.append('..')
+import dataset as ds
 
 
 @njit(nogil=True)
