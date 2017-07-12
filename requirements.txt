@@ -1,2 +1,6 @@
 wfdb
 pytest
+PyWavelets
+hmmlearn
+tf
+Keras>=2.0.0
