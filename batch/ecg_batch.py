@@ -55,10 +55,14 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         src: dict of type index: path to ecg.
         fmt: format of ecg files. Supported formats: 'wfdb', 'npz'.
         """
+        if src:
+            path = src[index]
+        else:
+            path = self.index.get_fullpath(index)
         if fmt == 'wfdb':
-            return load_wfdb(index, src[index])
+            return load_wfdb(index, path)
         elif fmt == 'npz':
-            return load_npz(index, src[index])
+            return load_npz(index, path)
         else:
             raise TypeError("Incorrect type of source")
 

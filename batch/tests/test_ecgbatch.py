@@ -50,7 +50,7 @@ def setup_class_methods(request):
     print("\nClass setup")
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
-    batch_loaded = EcgBatch(ind).load(src=None, fmt="wfdb")
+    batch_loaded = EcgBatch(ind).load_ecg(src=None, fmt="wfdb")
 
     def teardown_class_methods():
         '''
@@ -72,12 +72,11 @@ class TestEcgBatchLoad():
         Test of wfdb loader
         '''
         batch = deepcopy(setup_module_load[0])
-        batch = batch.load(src=None, fmt='wfdb')
+        batch = batch.load_ecg(src=None, fmt='wfdb')
         assert isinstance(batch.signal, np.ndarray)
         assert isinstance(batch.meta, dict)
         assert isinstance(batch.annotation, dict)
         assert batch.signal.shape == (2, )
-        assert len(batch.annotation) == 2
         assert len(batch.meta) == 2
         assert len(batch[batch.indices[0]]) == 3
         del batch
@@ -88,8 +87,8 @@ class TestEcgBatchLoad():
         '''
         batch = deepcopy(setup_module_load[0])
         path = setup_module_load[1]
-        batch = batch.load(src=None, fmt='wfdb')
-        batch = batch.dump(dst=path, fmt='npz')
+        batch = batch.load_ecg(src=None, fmt='wfdb')
+        batch = batch.dump_ecg(path=path, fmt='npz')
         files = os.listdir(path)
         assert "A00001.npz" in files
         assert "A00004.npz" in files
@@ -102,13 +101,12 @@ class TestEcgBatchLoad():
         path = setup_module_load[1]
         ind = ds.FilesIndex(path=path + '*.npz', no_ext=True, sort=True)
         batch = EcgBatch(ind)
-        batch = batch.load(src=None, fmt='npz')
+        batch = batch.load_ecg(src=None, fmt='npz')
         assert isinstance(batch.signal, np.ndarray)
         assert isinstance(batch.meta, dict)
         assert isinstance(batch.annotation, dict)
         assert batch.signal.shape == (2, )
         assert batch.signal[0].shape == (1, 9000)
-        assert len(batch.annotation) == 2
         assert len(batch.meta) == 2
         assert len(batch[batch.indices[0]]) == 3
         del batch
@@ -138,8 +136,7 @@ class TestEcgBatchSingleMethods:
         '''
         batch = deepcopy(setup_class_methods)
         path = setup_module_load[1]
-        batch = batch.load(
-            fmt="wfdb", src=None).load_labels(path + "REFERENCE.csv")
+        batch = batch.load_labels(path + "REFERENCE.csv")
         if "diag" in batch["A00001"][2].keys():
             assert batch["A00001"][2]['diag'] == 'N'
             assert batch["A00004"][2]['diag'] == 'A'
@@ -172,12 +169,11 @@ class TestEcgBatchSingleMethods:
         Testing of updater
         '''
         batch = deepcopy(setup_class_methods)
-
         seq1 = np.array([1, 2, 3]).reshape(1, -1)
         seq2 = np.array([1, 2, 3, 4]).reshape(1, -1)
         data = np.array([seq1, seq2, []], dtype=object)[:-1]
         annotation = None
-        meta = dict(zip([0, 1], [{"new_meta":True}, {"new_meta":True}]))
+        meta = dict(zip(["A00001", "A00004"], [{"new_meta":True}, {"new_meta":True}]))
         batch.update(data, annotation, meta)
         assert batch["A00001"][0].shape == (1, 3)
         assert batch["A00004"][0].shape == (1, 4)

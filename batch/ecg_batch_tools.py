@@ -221,6 +221,7 @@ def load_wfdb(index, path):
     """
     Load signal and meta, loading of annotation should be added
     """
+    path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
     signal = record.__dict__.pop('p_signals')
     meta = record.__dict__
@@ -231,6 +232,7 @@ def load_npz(index, path):
     """
     Load signal and meta, loading of annotation should be added
     """
+    path = os.path.splitext(path)[0]
     data = np.load(path + ".npz")
     signal = data["signal"]
     annot = data["annotation"].tolist()
