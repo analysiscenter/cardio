@@ -1,3 +1,3 @@
 [submodule "dataset"]
 	path = dataset
-	url = git@github.com:analysiscenter/dataset
+	url = https://github.com/analysiscenter/dataset.git
