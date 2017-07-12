@@ -21,7 +21,7 @@ import keras.backend as K
 from hmmlearn import hmm
 
 import dataset as ds
-from ecg_batch_tools_v2 import *#pylint: disable=wildcard-import, unused-wildcard-import
+from .ecg_batch_tools_v2 import *#pylint: disable=wildcard-import, unused-wildcard-import
 from keras_extra_layers_v2 import RFFT, Crop, Inception2D
 
 
@@ -243,6 +243,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Arguments
         label: label to be dropped from batch
         '''
+		_ = label
         return drop_label
 
     @ds.action
@@ -304,7 +305,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         conv_4 = Conv1D(32, 4, activation='relu')(mp_3)
 
         fft_1 = RFFT()(conv_4)
-        to2d = Lambda(K.expand_dims)(fft_1)
+		crop_1 = Crop(begin=0, size=128)(fft_1)
+        to2d = Lambda(K.expand_dims)(crop_1)
 
         incept_1 = Inception2D(4, 4, 3, 5, activation='relu')(to2d)
         mp2d_1 = MaxPooling2D(pool_size=(4, 2))(incept_1)
