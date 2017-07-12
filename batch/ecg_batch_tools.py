@@ -305,7 +305,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         conv_4 = Conv1D(32, 4, activation='relu')(mp_3)
 
         fft_1 = RFFT()(conv_4)
-		crop_1 = Crop(begin=0, size=128)(fft_1)
+        crop_1 = Crop(begin=0, size=128)(fft_1)
         to2d = Lambda(K.expand_dims)(crop_1)
 
         incept_1 = Inception2D(4, 4, 3, 5, activation='relu')(to2d)
