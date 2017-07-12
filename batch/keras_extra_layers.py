@@ -2,9 +2,7 @@
 
 import tensorflow as tf
 from keras.engine.topology import Layer
-from keras.layers import Input, Conv2D, \
-                         MaxPooling2D, Lambda, \
-                         Reshape, GlobalMaxPooling2D
+from keras.layers import Input, Conv2D, MaxPooling2D, Lambda
 from keras.layers.merge import Concatenate
 import keras.backend as K
 
