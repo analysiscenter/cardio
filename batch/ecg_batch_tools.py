@@ -243,7 +243,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Arguments
         label: label to be dropped from batch
         '''
-		_ = label
+        _ = label
         return drop_label
 
     @ds.action
