@@ -1,514 +1,237 @@
-""" contain Batch class for processing ECGs """
+""" contain tools for processing ECGs """
 
-import sys
-import copy
-import itertools
-import warnings
+import os
 import numpy as np
-import pandas as pd
 
-from sklearn.metrics import f1_score, log_loss
-from sklearn.externals import joblib
+from scipy.signal import resample_poly
+from numba import njit
 
-from keras.layers import Input, Conv1D, \
-                         MaxPooling1D, MaxPooling2D, \
-                         Dense, GlobalMaxPooling2D
-from keras.layers.core import Dropout
-from keras.models import Model, model_from_yaml
-from keras.optimizers import Adam
-
-from hmmlearn import hmm
-
-import dataset as ds
-from .ecg_batch_tools import *#pylint: disable=wildcard-import, unused-wildcard-import
-from keras_extra_layers import RFFT, Crop, Inception2D, To2D
+import wfdb
 
 
-sys.path.append('..')
+@njit(nogil=True)
+def get_pos_of_max(pred):
+    '''
+    Returns position of maximal element in a row.
 
+    Arguments
+    pred: 2d array.
+    '''
+    labels = np.zeros(pred.shape)
+    for i in range(len(labels)):
+        labels[i, pred[i].argmax()] = 1
+    return labels
 
-class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
+def resample_signal(signal, annot, meta, index, new_fs):
     """
-    Batch of ECG data
+    Resample signal along axis=1 to new sampling rate. Retruns resampled signal with modified meta.
+    Resampling of annotation will be implemented in the future.
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    new_fs: target signal sampling rate in Hz.
     """
-    def __init__(self, index, preloaded=None):
-        super().__init__(index, preloaded)
-        self._data = (None, None, None)
-        self.signal = np.array([])
-        self.annotation = {}
-        self.meta = dict()
-        self.history = []
+    fs = meta['fs']
+    new_len = int(new_fs * len(signal[0]) / fs)
+    if new_len < 1:
+        print('Error: new_len should be >= 1. Try to change new_fs')
+        return None
+    signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
+    out_meta = {**meta, 'fs': new_fs, 'siglen': new_len}
+    return [signal, annot, out_meta, index]
 
-    @property
-    def components(self):
-        return "signal", "annotation", "meta"
+def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
+    """
+    Segment signal along axis=1 with constant step to segments with constant length.
+    If signal is shorter than target segment length, signal is zero-padded on the left if
+    pad is True or raise ValueError if pad is False.
+    Segmentation of annotation will be implemented in the future.
 
-    @ds.action
-    @ds.inbatch_parallel(init='indices', post="post_parallel", target='threads')
-    def load_ecg(self, index, src, fmt):
-        """
-        Loads ecg data
-
-        Arguments
-        index: list or array of ecg indices.
-        src: dict of type index: path to ecg.
-        fmt: format of ecg files. Supported formats: 'wfdb', 'npz'.
-        """
-        if fmt == 'wfdb':
-            return load_wfdb(index, src[index])
-        elif fmt == 'npz':
-            return load_npz(index, src[index])
-        else:
-            raise TypeError("Incorrect type of source")
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='threads')
-    def dump_ecg(self, signal, annot, meta, index, path, fmt):
-        """
-        Save each ecg in a separate file as 'path/<index>.<fmt>'
-        """
-        return dump_ecg_signal(signal, annot, meta, index, path, fmt)
-
-    def __getitem__(self, index):
-        try:
-            pos = self.get_pos(None, None, index)
-        except IndexError:
-            raise IndexError("There is no such index in the batch: {0}"
-                             .format(index))
-        return (self.signal[pos],
-                {k: v[pos] for k, v in self.annotation.items()},
-                self.meta[index])
-
-    def update(self, data=None, annot=None, meta=None):
-        """
-        Update content of ecg_batch
-        """
-        if data is not None:
-            self.signal = np.array(data)
-        if annot is not None:
-            self.annotation = annot
-        if meta is not None:
-            self.meta = meta
-        return self
-
-    def init_parallel(self, *args, **kwargs):
-        '''
-        Return array of ecg with index
-        '''
-        _ = args, kwargs
-        return [[*self[i], i] for i in self.indices]
-
-    def post_parallel(self, all_results, *args, **kwargs):
-        #pylint: disable=too-many-locals
-        #pylint: disable=too-many-branches
-        '''
-        Build ecg_batch from a list of items either [signal, annot, meta] or None.
-        All Nones are ignored.
-        Signal can be either a single signal or a list of signals.
-        If signal is a list of signals, annot and meta can be a single annot and meta
-        or a list of annots and metas of the same lentgh as the list of signals. In the
-        first case annot and meta are broadcasted to each signal in the list of signals.
-
-        Arguments
-        all results: list of items either [signal, annot, meta] or None
-        '''
-        _ = args, kwargs
-        if any([isinstance(res, Exception) for res in all_results]):
-            print([res for res in all_results if isinstance(res, Exception)])
-            return self
-
-        valid_results = [res for res in all_results if res is not None]
-        if len(valid_results) == 0:
-            print('Error: all resulta are None')
-            return self
-
-        list_of_arrs = [x[0] for x in valid_results]
-        list_of_lens = np.array([len(x[0]) for x in valid_results])
-        list_of_annot = np.array([x[1] for x in valid_results]).ravel()
-        list_of_meta = np.array([x[2] for x in valid_results]).ravel()
-        list_of_origs = np.array([x[3] for x in valid_results]).ravel()
-
-        if max(list_of_lens) <= 1:
-            ind = ds.DatasetIndex(index=list_of_origs)
-        else:
-            ind = ds.DatasetIndex(index=np.arange(sum(list_of_lens), dtype=int))
-        out_batch = EcgBatch(ind)
-
-        if list_of_arrs[0].ndim > 3:
-            raise ValueError('Signal is expected to have ndim = 1, 2 or 3, found ndim = {0}'
-                             .format(list_of_arrs[0].ndim))
-        if list_of_arrs[0].ndim in [1, 3]:
-			#list_of_arrs[0] has shape (nb_signals, nb_channels, siglen)
-			#ndim = 3 for signals with similar siglens and 1 for signals with differenr siglens
-            list_of_arrs = list(itertools.chain([x for y in list_of_arrs
-                                                 for x in y]))
-        list_of_arrs.append([])
-        batch_data = np.array(list_of_arrs)[:-1]
-
-        if len(ind.indices) == len(list_of_origs):
-            origins = list_of_origs
-        else:
-            origins = np.repeat(list_of_origs, list_of_lens)
-
-        if len(ind.indices) == len(list_of_meta):
-            metas = list_of_meta
-        else:
-            metas = []
-            for i, rep in enumerate(list_of_lens):
-                for _ in range(rep):
-                    metas.append(copy.deepcopy(list_of_meta[i]))
-            metas = np.array(metas)
-        for i in range(len(batch_data)):
-            metas[i].update({'origin': origins[i]})
-        batch_meta = dict(zip(ind.indices, metas))
-
-        if len(ind.indices) == len(list_of_annot):
-            annots = list_of_annot
-        else:
-            annots = []
-            for i, rep in enumerate(list_of_lens):
-                for _ in range(rep):
-                    annots.append(copy.deepcopy(list_of_annot[i]))
-            annots = np.array(annots)
-        if len(annots) > 0:
-            keys = list(annots[0].keys())
-        else:
-            keys = []
-        batch_annot = {}
-        for k in keys:
-            list_of_arrs = [x[k] for x in annots]
-            list_of_arrs.append(np.array([]))
-            batch_annot[k] = np.array(list_of_arrs)[:-1]
-
-        return out_batch.update(data=batch_data,
-                                annot=batch_annot,
-                                meta=batch_meta)
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def resample(self, new_fs):
-        '''
-        Resample all signals in batch along axis=1 to new sampling rate. Retruns resampled batch with modified meta.
-        Resampling of annotation will be implemented in the future.
-
-        Arguments
-        new_fs: target signal sampling rate in Hz.
-        '''
-        _ = new_fs
-        return resample_signal
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def augment_fs(self, list_of_distr):
-        '''
-        Multiple augmentation of signals in batch to random sampling rates. New sampling rates are sampled
-        from list of probability distributions with specified parameters.
-
-        Arguments
-        list_of_distr: list of tuples (distr, params). See augment_fssignal for details.
-        '''
-        _ = list_of_distr
-        return augment_fs_signal_mult
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def split_to_segments(self, length, step, pad, return_copy):
-        """
-        Split signals along axis=1 to segments with constant length.
-        If signal is shorter than target segment length, signal is zero-padded on the left if
-        pad is True or raise ValueError if pad is False.
-        Segmentation of annotation will be implemented in the future.
-
-        Arguments
-        length: length of segment.
-        step: step along axis=1 of the signal.
-        pad: whether to apply zero-padding to short signals.
-        return_copy: if True, a copy of segments is returned and segments become intependent. If False,
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    length: length of segment.
+    step: step along axis=1.
+    pad: whether to apply zero-padding to short signals.
+    return_copy: if True, a copy of segments is returned and segments become intependent. If False,
                  segments are not independent, but segmentation runtime becomes almost indepentent on
                  signal length.
-        """
-        _ = length, step, pad, return_copy
-        return segment_signal
 
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def drop_noise(self):
-        '''
-        Drop signals labeled as noise from the batch.
+    Attention: segmentation of meta and annotation is not implemented yet.
+    """
+    if signal.ndim != 2:
+        raise ValueError('Signal should have ndim = 2, found ndim = {0}'.format(signal.ndim))
 
-        Arguments
-        None
-        '''
-        return drop_noise
+    if signal.shape[1] < length:
+        if pad:
+            pad_len = length - signal.shape[1]
+            segments = np.lib.pad(signal, ((0, 0), (pad_len, 0)),
+                                  'constant', constant_values=(0, 0))[np.newaxis, :, :]
+        else:
+            raise ValueError('Signal is shorter than segment length: %i < %i'
+                             % (signal.shape[1], length))
+    else:
+        shape = signal.shape[:-1] + (signal.shape[-1] - length + 1, length)
+        strides = signal.strides + (signal.strides[-1],)
+        segments = np.lib.stride_tricks.as_strided(signal, shape=shape,
+                                                   strides=strides)[:, ::step, :]
+        segments = np.transpose(segments, (1, 0, 2))
 
-    @ds.action
-    def load_labels(self, path):
-        """
-        Load labels from file with signal labels. File should have a csv format
-        and contain 2 columns: index of ecg and label.
+    _ = annot
+    if return_copy:
+        segments = segments.copy()
+    out_meta = {**meta, 'siglen': length}
+    return [segments, {}, out_meta, index]
 
-        Arguments
-        path: path to the file with labels
-        """
-        ref = pd.read_csv(path, header=None)
-        ref.columns = ['index', 'diag']
-        ref = ref.set_index('index')  #pylint: disable=no-member
-        for ecg in self.indices:
-            self.meta[ecg]['diag'] = ref.ix[ecg]['diag']
-        return self
+def drop_label(signal, annot, meta, index, label):
+    '''
+    Drop signals labeled as noise in meta. Retruns input if signal is not labeles as noise and
+    retruns None otherwise.
 
-    @ds.model()
-    def hmm_learn():
-        """
-        Hidden Markov Model to find n_components in signal
-        """
-        n_components = 3
-        n_iter = 10
-        warnings.filterwarnings("ignore")
-        model = hmm.GaussianHMM(n_components=n_components, covariance_type="full",
-                                n_iter=n_iter)
-        return model
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    '''
+    if meta['diag'] == label:
+        return None
+    else:
+        return [signal, annot, meta, index]
 
-    @ds.action
-    def set_new_model(self, model_name, new_model):
-        '''
-        Replace base model by new model.
+def replace_labels_in_meta(signal, annot, meta, index, new_labels):
+    '''
+    Replaces diag label by new label.
 
-        Arguments
-        model_name: name of the model where to set new model.
-        new_model: new model to replace previous.
-        '''
-        model = self.get_model_by_name(model_name)#pylint: disable=unused-variable
-        model = new_model
-        return self
+    Arguments
+    new_labels: dict of previous and corresponding new labels.
+    '''
+    meta.update({'diag': new_labels[meta['diag']]})
+    return [signal, annot, meta, index]
 
-    @ds.model()
-    def fft_inception():#pylint: disable=too-many-locals
-        '''
-        FFT inception model. Includes initial convolution layers, then FFT transform, then
-        a series of inception blocks.
-        '''
-        x = Input((3000, 1))
+def augment_fs_signal(signal, annot, meta, index, distr, params):
+    '''
+    Augmentation of signal to random sampling rate. New sampling rate is sampled
+    from given probability distribution with specified parameters.
 
-        conv_1 = Conv1D(4, 4, activation='relu')(x)
-        mp_1 = MaxPooling1D()(conv_1)
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    distr: distribution type, either a name of any distribution from np.random, or
+           callable, or 'none', or 'delta'.
+    params: dict of parameters and values for distr. ignored if distr='none'.
+    '''
+    if hasattr(np.random, distr):
+        distr_fn = getattr(np.random, distr)
+        new_fs = distr_fn(**params)
+    elif callable(distr):
+        new_fs = distr_fn(**params)
+    elif distr == 'none':
+        return [signal, annot, meta, index]
+    elif distr == 'delta':
+        new_fs = params['loc']
+    if new_fs <= 0:
+        return None
+    return resample_signal(signal, annot, meta, index, new_fs)
 
-        conv_2 = Conv1D(8, 4, activation='relu')(mp_1)
-        mp_2 = MaxPooling1D()(conv_2)
-        conv_3 = Conv1D(16, 4, activation='relu')(mp_2)
-        mp_3 = MaxPooling1D()(conv_3)
-        conv_4 = Conv1D(32, 4, activation='relu')(mp_3)
+def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
+    '''
+    Multiple augmentation of signal to random sampling rates. New sampling rates are sampled
+    from list of probability distributions with specified parameters.
 
-        fft_1 = RFFT()(conv_4)
-        crop_1 = Crop(0, 128)(fft_1)
-        to2d = To2D()(crop_1)
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    list_of_distr: list of tuples (distr, params). See augment_fssignal for details.
+    '''
+    res = [augment_fs_signal(signal, annot, meta, index, distr_type, params)
+           for (distr_type, params) in list_of_distr]
+    out_sig = [x[0] for x in res]
+    out_annot = [x[1] for x in res]
+    out_meta = [x[2] for x in res]
+    out_sig.append([])
+    return [np.array(out_sig)[:-1], out_annot, out_meta, index]
 
-        incept_1 = Inception2D(4, 4, 3, 5, activation='relu')(to2d)
-        mp2d_1 = MaxPooling2D(pool_size=(4, 2))(incept_1)
+def predict_hmm_classes(signal, annot, meta, index, model):
+    '''
+    Get hmm predicted classes
+    '''
+    res = np.array(model.predict(signal.T)).reshape((1, -1))
+    annot.update({'hmm_predict': res})
+    return [signal, annot, meta, index]
 
-        incept_2 = Inception2D(4, 8, 3, 5, activation='relu')(mp2d_1)
-        mp2d_2 = MaxPooling2D(pool_size=(4, 2))(incept_2)
+def get_gradient(signal, annot, meta, index, order):
+    '''
+    Compute derivative of given order
 
-        incept_3 = Inception2D(4, 12, 3, 3, activation='relu')(mp2d_2)
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    order: order of derivative to compute.
+    '''
+    grad = np.gradient(signal, axis=1)
+    for i in range(order - 1):#pylint: disable=unused-variable
+        grad = np.gradient(grad, axis=1)
+    annot.update({'grad_{0}'.format(order): grad})
+    return [signal, annot, meta, index]
 
-        pool = GlobalMaxPooling2D()(incept_3)
+def convolve_layer(signal, annot, meta, index, layer, kernel):
+    '''
+    Convolve squared data with kernel
 
-        fc_1 = Dense(8, kernel_initializer='uniform', activation='relu')(pool)
-        drop = Dropout(0.2)(fc_1)
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    layer: name of layer that will be convolved. Can be 'signal' or key from annotation keys.
+    kernel: kernel for convolution.
+    '''
+    if layer == 'signal':
+        data = signal
+    else:
+        data = annot[layer]
+    res = np.apply_along_axis(np.convolve, 1, data**2, v=kernel, mode='same')
+    annot.update({layer + '_conv': res})
+    return [signal, annot, meta, index]
 
-        fc_2 = Dense(2, kernel_initializer='uniform',
-                     activation='softmax')(drop)
+def merge_list_of_layers(signal, annot, meta, index, list_of_layers):
+    '''
+    Merge layers from list of layers to signal
 
-        opt = Adam()
-        model = Model(inputs=x, outputs=fc_2)
-        model.compile(optimizer=opt, loss="categorical_crossentropy")
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    list_of_layers: list of name layers that will be merged. Can contain 'signal' or keys from annotation.
+    '''
+    res = []
+    for layer in list_of_layers:
+        if layer == 'signal':
+            data = signal
+        else:
+            data = annot[layer]
+        res.append(data)
+    res = np.concatenate(res, axis=0)[np.newaxis, :, :]
+    return [res, annot, meta, index]
 
-        hist = {'train_loss': [], 'train_metric': [],
-                'val_loss': [], 'val_metric': []}
-        diag_classes = ['A', 'NonA']
+def load_wfdb(index, path):
+    """
+    Load signal and meta, loading of annotation should be added
+    """
+    record = wfdb.rdsamp(path)
+    signal = record.__dict__.pop('p_signals')
+    meta = record.__dict__
+    signal = signal.T
+    return [signal, {}, meta, index]
 
-        return model, hist, diag_classes
+def load_npz(index, path):
+    """
+    Load signal and meta, loading of annotation should be added
+    """
+    data = np.load(path + ".npz")
+    signal = data["signal"]
+    annot = data["annotation"].tolist()
+    meta = data["meta"].tolist()
+    return [signal, annot, meta, index]
 
-    @ds.action
-    def replace_labels(self, model_name, new_labels):
-        '''
-        Replace original labels by new labels.
-
-        Arguments
-        model_name: name of the model where to replace labels.
-        new_labels: new labels to replace previous.
-        '''
-        model_comp = list(self.get_model_by_name(model_name))
-        model_comp[2] = list(new_labels.values())
-        return self.replace_all_labels(new_labels)
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def replace_all_labels(self, new_labels):
-        '''
-        Replace original labels by new labels.
-
-        Arguments
-        new_labels: dict of previous and corresponding new labels.
-        '''
-        _ = new_labels
-        return replace_labels_in_meta
-
-    def get_categorical_labels(self, model_name):
-        '''
-        Returns a dummy matrix given an array of categorical labels.
-
-        Arguments
-        model_name: name of the model that will use dummy martix.
-        '''
-        classes = self.get_model_by_name(model_name)[2]
-        labels = [self.meta[ind]['diag'] for ind in self.indices]
-        return pd.get_dummies(classes + labels).as_matrix()[len(classes):]
-
-    @ds.action
-    def train_on_batch(self, model_name):
-        '''
-        Train model
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model, hist, _ = model_comp
-        train_x = np.array([x for x in self.signal]).reshape((-1, 3000, 1))
-        train_y = self.get_categorical_labels(model_name)
-        res = model.train_on_batch(train_x, train_y)
-        pred = model.predict(train_x)
-        y_pred = get_pos_of_max(pred)
-        hist['train_loss'].append(res)
-        hist['train_metric'].append(f1_score(train_y, y_pred, average='macro'))
-        return self
-
-    @ds.action
-    def validate_on_batch(self, model_name):
-        '''
-        Validate model
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model, hist, _ = model_comp
-        test_x = np.array([x for x in self.signal]).reshape((-1, 3000, 1))
-        test_y = self.get_categorical_labels(model_name)
-        pred = model.predict(test_x)
-        y_pred = get_pos_of_max(pred)
-        hist['val_loss'].append(log_loss(test_y, pred))
-        hist['val_metric'].append(f1_score(test_y, y_pred, average='macro'))
-        return self
-
-    @ds.action
-    def model_summary(self, model_name):
-        '''
-        Print model layers
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        print(model_name)
-        print(model_comp[0].summary())
-        return self
-
-    @ds.action
-    def save_model(self, model_name, fname):
-        '''
-        Save model layers and weights
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model = model_comp[0]
-        model.save_weights(fname)
-        yaml_string = model.to_yaml()
-        fout = open(fname + ".layers", "w")
-        fout.write(yaml_string)
-        fout.close()
-        return self
-
-    @ds.action
-    def load_model(self, model_name, fname):
-        '''
-        Load model layers and weights
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model = model_comp[0]
-        fin = open(fname + ".layers", "r")
-        yaml_string = fin.read()
-        fin.close()
-        model = model_from_yaml(yaml_string)
-        model.load_weights(fname)
-        return self
-
-    @ds.action
-    def train_hmm(self, model_name):
-        '''
-        Train hmm model on the whole batch
-        '''
-        warnings.filterwarnings("ignore")
-        model = self.get_model_by_name(model_name)
-        train_x = np.concatenate(self.signal, axis=1).T
-        lengths = [x.shape[1] for x in self.signal]
-        model.fit(train_x, lengths)
-        return self
-
-    @ds.action
-    def predict_hmm(self, model_name):
-        '''
-        Get hmm predictited classes
-        '''
-        model = self.get_model_by_name(model_name)
-        return self.predict_all_hmm(model)
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def predict_all_hmm(self, model):
-        '''
-        Get hmm predictited classes
-        '''
-        _ = model
-        return predict_hmm_classes
-
-    @ds.action
-    def save_hmm_model(self, model_name, fname):
-        '''
-        Save hmm model
-        '''
-        model = self.get_model_by_name(model_name)
-        joblib.dump(model, fname + '.pkl')
-        return self
-
-    @ds.action
-    def load_hmm_model(self, model_name, fname):
-        '''
-        Load hmm model
-        '''
-        model = self.get_model_by_name(model_name)#pylint: disable=unused-variable
-        model = joblib.load(fname + '.pkl')
-        return self
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def gradient(self, order):
-        """
-        Compute derivative of given order and add it to annotation
-        """
-        _ = order
-        return get_gradient
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def convolve(self, layer, kernel):
-        """
-        Convolve layer with kernel
-        """
-        _ = layer, kernel
-        return convolve_layer
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def merge_layers(self, list_of_layers):
-        """
-        Merge layers from list of layers to signal
-        """
-        _ = list_of_layers
-        return merge_list_of_layers
+def dump_ecg_signal(signal, annot, meta, index, path, fmt):
+    """
+    Save ecg in a separate file as 'path/<index>.<fmt>'
+    """
+    if fmt == "npz":
+        np.savez(os.path.join(path, str(index) + "." + fmt),
+                 signal=signal,
+                 annotation=annot,
+                 meta=meta)
+    else:
+        raise NotImplementedError("The format is not supported yet")
+    return [signal, annot, meta, index]

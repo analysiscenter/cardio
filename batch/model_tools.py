@@ -13,7 +13,7 @@ def preprocess_fft_inception(dataset, src, dir_ecg):
     return (dataset.p
             .load_ecg(src, 'wfdb')
             .load_labels(dir_ecg + 'REFERENCE.csv')
-            .drop_noise()
+            .drop_labels('~')
             .augment_fs([('delta', {'loc': 250}),
                          ('delta', {'loc': 350}),
                          ('none', {})])

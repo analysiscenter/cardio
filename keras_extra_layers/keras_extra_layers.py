@@ -1,5 +1,6 @@
 """ contain keras custom layers """
 
+import tensorflow as tf
 from keras.engine.topology import Layer
 from keras.layers import Input, Conv2D, \
                          MaxPooling2D, Lambda, \
@@ -24,7 +25,7 @@ class RFFT(Layer):
     def __init__(self, *agrs, **kwargs):
         super(RFFT, self).__init__(*agrs, **kwargs)
 
-    def fft(self, x, fft_fn):
+    def rfft(self, x, fft_fn):
         '''
         Computes one-dimensional discrete Fourier Transform on each slice along last dim.
         Returns amplitude spectrum.
@@ -39,18 +40,22 @@ class RFFT(Layer):
         resh = K.cast(K.map_fn(K.transpose, x), dtype='complex64')
         spec = K.abs(K.map_fn(fft_fn, resh))
         out = K.cast(K.map_fn(K.transpose, spec), dtype='float32')
-        return out
+        shape = tf.shape(out)
+        new_shape = [shape[0], shape[1] // 2, shape[2]]
+        out_real = tf.slice(out, [0, 0, 0], new_shape)
+        return out_real
 
     def call(self, x):
-        res = Lambda(self.fft, arguments={'fft_fn': K.tf.fft})(x)
-        half = int(res.get_shape().as_list()[1] / 2)
-        return res[:, :half, :]
+        return Lambda(self.rfft, arguments={'fft_fn': K.tf.fft})(x)
 
     def compute_output_shape(self, input_shape):
         '''
         Get output shape
         '''
-        return (input_shape[0], int(input_shape[1] / 2), input_shape[2])
+        if input_shape[1] is None:
+            return input_shape
+        else:
+            return (input_shape[0], input_shape[1] // 2, input_shape[2])
 
 
 class Crop(Layer):
@@ -80,35 +85,6 @@ class Crop(Layer):
         Get output shape
         '''
         return (input_shape[0], self.size, input_shape[2])
-
-
-class To2D(Layer):
-    '''
-    Keras layer add dim to 1D signal and returns 2D image.
-
-    Arguments
-    None
-
-    Input shape
-    3D tensor (batch_size, signal_length, nb_channels)
-
-    Output shape
-    4D tensor (batch_size, size, nb_channels, 1)
-    '''
-    def __init__(self, *agrs, **kwargs):
-        super(To2D, self).__init__(*agrs, **kwargs)
-
-    def call(self, x):
-        shape_1d = x.get_shape().as_list()[1:]
-        shape_1d.append(1)
-        to2d = Reshape(shape_1d)(x)
-        return to2d
-
-    def compute_output_shape(self, input_shape):
-        '''
-        Get output shape
-        '''
-        return (*input_shape, 1)
 
 
 class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
