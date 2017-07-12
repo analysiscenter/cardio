@@ -21,8 +21,8 @@ import keras.backend as K
 from hmmlearn import hmm
 
 import dataset as ds
-from .ecg_batch_tools_v2 import *#pylint: disable=wildcard-import, unused-wildcard-import
-from keras_extra_layers_v2 import RFFT, Crop, Inception2D
+from .ecg_batch_tools import *#pylint: disable=wildcard-import, unused-wildcard-import
+from keras_extra_layers import RFFT, Crop, Inception2D
 
 
 sys.path.append('..')
