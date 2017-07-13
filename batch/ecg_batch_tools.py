@@ -23,6 +23,7 @@ class InputDataError(Error):
     """
     pass
 
+
 @njit(nogil=True)
 def get_pos_of_max(pred):
     '''
