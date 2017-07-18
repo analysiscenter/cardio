@@ -168,6 +168,46 @@ def get_gradient(signal, annot, meta, index, order):
     annot.update({'grad_{0}'.format(order): grad})
     return [signal, annot, meta, index]
 
+def convolve(signal, annotation, meta, index, kernel, axis=-1, padding_mode="edge", **kwargs):
+    """Convolve signals with given kernel.
+
+    Parameters
+    ----------
+    signal, annotation, meta, index :
+        Batch components.
+    kernel : array_like
+        Convolution kernel.
+    axis : int
+        Axis along which signal is sliced.
+    padding_mode : str or function
+        np.pad padding mode.
+    **kwargs :
+        Any additional named argments to np.pad.
+
+    Returns
+    -------
+    signal, annotation, meta, index :
+        Convolved batch components.
+    """
+    kernel = np.asarray(kernel)
+    if len(kernel.shape) == 0:
+        kernel = kernel.ravel()
+    if len(kernel.shape) != 1:
+        raise ValueError("Kernel must be 1-D array")
+    if not np.issubdtype(kernel.dtype, np.number):
+        raise ValueError("Kernel must have numeric dtype")
+    pad = len(kernel) // 2
+
+    def conv_func(x):
+        x_pad = np.pad(x, pad, padding_mode, **kwargs)
+        conv = np.convolve(x_pad, kernel, "same")
+        if pad > 0:
+            conv = conv[pad:-pad]
+        return conv
+
+    conv_signal = np.apply_along_axis(conv_func, arr=signal, axis=axis)
+    return [conv_signal, annotation, meta, index]
+
 def convolve_layer(signal, annot, meta, index, layer, kernel):
     '''
     Convolve squared data with kernel

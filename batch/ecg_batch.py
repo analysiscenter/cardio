@@ -21,6 +21,7 @@ import keras.backend as K
 from hmmlearn import hmm
 
 import dataset as ds
+from . import ecg_batch_tools as bt
 from .ecg_batch_tools import *#pylint: disable=wildcard-import, unused-wildcard-import
 from .keras_extra_layers import RFFT, Crop, Inception2D
 
@@ -498,7 +499,31 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def convolve(self, layer, kernel):
+    def convolve(self, kernel, axis=-1, padding_mode="edge", **kwargs):
+        """Convolve signals with given kernel.
+
+        Parameters
+        ----------
+        kernel : array_like
+            Convolution kernel.
+        axis : int
+            Axis along which signal is sliced.
+        padding_mode : str or function
+            np.pad padding mode.
+        **kwargs :
+            Any additional named argments to np.pad.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Convolved batch.
+        """
+        _ = kernel, axis, padding_mode, kwargs
+        return bt.convolve
+
+    @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    def convolve_layer(self, layer, kernel):
         """
         Convolve layer with kernel
         """
