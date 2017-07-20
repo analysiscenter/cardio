@@ -1,5 +1,6 @@
 """ contain Batch class for processing ECGs """
 
+import os
 import sys
 import copy
 import itertools
@@ -20,12 +21,11 @@ import keras.backend as K
 
 from hmmlearn import hmm
 
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+
 import dataset as ds
-from .ecg_batch_tools import *#pylint: disable=wildcard-import, unused-wildcard-import
+from .ecg_batch_tools import * #pylint: disable=wildcard-import, unused-wildcard-import
 from .keras_extra_layers import RFFT, Crop, Inception2D
-
-
-sys.path.append('..')
 
 
 class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
@@ -246,7 +246,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
         Arguments
         label: label to be dropped from batch
-        '''
+        ''' 
         _ = label
         return drop_label
 

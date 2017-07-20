@@ -1,3 +1,2 @@
 """ ECG Batch """
-from .ecg_batch import EcgBatch
-
+from .ecg_batch import *

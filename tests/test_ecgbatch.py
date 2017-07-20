@@ -8,36 +8,36 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-sys.path.append("..")
-sys.path.append(".")
+sys.path.append(os.path.join("."))
 
-import dataset as ds
 from batch import EcgBatch
-
+from batch import ds
 
 @pytest.fixture(scope="module")
 def setup_module_load(request):
     '''
-    Fixture to setup module
+    Fixture to setup module. Performs check for presence of test files,
+    creates initial batch object.
     '''
-    print("\nModule setup")
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     files = ["A00001.hea", "A00004.hea", "A00001.mat", "A00004.mat", "REFERENCE.csv"]
     # TODO: make better test for presence of files .hea and
     # REFERENCE.csv
-    if np.all([os.path.isfile(path+file) for file in files]):
-        ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
+    
+    print(sys.path, file=sys.stderr)
+
+    if np.all([os.path.isfile(os.path.join(path, file)) for file in files]):
+        ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
         batch_init = EcgBatch(ind)
     else:
-        raise ValueError('Something wrong with test data!')
+        raise FileNotFoundError("Test files not found in 'tests/data/'!")
 
     def teardown_module_load():
         '''
         Teardown module
-        '''
-        print("Module teardown")
-        os.remove(path + "A00001.npz")
-        os.remove(path + "A00004.npz")
+        ''' 
+        os.remove(os.path.join(path, "A00001.npz"))
+        os.remove(os.path.join(path, "A00004.npz"))
 
     request.addfinalizer(teardown_module_load)
     return batch_init, path
@@ -45,21 +45,31 @@ def setup_module_load(request):
 @pytest.fixture(scope="class")
 def setup_class_methods(request):
     '''
-    Fixture to setup class
+    Fixture to setup class to test EcgBatch methods separately.
     '''
-    print("\nClass setup")
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
-    ind = ds.FilesIndex(path=path + '*.hea', no_ext=True, sort=True)
+    ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
     batch_loaded = EcgBatch(ind).load_ecg(src=None, fmt="wfdb")
 
     def teardown_class_methods():
         '''
         Teardown class
         '''
-        print("\nClass teardown")
-
     request.addfinalizer(teardown_class_methods)
     return batch_loaded
+
+@pytest.fixture(scope="class")
+def setup_class_pipeline(request):
+    '''
+    Fixture to setup class to test EcgBatch methods in pipeline.
+    '''
+    pass
+    def teardown_class_pipeline():
+        '''
+        Teardown class
+        '''
+    request.addfinalizer(teardown_class_pipeline)
+    return pipeline_loaded
 
 
 class TestEcgBatchLoad():
@@ -99,7 +109,7 @@ class TestEcgBatchLoad():
         Test of npz loader
         '''
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=path + '*.npz', no_ext=True, sort=True)
+        ind = ds.FilesIndex(path=os.path.join(path, '*.npz'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         batch = batch.load_ecg(src=None, fmt='npz')
         assert isinstance(batch.signal, np.ndarray)
@@ -136,7 +146,7 @@ class TestEcgBatchSingleMethods:
         '''
         batch = deepcopy(setup_class_methods)
         path = setup_module_load[1]
-        batch = batch.load_labels(path + "REFERENCE.csv")
+        batch = batch.load_labels(os.path.join(path, "REFERENCE.csv"))
         if "diag" in batch["A00001"][2].keys():
             assert batch["A00001"][2]['diag'] == 'N'
             assert batch["A00004"][2]['diag'] == 'A'
@@ -159,7 +169,7 @@ class TestEcgBatchSingleMethods:
         '''
         batch = deepcopy(setup_class_methods)
         path = setup_module_load[1]
-        batch = batch.load_labels(path + "REFERENCE.csv")
+        batch = batch.load_labels(os.path.join(path, "REFERENCE.csv"))
         batch = batch.replace_all_labels({"A":"A", "N":"NonA"})
         assert batch["A00001"][2]['diag'] == "NonA"
         assert batch["A00004"][2]['diag'] == "A"
