@@ -5,6 +5,7 @@ import copy
 import itertools
 import warnings
 import numpy as np
+import scipy as sp
 import pandas as pd
 
 from sklearn.metrics import f1_score, log_loss
@@ -21,6 +22,7 @@ import keras.backend as K
 from hmmlearn import hmm
 
 import dataset as ds
+from . import kernels as k
 from . import ecg_batch_tools as bt
 from .ecg_batch_tools import *#pylint: disable=wildcard-import, unused-wildcard-import
 from .keras_extra_layers import RFFT, Crop, Inception2D
@@ -498,7 +500,28 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         return get_gradient
 
     @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    def band_pass_filter(self, axis=-1, low=None, high=None):
+        """Reject frequencies outside given range.
+
+        Parameters
+        ----------
+        axis : int
+            Axis along which signal is sliced.
+        low : positive float
+            High-pass filter cutoff frequency (Hz).
+        high : positive float
+            Low-pass filter cutoff frequency (Hz).
+
+        Returns
+        -------
+        batch : EcgBatch
+            Filtered batch.
+        """
+        for i in range(len(self.signal)):
+            self.signal[i] = bt.band_pass_filter(self.signal[i], self.meta[self.indices[i]]["fs"], axis, low, high)
+        return self
+
+    @ds.action
     def convolve(self, kernel, axis=-1, padding_mode="edge", **kwargs):
         """Convolve signals with given kernel.
 
@@ -518,8 +541,28 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         batch : EcgBatch
             Convolved batch.
         """
-        _ = kernel, axis, padding_mode, kwargs
-        return bt.convolve
+        for i in range(len(self.signal)):
+            self.signal[i] = bt.convolve(self.signal[i], kernel, axis, padding_mode, **kwargs)
+        return self
+
+    @ds.action
+    def flip_signals(self):
+        """Flip signals whose R-peaks are directed downwards.
+
+        Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with flipped signals.
+        """
+        for i in range(len(self.signal)):
+            if self.signal[i].ndim != 2:
+                raise ValueError("Each signal in batch must be a 2-D ndarray")
+            sig = bt.band_pass_filter(self.signal[i], self.meta[self.indices[i]]["fs"], axis=-1, low=5, high=50)
+            sig = bt.convolve(sig, k.gaussian(11, 3), axis=-1)
+            self.signal[i] *= np.where(sp.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
+        return self
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')

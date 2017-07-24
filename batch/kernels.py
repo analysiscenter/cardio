@@ -16,7 +16,7 @@ def gaussian(size, sigma=None):
     ----------
     size : positive int
         Kernel size.
-    sigma : positive int or float
+    sigma : positive float
         Standard deviation of gaussian distribution. Controls the degree of smoothing.
         If None, it is set to (size + 1) / 6.
 
