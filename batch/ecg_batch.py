@@ -22,7 +22,7 @@ import keras.backend as K
 from hmmlearn import hmm
 
 import dataset as ds
-from . import kernels as k
+from . import kernels
 from . import ecg_batch_tools as bt
 from .ecg_batch_tools import *#pylint: disable=wildcard-import, unused-wildcard-import
 from .keras_extra_layers import RFFT, Crop, Inception2D
@@ -560,7 +560,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             if self.signal[i].ndim != 2:
                 raise ValueError("Each signal in batch must be a 2-D ndarray")
             sig = bt.band_pass_filter(self.signal[i], self.meta[self.indices[i]]["fs"], axis=-1, low=5, high=50)
-            sig = bt.convolve(sig, k.gaussian(11, 3), axis=-1)
+            sig = bt.convolve(sig, kernels.gaussian(11, 3), axis=-1)
             self.signal[i] *= np.where(sp.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
         return self
 
