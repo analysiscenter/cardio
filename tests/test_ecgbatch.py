@@ -98,7 +98,6 @@ class TestEcgBatchLoad():
         assert isinstance(batch.annotation, dict)
         assert batch.signal.shape == (6, )
         assert len(batch.meta) == 6
-        assert len(batch[batch.indices[0]]) == 3
         del batch
 
     def test_dump(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
@@ -128,7 +127,6 @@ class TestEcgBatchLoad():
         assert batch.signal.shape == (6, )
         assert batch.signal[0].shape == (1, 9000)
         assert len(batch.meta) == 6
-        assert len(batch[batch.indices[0]]) == 3
         del batch
 
 
@@ -147,8 +145,8 @@ class TestEcgBatchSingleMethods:
         new_fs = old_fs+50
         batch = batch.augment_fs([("delta", {'loc': new_fs})])
         assert batch.indices.shape == (6,)
-        assert batch["A00001"][2]['fs'] == new_fs
-        assert batch["A00004"][2]['fs'] == new_fs
+        assert batch.meta["A00001"]['fs'] == new_fs
+        assert batch.meta["A00004"]['fs'] == new_fs
 
     def test_load_labels(self, setup_module_load, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
         '''
@@ -157,10 +155,10 @@ class TestEcgBatchSingleMethods:
         batch = deepcopy(setup_class_methods)
         path = setup_module_load[1]
         batch = batch.load_labels(os.path.join(path, "REFERENCE.csv"))
-        if "diag" in batch["A00001"][2].keys():
-            assert batch["A00001"][2]['diag'] == 'N'
-            assert batch["A00004"][2]['diag'] == 'A'
-            assert batch["A00008"][2]['diag'] == 'O'
+        if "diag" in batch.meta["A00001"].keys():
+            assert batch.meta["A00001"]['diag'] == 'N'
+            assert batch.meta["A00004"]['diag'] == 'A'
+            assert batch.meta["A00008"]['diag'] == 'O'
         else:
             raise ValueError("No key 'diag' in meta!")
 
@@ -182,9 +180,9 @@ class TestEcgBatchSingleMethods:
         path = setup_module_load[1]
         batch = batch.load_labels(os.path.join(path, "REFERENCE.csv"))
         batch = batch.replace_all_labels({"A":"A", "N":"NonA", "O":"NonA"})
-        assert batch["A00001"][2]['diag'] == "NonA"
-        assert batch["A00004"][2]['diag'] == "A"
-        assert batch["A00008"][2]['diag'] == "NonA"
+        assert batch.meta["A00001"]['diag'] == "NonA"
+        assert batch.meta["A00004"]['diag'] == "A"
+        assert batch.meta["A00008"]['diag'] == "NonA"
 
     def test_update(self): #pylint: disable=no-self-use,redefined-outer-name
         '''
@@ -200,10 +198,36 @@ class TestEcgBatchSingleMethods:
         annotation = None
         meta = dict(zip(new_inds, [{"new_meta":True}, {"new_meta":True}]))
         batch.update(data, annotation, meta)
-        assert batch["A00001"][0].shape == (1, 3)
-        assert batch["A00004"][0].shape == (1, 4)
-        assert batch["A00001"][2]["new_meta"]
-        assert batch["A00004"][2]["new_meta"]
+        A00001_pos = batch.index.get_pos("A00001")
+        A00004_pos = batch.index.get_pos("A00004")
+        assert batch.signal[A00001_pos].shape == (1, 3)
+        assert batch.signal[A00004_pos].shape == (1, 4)
+        assert batch.meta["A00001"]["new_meta"]
+        assert batch.meta["A00004"]["new_meta"]
+
+
+@pytest.mark.usefixtures("setup_class_pipeline")
+class TestEcgBatchPipelineLoad:
+    ''' Class to test EcgBathc load in pipeline
+    '''
+
+    def test_pipeline_load(self, setup_class_pipeline):
+        ecg_dtst = deepcopy(setup_class_pipeline[0])
+        ppln = ecg_dtst.pipeline().load_ecg(src=None, fmt="wfdb")
+
+        batch_size = 2
+        epochs = ecg_dtst.indices.shape[0] // batch_size
+
+        assert epochs == 3
+
+        for i in range(epochs):
+            ppln_batch = ppln.next_batch(batch_size=batch_size, shuffle=False)
+            assert ppln_batch.indices.shape[0] == batch_size
+            assert ppln_batch.signal.shape[0] == batch_size
+            
+            first_indice = ppln_batch.indices[0]
+
+            assert len(ppln_batch[first_indice]) == 3
 
 
 @pytest.mark.usefixtures("setup_class_pipeline")
@@ -239,13 +263,7 @@ class TestEcgBatchPipelineMethods:
 
         batch = ppln.next_batch(batch_size=2, shuffle=False)
         assert batch.signal[0].shape == (1, 4500)
-        assert batch[batch.indices[0]][2]['diag'] in ["A", "NonA"]
+        assert batch.meta[batch.indices[0]]['diag'] in ["A", "NonA"]
 
 
-
-# list_of_methods_to_implement = [
-#  'init_parallel',
-#  'post_parallel',
-#  'check_signal_fs',
-#  'check_signal_length'
-# ]
+# list_of_methods_to_implement = [ ]
