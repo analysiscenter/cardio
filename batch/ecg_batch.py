@@ -5,6 +5,7 @@ import copy
 import itertools
 import warnings
 import numpy as np
+import scipy
 import pandas as pd
 
 from sklearn.metrics import f1_score, log_loss
@@ -21,7 +22,8 @@ import keras.backend as K
 from hmmlearn import hmm
 
 import dataset as ds
-from .ecg_batch_tools import *#pylint: disable=wildcard-import, unused-wildcard-import
+from . import kernels
+from . import ecg_batch_tools as bt
 from .keras_extra_layers import RFFT, Crop, Inception2D
 
 
@@ -56,9 +58,9 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         fmt: format of ecg files. Supported formats: 'wfdb', 'npz'.
         """
         if fmt == 'wfdb':
-            return load_wfdb(index, src[index])
+            return bt.load_wfdb(index, src[index])
         elif fmt == 'npz':
-            return load_npz(index, src[index])
+            return bt.load_npz(index, src[index])
         else:
             raise TypeError("Incorrect type of source")
 
@@ -68,7 +70,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         """
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
-        return dump_ecg_signal(signal, annot, meta, index, path, fmt)
+        return bt.dump_ecg_signal(signal, annot, meta, index, path, fmt)
 
     def __getitem__(self, index):
         try:
@@ -139,8 +141,8 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             raise ValueError('Signal is expected to have ndim = 1, 2 or 3, found ndim = {0}'
                              .format(list_of_arrs[0].ndim))
         if list_of_arrs[0].ndim in [1, 3]:
-			#list_of_arrs[0] has shape (nb_signals, nb_channels, siglen)
-			#ndim = 3 for signals with similar siglens and 1 for signals with differenr siglens
+            #list_of_arrs[0] has shape (nb_signals, nb_channels, siglen)
+            #ndim = 3 for signals with similar siglens and 1 for signals with differenr siglens
             list_of_arrs = list(itertools.chain([x for y in list_of_arrs
                                                  for x in y]))
         list_of_arrs.append([])
@@ -196,7 +198,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         new_fs: target signal sampling rate in Hz.
         '''
         _ = new_fs
-        return resample_signal
+        return bt.resample_signal
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
@@ -210,7 +212,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         list_of_distr: list of tuples (distr, params). See augment_fssignal for details.
         '''
         _ = list_of_distr
-        return augment_fs_signal_mult
+        return bt.augment_fs_signal_mult
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
@@ -231,7 +233,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
                  signal length.
         """
         _ = length, step, pad, return_copy
-        return segment_signal
+        return bt.segment_signal
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
@@ -244,7 +246,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         label: label to be dropped from batch
         '''
         _ = label
-        return drop_label
+        return bt.drop_label
 
     @ds.action
     def load_labels(self, path):
@@ -358,7 +360,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         new_labels: dict of previous and corresponding new labels.
         '''
         _ = new_labels
-        return replace_labels_in_meta
+        return bt.replace_labels_in_meta
 
     def get_categorical_labels(self, model_name):
         '''
@@ -382,7 +384,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         train_y = self.get_categorical_labels(model_name)
         res = model.train_on_batch(train_x, train_y)
         pred = model.predict(train_x)
-        y_pred = get_pos_of_max(pred)
+        y_pred = bt.get_pos_of_max(pred)
         hist['train_loss'].append(res)
         hist['train_metric'].append(f1_score(train_y, y_pred, average='macro'))
         return self
@@ -397,7 +399,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         test_x = np.array([x for x in self.signal]).reshape((-1, 3000, 1))
         test_y = self.get_categorical_labels(model_name)
         pred = model.predict(test_x)
-        y_pred = get_pos_of_max(pred)
+        y_pred = bt.get_pos_of_max(pred)
         hist['val_loss'].append(log_loss(test_y, pred))
         hist['val_metric'].append(f1_score(test_y, y_pred, average='macro'))
         return self
@@ -467,7 +469,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Get hmm predictited classes
         '''
         _ = model
-        return predict_hmm_classes
+        return bt.predict_hmm_classes
 
     @ds.action
     def save_hmm_model(self, model_name, fname):
@@ -494,16 +496,81 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Compute derivative of given order and add it to annotation
         """
         _ = order
-        return get_gradient
+        return bt.get_gradient
+
+    @ds.action
+    def band_pass_filter(self, axis=-1, low=None, high=None):
+        """Reject frequencies outside given range.
+
+        Parameters
+        ----------
+        axis : int
+            Axis along which signal is sliced.
+        low : positive float
+            High-pass filter cutoff frequency (Hz).
+        high : positive float
+            Low-pass filter cutoff frequency (Hz).
+
+        Returns
+        -------
+        batch : EcgBatch
+            Filtered batch. Changes self.signal inplace.
+        """
+        for i in range(len(self.signal)):
+            self.signal[i] = bt.band_pass_filter(self.signal[i], self.meta[self.indices[i]]["fs"], axis, low, high)
+        return self
+
+    @ds.action
+    def convolve(self, kernel, axis=-1, padding_mode="edge", **kwargs):
+        """Convolve signals with given kernel.
+
+        Parameters
+        ----------
+        kernel : array_like
+            Convolution kernel.
+        axis : int
+            Axis along which signal is sliced.
+        padding_mode : str or function
+            np.pad padding mode.
+        **kwargs :
+            Any additional named argments to np.pad.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Convolved batch. Changes self.signal inplace.
+        """
+        for i in range(len(self.signal)):
+            self.signal[i] = bt.convolve(self.signal[i], kernel, axis, padding_mode, **kwargs)
+        return self
+
+    @ds.action
+    def flip_signals(self):
+        """Flip signals whose R-peaks are directed downwards.
+
+        Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with flipped signals.
+        """
+        for i in range(len(self.signal)):
+            if self.signal[i].ndim != 2:
+                raise ValueError("Each signal in batch must be a 2-D ndarray")
+            sig = bt.band_pass_filter(self.signal[i], self.meta[self.indices[i]]["fs"], axis=-1, low=5, high=50)
+            sig = bt.convolve(sig, kernels.gaussian(11, 3), axis=-1)
+            self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
+        return self
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def convolve(self, layer, kernel):
+    def convolve_layer(self, layer, kernel):
         """
         Convolve layer with kernel
         """
         _ = layer, kernel
-        return convolve_layer
+        return bt.convolve_layer
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
@@ -513,4 +580,4 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         Merge layers from list of layers to signal
         """
         _ = list_of_layers
-        return merge_list_of_layers
+        return bt.merge_list_of_layers
