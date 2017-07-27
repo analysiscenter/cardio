@@ -15,11 +15,11 @@ class AutoencoderFactory:  # pylint: disable=too-few-public-methods
 
     def __new__(cls, *args, backend="keras", **kwargs):
         if cls is AutoencoderFactory:
-            raise TypeError("AutoencoderFactory class may not be instantiated")
+            raise TypeError("AutoencoderFactory class can not be instantiated")
         if cls._backend_dict is None:
-            raise ValueError("backend dictionary must be defined")
+            raise ValueError("Backend dictionary must be defined")
         if not isinstance(backend, str):
-            raise TypeError("backend name must be a string")
+            raise TypeError("Backend name must be a string")
         backend_cls = cls._backend_dict.get(backend)
         if backend_cls is None:
             raise KeyError("{} backend is not supported yet".format(backend))

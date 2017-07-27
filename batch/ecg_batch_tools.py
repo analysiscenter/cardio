@@ -183,6 +183,82 @@ def get_gradient(signal, annot, meta, index, order):
     annot.update({'grad_{0}'.format(order): grad})
     return [signal, annot, meta, index]
 
+def band_pass_filter(signals, freq, axis=-1, low=None, high=None):
+    """Reject frequencies outside given range.
+
+    Parameters
+    ----------
+    signals : ndarray
+        Signals to filter.
+    freq : positive float
+        Sampling rate.
+    axis : int
+        Axis along which signal is sliced.
+    low : positive float
+        High-pass filter cutoff frequency (Hz).
+    high : positive float
+        Low-pass filter cutoff frequency (Hz).
+
+    Returns
+    -------
+    signals : ndarray
+        Filtered signals.
+    """
+    if freq <= 0:
+        raise ValueError("Sampling rate must be a positive float")
+    sig_rfft = np.fft.rfft(signals, axis=axis)
+    sig_freq = np.fft.rfftfreq(signals.shape[axis], 1 / freq)
+    mask = np.zeros(len(sig_freq), dtype=bool)
+    if low is not None:
+        mask |= (sig_freq <= low)
+    if high is not None:
+        mask |= (sig_freq >= high)
+    slc = [slice(None)] * signals.ndim
+    slc[axis] = mask
+    sig_rfft[slc] = 0
+    return np.fft.irfft(sig_rfft, n=signals.shape[axis], axis=axis)
+
+def convolve(signals, kernel, axis=-1, padding_mode="edge", **kwargs):
+    """Convolve signals with given kernel.
+
+    Parameters
+    ----------
+    signals : ndarray
+        Signals to convolve.
+    kernel : array_like
+        Convolution kernel.
+    axis : int
+        Axis along which signal is sliced.
+    padding_mode : str or function
+        np.pad padding mode.
+    **kwargs :
+        Any additional named argments to np.pad.
+
+    Returns
+    -------
+    signals : ndarray
+        Convolved signals.
+    """
+    kernel = np.asarray(kernel)
+    if len(kernel.shape) == 0:
+        kernel = kernel.ravel()
+    if len(kernel.shape) != 1:
+        raise ValueError("Kernel must be 1-D array")
+    if not np.issubdtype(kernel.dtype, np.number):
+        raise ValueError("Kernel must have numeric dtype")
+    pad = len(kernel) // 2
+
+    def conv_func(x):
+        """Convolve padded signal."""
+        x_pad = np.pad(x, pad, padding_mode, **kwargs)
+        conv = np.convolve(x_pad, kernel, "same")
+        if pad > 0:
+            conv = conv[pad:-pad]
+        return conv
+
+    signals = np.apply_along_axis(conv_func, arr=signals, axis=axis)
+    return signals
+
 def convolve_layer(signal, annot, meta, index, layer, kernel):
     '''
     Convolve squared data with kernel

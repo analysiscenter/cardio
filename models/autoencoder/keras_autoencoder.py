@@ -110,7 +110,7 @@ class KerasBaseAutoencoder(BaseAutoencoder):
             return Reshape(shape)(tensor)
         return tensor
 
-    def fit(self, x, batch_size=32, nb_epoch=10, verbose=1, callbacks=None,  # pylint: disable=too-many-arguments
+    def fit(self, x, batch_size=32, epochs=10, verbose=1, callbacks=None,  # pylint: disable=too-many-arguments
             validation_split=0.0, validation_data=None, *args, **kwargs):
         """Fit autoencoder model to given data.
 
@@ -124,7 +124,7 @@ class KerasBaseAutoencoder(BaseAutoencoder):
         """
         if validation_data is not None:
             validation_data = (validation_data, validation_data)
-        return self.autoencoder.fit(x, x, batch_size, nb_epoch, verbose, callbacks,
+        return self.autoencoder.fit(x, x, batch_size, epochs, verbose, callbacks,
                                     validation_split, validation_data, *args, **kwargs)
 
     def predict(self, x, *args, **kwargs):
@@ -211,9 +211,9 @@ class KerasAutoencoder(KerasBaseAutoencoder):
         decoded = self._reshape(decoded, input_shape)
         decoder = self._reshape(decoder, input_shape)
 
-        self.autoencoder = Model(input=encoder_input, output=decoded)
-        self.encoder = Model(input=encoder_input, output=encoded)
-        self.decoder = Model(input=decoder_input, output=decoder)
+        self.autoencoder = Model(inputs=encoder_input, outputs=decoded)
+        self.encoder = Model(inputs=encoder_input, outputs=encoded)
+        self.decoder = Model(inputs=decoder_input, outputs=decoder)
 
 
 class KerasVariationalAutoencoder(KerasBaseAutoencoder):
@@ -265,9 +265,9 @@ class KerasVariationalAutoencoder(KerasBaseAutoencoder):
         decoded = self._reshape(decoded, input_shape)
         decoder = self._reshape(decoder, input_shape)
 
-        self.autoencoder = Model(input=encoder_input, output=decoded)
-        self.encoder = Model(input=encoder_input, output=[z_mean, z_std])
-        self.decoder = Model(input=decoder_input, output=decoder)
+        self.autoencoder = Model(inputs=encoder_input, outputs=decoded)
+        self.encoder = Model(inputs=encoder_input, outputs=[z_mean, z_std])
+        self.decoder = Model(inputs=decoder_input, outputs=decoder)
 
     @staticmethod
     def _sample_normal(mean=0, std=1, shape=None):
@@ -290,7 +290,7 @@ class KerasVariationalAutoencoder(KerasBaseAutoencoder):
         """
         if shape is None:
             shape = np.broadcast(np.atleast_1d(mean), np.atleast_1d(std)).shape
-        eps = K.random_normal(shape=shape, mean=0, std=1)
+        eps = K.random_normal(shape=shape, mean=0, stddev=1)
         return mean + std * eps
 
     def _loss(self, true, pred):
