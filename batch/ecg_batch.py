@@ -27,6 +27,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
+from .ecg_batch_tools import InputDataError
 from .keras_extra_layers import RFFT, Crop, Inception2D
 
 
