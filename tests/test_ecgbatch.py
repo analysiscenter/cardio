@@ -184,6 +184,15 @@ class TestEcgBatchSingleMethods:
         assert batch.meta["A00004"]['diag'] == "A"
         assert batch.meta["A00008"]['diag'] == "NonA"
 
+    def test_flip_signals(self, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
+        '''
+        Testing function that flips signals if R-peaks are directed downwards
+        '''
+        batch = deepcopy(setup_class_methods)
+
+        batch = batch.flip_signals()
+        assert batch.indices.shape == (6,)
+
     def test_update(self): #pylint: disable=no-self-use,redefined-outer-name
         '''
         Testing of updater
@@ -257,6 +266,7 @@ class TestEcgBatchPipelineMethods:
         ecg_ppln = setup_class_pipeline[1]
         new_fs = 300 + 50
         ppln = (ecg_ppln.load_labels(os.path.join(path, "REFERENCE.csv"))
+                        .flip_signals()
                         .augment_fs([("delta", {'loc': new_fs})])
                         .split_to_segments(4500, 4499, pad=True, return_copy=False)
                         .replace_all_labels({"A":"A", "N":"NonA", "O":"NonA"}))
