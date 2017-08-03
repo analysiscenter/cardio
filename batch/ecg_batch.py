@@ -38,6 +38,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
         self._data = (None, None, None, None)
+        self.signal = np.array([])
+        self.annotation = np.array([])
+        self.meta = np.array([])
+        self.target = np.array([])
         self._unique_labels = None
         self._label_binarizer = None
         self.unique_labels = unique_labels
@@ -96,8 +100,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """
         if src is not None:
             path = src[index]
-        else:
+        elif isinstance(self.index, ds.FilesIndex):
             path = self.index.get_fullpath(index)
+        else:
+            raise ValueError("Source path is not specified")
         fmt = os.path.splitext(path)[-1]
         if fmt == ".hea":
             return bt.load_wfdb(path)
@@ -107,6 +113,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             raise TypeError("Unsupported type of source")
 
     def post_load_ecg(self, results, *args, **kwargs):
+        _ = args, kwargs
         self._reraise_exceptions(results)
         signal, annotation, meta, target = zip(*results)
         signal = np.array(signal + (None,))[:-1]
@@ -148,7 +155,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         indices = self.indices[keep_mask]
         if len(indices) == 0:
             raise ds.SkipBatchException("All batch data was dropped")
-        res_batch = EcgBatch(indices, unique_labels=self.unique_labels)
+        res_batch = EcgBatch(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
         res_batch.update(self.signal[keep_mask], self.annotation[keep_mask],
                          self.meta[keep_mask], self.target[keep_mask])
         return res_batch
@@ -344,8 +351,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             list_of_arrs.append(np.array([]))
             batch_annot[k] = np.array(list_of_arrs)[:-1]
 
-        return out_batch.update(data=batch_data,
-                                annot=batch_annot,
+        return out_batch.update(signal=batch_data,
+                                annotation=batch_annot,
                                 meta=batch_meta)
 
     @ds.action
