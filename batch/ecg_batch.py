@@ -1,13 +1,16 @@
-""" contain Batch class for processing ECGs """
+"""Contains ECG Batch class."""
 
-import sys
+import os
 import copy
+import traceback
 import itertools
 import warnings
+
 import numpy as np
 import scipy
 import pandas as pd
 
+from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import f1_score, log_loss
 from sklearn.externals import joblib
 
@@ -27,28 +30,62 @@ from . import ecg_batch_tools as bt
 from .keras_extra_layers import RFFT, Crop, Inception2D
 
 
-sys.path.append('..')
-
-
-class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
+class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     """
     Batch of ECG data
     """
-    def __init__(self, index, preloaded=None):
+
+    def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
-        self._data = (None, None, None)
-        self.signal = np.array([])
-        self.annotation = {}
-        self.meta = dict()
-        self.history = []
+        self._data = (None, None, None, None)
+        self._unique_labels = None
+        self._label_binarizer = None
+        self.unique_labels = unique_labels
 
     @property
     def components(self):
-        return "signal", "annotation", "meta"
+        return "signal", "annotation", "meta", "target"
+
+    @property
+    def unique_labels(self):
+        return self._unique_labels
+
+    @unique_labels.setter
+    def unique_labels(self, val):
+        self._unique_labels = val
+        if self.unique_labels is None:
+            self._label_binarizer = None
+        else:
+            self._label_binarizer = LabelBinarizer().fit(self.unique_labels)
+
+    @property
+    def label_binarizer(self):
+        return self._label_binarizer
+
+    def update(self, signal=None, annotation=None, meta=None, target=None):
+        """
+        Update content of ecg_batch
+        """
+        if signal is not None:
+            self.signal = np.asarray(signal)
+        if annotation is not None:
+            self.annotation = np.asarray(annotation)
+        if meta is not None:
+            self.meta = np.asarray(meta)
+        if target is not None:
+            self.target = np.asarray(target)
+        return self
+
+    def _reraise_exceptions(self, results):
+        if ds.any_action_failed(results):
+            all_errors = self.get_errors(results)
+            print(all_errors)
+            traceback.print_tb(all_errors[0].__traceback__)
+            raise RuntimeError("Could not assemble the batch")
 
     @ds.action
-    @ds.inbatch_parallel(init='indices', post="post_parallel", target='threads')
-    def load_ecg(self, index, src, fmt):
+    @ds.inbatch_parallel(init="indices", post="post_load_ecg", target="threads")
+    def load_ecg(self, index, src=None):
         """
         Loads ecg data
 
@@ -57,42 +94,166 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         src: dict of type index: path to ecg.
         fmt: format of ecg files. Supported formats: 'wfdb', 'npz'.
         """
-        if fmt == 'wfdb':
-            return bt.load_wfdb(index, src[index])
-        elif fmt == 'npz':
-            return bt.load_npz(index, src[index])
+        if src is not None:
+            path = src[index]
         else:
-            raise TypeError("Incorrect type of source")
+            path = self.index.get_fullpath(index)
+        fmt = os.path.splitext(path)[-1]
+        if fmt == ".hea":
+            return bt.load_wfdb(path)
+        elif fmt == ".npz":
+            return bt.load_npz(path)
+        else:
+            raise TypeError("Unsupported type of source")
+
+    def post_load_ecg(self, results, *args, **kwargs):
+        self._reraise_exceptions(results)
+        signal, annotation, meta, target = zip(*results)
+        signal = np.array(signal + (None,))[:-1]
+        return self.update(signal, annotation, meta, target)
 
     @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='threads')
-    def dump_ecg(self, signal, annot, meta, index, path, fmt):
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def dump_ecg(self, index, dir_path, fmt="npz"):
         """
         Save each ecg in a separate file as 'path/<index>.<fmt>'
         """
-        return bt.dump_ecg_signal(signal, annot, meta, index, path, fmt)
+        file_path = os.path.join(dir_path, str(index) + "." + fmt)
+        if fmt == "npz":
+            return bt.dump_npz(self[index], file_path)
+        else:
+            raise TypeError("Unsupported file format")
 
-    def __getitem__(self, index):
-        try:
-            pos = self.get_pos(None, None, index)
-        except IndexError:
-            raise IndexError("There is no such index in the batch: {0}"
-                             .format(index))
-        return (self.signal[pos],
-                {k: v[pos] for k, v in self.annotation.items()},
-                self.meta[index])
+    @ds.action
+    def load_labels(self, src):
+        """
+        Load labels from file with signal labels. File should have a csv format
+        and contain 2 columns: index of ecg and label.
 
-    def update(self, data=None, annot=None, meta=None):
+        Arguments
+        path: path to the file with labels
         """
-        Update content of ecg_batch
-        """
-        if data is not None:
-            self.signal = np.array(data)
-        if annot is not None:
-            self.annotation = annot
-        if meta is not None:
-            self.meta = meta
+        if not isinstance(src, (str, pd.Series)):
+            raise TypeError("Unsupported type of source")
+        if self.pipeline is None:
+            raise RuntimeError("Batch must be created in pipeline")
+        ds_indices = self.pipeline.dataset.indices
+        if isinstance(src, str):
+            src = pd.read_csv(src, header=None, names=["index", "label"], index_col=0)["label"]
+        self.unique_labels = np.sort(src[ds_indices].unique())
+        self.update(target=src[self.indices].values)
         return self
+
+    def filter_batch(self, keep_mask):
+        indices = self.indices[keep_mask]
+        if len(indices) == 0:
+            raise ds.SkipBatchException("All batch data was dropped")
+        res_batch = EcgBatch(indices, unique_labels=self.unique_labels)
+        res_batch.update(self.signal[keep_mask], self.annotation[keep_mask],
+                         self.meta[keep_mask], self.target[keep_mask])
+        return res_batch
+
+    @ds.action
+    def drop_labels(self, drop_list):
+        '''
+        Drop signals labeled as label from the batch.
+
+        Arguments
+        label: label to be dropped from batch
+        '''
+        drop_arr = np.asarray(drop_list)
+        self.unique_labels = np.setdiff1d(self.unique_labels, drop_arr)
+        keep_mask = ~np.in1d(self.target, drop_arr)
+        return self.filter_batch(keep_mask)
+
+    @ds.action
+    def keep_labels(self, keep_list):
+        '''
+        Drop signals labeled as label from the batch.
+
+        Arguments
+        label: label to be dropped from batch
+        '''
+        keep_arr = np.asarray(keep_list)
+        self.unique_labels = np.intersect1d(self.unique_labels, keep_arr)
+        keep_mask = np.in1d(self.target, keep_arr)
+        return self.filter_batch(keep_mask)
+
+    @ds.action
+    def replace_labels(self, replace_dict):
+        self.unique_labels = np.array(sorted({replace_dict.get(t, t) for t in self.unique_labels}))
+        return self.update(target=[replace_dict.get(t, t) for t in self.target])
+
+    @ds.action
+    def binarize_labels(self):
+        return self.update(target=self.label_binarizer.transform(self.target))
+
+    @ds.action
+    def convolve(self, kernel, axis=-1, padding_mode="edge", **kwargs):
+        """Convolve signals with given kernel.
+
+        Parameters
+        ----------
+        kernel : array_like
+            Convolution kernel.
+        axis : int
+            Axis along which signal is sliced.
+        padding_mode : str or function
+            np.pad padding mode.
+        **kwargs :
+            Any additional named argments to np.pad.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Convolved batch. Changes self.signal inplace.
+        """
+        for i in range(len(self.signal)):
+            self.signal[i] = bt.convolve(self.signal[i], kernel, axis, padding_mode, **kwargs)
+        return self
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def band_pass_filter(self, index, axis=-1, low=None, high=None):
+        """Reject frequencies outside given range.
+
+        Parameters
+        ----------
+        axis : int
+            Axis along which signal is sliced.
+        low : positive float
+            High-pass filter cutoff frequency (Hz).
+        high : positive float
+            Low-pass filter cutoff frequency (Hz).
+
+        Returns
+        -------
+        batch : EcgBatch
+            Filtered batch. Changes self.signal inplace.
+        """
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = bt.band_pass_filter(self.signal[i], self.meta[i]["fs"], axis, low, high)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def flip_signals(self, index):
+        """Flip signals whose R-peaks are directed downwards.
+
+        Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with flipped signals.
+        """
+        i = self.get_pos(None, "signal", index)
+        if self.signal[i].ndim != 2:
+            raise ValueError("Each signal in batch must be a 2-D ndarray")
+        sig = bt.band_pass_filter(self.signal[i], self.meta[i]["fs"], axis=-1, low=5, high=50)
+        sig = bt.convolve(sig, kernels.gaussian(11, 3), axis=-1)
+        self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
+
+    # The following action methods are not guaranteed to work properly
 
     def init_parallel(self, *args, **kwargs):
         '''
@@ -235,35 +396,6 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         _ = length, step, pad, return_copy
         return bt.segment_signal
 
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def drop_label(self, label):
-        '''
-        Drop signals labeled as label from the batch.
-
-        Arguments
-        label: label to be dropped from batch
-        '''
-        _ = label
-        return bt.drop_label
-
-    @ds.action
-    def load_labels(self, path):
-        """
-        Load labels from file with signal labels. File should have a csv format
-        and contain 2 columns: index of ecg and label.
-
-        Arguments
-        path: path to the file with labels
-        """
-        ref = pd.read_csv(path, header=None)
-        ref.columns = ['index', 'diag']
-        ref = ref.set_index('index')  #pylint: disable=no-member
-        for ecg in self.indices:
-            self.meta[ecg]['diag'] = ref.ix[ecg]['diag']
-        return self
-
     @ds.model()
     def hmm_learn():
         """
@@ -335,43 +467,6 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         diag_classes = ['A', 'NonA']
 
         return model, hist, diag_classes
-
-    @ds.action
-    def replace_labels(self, model_name, new_labels):
-        '''
-        Replace original labels by new labels.
-
-        Arguments
-        model_name: name of the model where to replace labels.
-        new_labels: new labels to replace previous.
-        '''
-        model_comp = list(self.get_model_by_name(model_name))
-        model_comp[2] = list(new_labels.values())
-        return self.replace_all_labels(new_labels)
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def replace_all_labels(self, new_labels):
-        '''
-        Replace original labels by new labels.
-
-        Arguments
-        new_labels: dict of previous and corresponding new labels.
-        '''
-        _ = new_labels
-        return bt.replace_labels_in_meta
-
-    def get_categorical_labels(self, model_name):
-        '''
-        Returns a dummy matrix given an array of categorical labels.
-
-        Arguments
-        model_name: name of the model that will use dummy martix.
-        '''
-        classes = self.get_model_by_name(model_name)[2]
-        labels = [self.meta[ind]['diag'] for ind in self.indices]
-        return pd.get_dummies(classes + labels).as_matrix()[len(classes):]
 
     @ds.action
     def train_on_batch(self, model_name):
@@ -497,71 +592,6 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         """
         _ = order
         return bt.get_gradient
-
-    @ds.action
-    def band_pass_filter(self, axis=-1, low=None, high=None):
-        """Reject frequencies outside given range.
-
-        Parameters
-        ----------
-        axis : int
-            Axis along which signal is sliced.
-        low : positive float
-            High-pass filter cutoff frequency (Hz).
-        high : positive float
-            Low-pass filter cutoff frequency (Hz).
-
-        Returns
-        -------
-        batch : EcgBatch
-            Filtered batch. Changes self.signal inplace.
-        """
-        for i in range(len(self.signal)):
-            self.signal[i] = bt.band_pass_filter(self.signal[i], self.meta[self.indices[i]]["fs"], axis, low, high)
-        return self
-
-    @ds.action
-    def convolve(self, kernel, axis=-1, padding_mode="edge", **kwargs):
-        """Convolve signals with given kernel.
-
-        Parameters
-        ----------
-        kernel : array_like
-            Convolution kernel.
-        axis : int
-            Axis along which signal is sliced.
-        padding_mode : str or function
-            np.pad padding mode.
-        **kwargs :
-            Any additional named argments to np.pad.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Convolved batch. Changes self.signal inplace.
-        """
-        for i in range(len(self.signal)):
-            self.signal[i] = bt.convolve(self.signal[i], kernel, axis, padding_mode, **kwargs)
-        return self
-
-    @ds.action
-    def flip_signals(self):
-        """Flip signals whose R-peaks are directed downwards.
-
-        Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Batch with flipped signals.
-        """
-        for i in range(len(self.signal)):
-            if self.signal[i].ndim != 2:
-                raise ValueError("Each signal in batch must be a 2-D ndarray")
-            sig = bt.band_pass_filter(self.signal[i], self.meta[self.indices[i]]["fs"], axis=-1, low=5, high=50)
-            sig = bt.convolve(sig, kernels.gaussian(11, 3), axis=-1)
-            self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
-        return self
 
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
