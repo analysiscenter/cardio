@@ -8,6 +8,7 @@ import warnings
 import numpy as np
 import scipy
 import pandas as pd
+from matplotlib import pyplot as plt
 
 from sklearn.metrics import f1_score, log_loss
 from sklearn.externals import joblib
@@ -628,7 +629,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     @ds.action
     def print_ecg(self, index, start=0, end=None, fs=None):
         """ Method for printing an ECG """
-        
+
         sig, _, meta = self[index]
 
         if fs is None:
@@ -646,10 +647,10 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         fig = plt.figure(figsize=(10, 4*num_channels))
         for channel in range(num_channels):
             ax = fig.add_subplot(num_channels, 1, channel+1)
-            ax.plot( (np.arange(start, end) / fs), sig[channel,:] )
+            ax.plot((np.arange(start, end) / fs), sig[channel, :])
             ax.set_xlabel("t, сек")
             ax.set_ylabel(meta["units"][channel] if "units" in meta.keys() else "mV")
-            ax.grid("on", which='major')
-            top_lim = np.ceil(sig[channel].max(),)
+            ax.grid("on")
+            top_lim = np.ceil(sig[channel].max())
             bot_lim = np.floor(sig[channel].min())
             ax.set_ylim(bot_lim, top_lim)
