@@ -623,3 +623,33 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             return True
         else:
             raise InputDataError('Signal sampling rate is wrong')
+
+
+    @ds.action
+    def print_ecg(self, index, start=0, end=None, fs=None):
+        """ Method for printing an ECG """
+        
+        sig, _, meta = self[index]
+
+        if fs is None:
+            fs = meta["fs"]
+
+        if end is None:
+            end = sig.shape[1]
+        else:
+            end = np.int(end*fs)
+        start = np.int(start*fs)
+
+        sig = sig[:, start:end]
+
+        num_channels = sig.shape[0]
+        fig = plt.figure(figsize=(10, 4*num_channels))
+        for channel in range(num_channels):
+            ax = fig.add_subplot(num_channels, 1, channel+1)
+            ax.plot( (np.arange(start, end) / fs), sig[channel,:] )
+            ax.set_xlabel("t, сек")
+            ax.set_ylabel(meta["units"][channel] if "units" in meta.keys() else "mV")
+            ax.grid("on", which='major')
+            top_lim = np.ceil(sig[channel].max(),)
+            bot_lim = np.floor(sig[channel].min())
+            ax.set_ylim(bot_lim, top_lim)
