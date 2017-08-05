@@ -7,8 +7,8 @@ import itertools
 import warnings
 
 import numpy as np
-import scipy
 import pandas as pd
+import scipy
 
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import f1_score, log_loss
@@ -89,7 +89,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", post="post_load_ecg", target="threads")
-    def load_ecg(self, index, src=None):
+    def load_ecg(self, index, src=None, fmt=None, components=None):
         """
         Loads ecg data
 
@@ -101,14 +101,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         if src is not None:
             path = src[index]
         elif isinstance(self.index, ds.FilesIndex):
-            path = self.index.get_fullpath(index)
+            path = self.index.get_fullpath(index)  # pylint: disable=no-member
         else:
             raise ValueError("Source path is not specified")
-        fmt = os.path.splitext(path)[-1]
-        if fmt == ".hea":
+        fmt = fmt or os.path.splitext(path)[-1][1:]
+        if fmt == "hea":
             return bt.load_wfdb(path)
-        elif fmt == ".npz":
-            return bt.load_npz(path)
         else:
             raise TypeError("Unsupported type of source")
 
@@ -118,18 +116,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         signal, annotation, meta, target = zip(*results)
         signal = np.array(signal + (None,))[:-1]
         return self.update(signal, annotation, meta, target)
-
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
-    def dump_ecg(self, index, dir_path, fmt="npz"):
-        """
-        Save each ecg in a separate file as 'path/<index>.<fmt>'
-        """
-        file_path = os.path.join(dir_path, str(index) + "." + fmt)
-        if fmt == "npz":
-            return bt.dump_npz(self[index], file_path)
-        else:
-            raise TypeError("Unsupported file format")
 
     @ds.action
     def load_labels(self, src):
@@ -194,6 +180,62 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     def binarize_labels(self):
         return self.update(target=self.label_binarizer.transform(self.target))
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def segment_signals(self, index, length, step, pad_value=0):
+        i = self.get_pos(None, "signal", index)
+        if self.signal[i].ndim != 2:
+            raise ValueError("Each signal in batch must be a 2-D ndarray")
+        if self.signal[i].shape[1] < length:
+            pad_len = length - self.signal[i].shape[1]
+            self.signal[i] = np.pad(self.signal[i], ((0, 0), (pad_len, 0)), "constant", constant_values=pad_value)
+        else:
+            if isinstance(step, int):
+                sig_step = step
+            elif isinstance(step, dict):
+                sig_step = step.get(self.target[i])
+                if sig_step is None:
+                    raise KeyError("Undefined step size")
+            else:
+                raise ValueError("Unsupported step type")
+            self.signal[i] = bt.segment_signals(self.signal[i], length, sig_step)
+        self.meta[i]["siglen"] = length
+
+    @ds.action
+    def drop_short_signals(self, min_length, axis=-1):
+        keep_mask = np.array([sig.shape[axis] >= min_length for sig in self.signal])
+        return self.filter_batch(keep_mask)
+
+    def _safe_resample(self, index, fs):
+        i = self.get_pos(None, "signal", index)
+        if self.signal[i].ndim != 2:
+            raise ValueError("Each signal in batch must be a 2-D ndarray")
+        new_len = max(1, int(fs * self.signal[i].shape[1] / self.meta[i]["fs"]))
+        self.meta[i]["fs"] = fs
+        self.meta[i]["siglen"] = new_len
+        self.signal[i] = bt.resample(self.signal[i], new_len)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def resample(self, index, fs):
+        if fs <= 0:
+            raise ValueError("Sampling frequency must be positive")
+        self._safe_resample(index, fs)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def augment_fs(self, index, distr, **kwargs):
+        if hasattr(np.random, distr):
+            distr_fn = getattr(np.random, distr)
+            fs = distr_fn(**kwargs)
+        elif callable(distr):
+            fs = distr_fn(**kwargs)
+        else:
+            raise ValueError("Unknown type of distribution parameter")
+        if fs <= 0:
+            fs = self[index].meta["fs"]
+        self._safe_resample(index, fs)
 
     @ds.action
     def convolve(self, kernel, axis=-1, padding_mode="edge", **kwargs):
@@ -354,54 +396,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         return out_batch.update(signal=batch_data,
                                 annotation=batch_annot,
                                 meta=batch_meta)
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def resample(self, new_fs):
-        '''
-        Resample all signals in batch along axis=1 to new sampling rate. Retruns resampled batch with modified meta.
-        Resampling of annotation will be implemented in the future.
-
-        Arguments
-        new_fs: target signal sampling rate in Hz.
-        '''
-        _ = new_fs
-        return bt.resample_signal
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def augment_fs(self, list_of_distr):
-        '''
-        Multiple augmentation of signals in batch to random sampling rates. New sampling rates are sampled
-        from list of probability distributions with specified parameters.
-
-        Arguments
-        list_of_distr: list of tuples (distr, params). See augment_fssignal for details.
-        '''
-        _ = list_of_distr
-        return bt.augment_fs_signal_mult
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def split_to_segments(self, length, step, pad, return_copy):
-        """
-        Split signals along axis=1 to segments with constant length.
-        If signal is shorter than target segment length, signal is zero-padded on the left if
-        pad is True or raise ValueError if pad is False.
-        Segmentation of annotation will be implemented in the future.
-
-        Arguments
-        length: length of segment.
-        step: step along axis=1 of the signal.
-        pad: whether to apply zero-padding to short signals.
-        return_copy: if True, a copy of segments is returned and segments become intependent. If False,
-                 segments are not independent, but segmentation runtime becomes almost indepentent on
-                 signal length.
-        """
-        _ = length, step, pad, return_copy
-        return bt.segment_signal
 
     @ds.model()
     def hmm_learn():

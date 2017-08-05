@@ -1,11 +1,10 @@
 """Сontains ECG processing tools."""
 
 import os
-import numpy as np
 
+import numpy as np
 import wfdb
 from numba import njit
-from scipy.signal import resample_poly
 
 
 def load_wfdb(path):
@@ -19,25 +18,24 @@ def load_wfdb(path):
     return [signal, {}, meta, None]
 
 
-def load_npz(path):
-    """
-    Load signal and meta, loading of annotation should be added
-    """
-    data = np.load(path)
-    if set(data.files) != {"signal", "annotation", "meta", "target"}:
-        raise ValueError("File " + path + " has wrong components")
-    signal = data["signal"]
-    annotation = data["annotation"].item()
-    meta = data["meta"].item()
-    target = data["target"].item()
-    return [signal, annotation, meta, target]
+@njit(nogil=True)
+def segment_signals(signal, length, step):
+    res = np.empty(((signal.shape[1] - length) // step + 1, signal.shape[0], length), dtype=signal.dtype)
+    for i in range(res.shape[0]):
+        res[i, :, :] = signal[:, i * step : i * step + length]
+    return res
 
 
-def dump_npz(item, path):
-    """
-    Save ecg in a separate file as 'path/<index>.<fmt>'
-    """
-    np.savez(path, signal=item.signal, annotation=item.annotation, meta=item.meta, target=item.target)
+@njit(nogil=True)
+def resample(signal, new_len):
+    arg = np.linspace(0, signal.shape[1] - 1, new_len)
+    x_left = arg.astype(np.int32)
+    x_right = x_left + 1
+    x_right[-1] = x_left[-1]
+    alpha = arg - x_left
+    y_left = signal[:, x_left]
+    y_right = signal[:, x_right]
+    return y_left + (y_right - y_left) * alpha
 
 
 def convolve(signals, kernel, axis=-1, padding_mode="edge", **kwargs):
@@ -130,107 +128,6 @@ def get_pos_of_max(pred):
     for i in range(len(labels)):
         labels[i, pred[i].argmax()] = 1
     return labels
-
-def resample_signal(signal, annot, meta, index, new_fs):
-    """
-    Resample signal along axis=1 to new sampling rate. Retruns resampled signal with modified meta.
-    Resampling of annotation will be implemented in the future.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    new_fs: target signal sampling rate in Hz.
-    """
-    fs = meta['fs']
-    new_len = int(new_fs * len(signal[0]) / fs)
-    if new_len < 1:
-        print('Error: new_len should be >= 1. Try to change new_fs')
-        return None
-    signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
-    out_meta = {**meta, 'fs': new_fs, 'siglen': new_len}
-    return [signal, annot, out_meta, index]
-
-def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
-    """
-    Segment signal along axis=1 with constant step to segments with constant length.
-    If signal is shorter than target segment length, signal is zero-padded on the left if
-    pad is True or raise ValueError if pad is False.
-    Segmentation of annotation will be implemented in the future.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    length: length of segment.
-    step: step along axis=1.
-    pad: whether to apply zero-padding to short signals.
-    return_copy: if True, a copy of segments is returned and segments become intependent. If False,
-                 segments are not independent, but segmentation runtime becomes almost indepentent on
-                 signal length.
-
-    Attention: segmentation of meta and annotation is not implemented yet.
-    """
-    if signal.ndim != 2:
-        raise ValueError('Signal should have ndim = 2, found ndim = {0}'.format(signal.ndim))
-
-    if signal.shape[1] < length:
-        if pad:
-            pad_len = length - signal.shape[1]
-            segments = np.lib.pad(signal, ((0, 0), (pad_len, 0)),
-                                  'constant', constant_values=(0, 0))[np.newaxis, :, :]
-        else:
-            raise ValueError('Signal is shorter than segment length: %i < %i'
-                             % (signal.shape[1], length))
-    else:
-        shape = signal.shape[:-1] + (signal.shape[-1] - length + 1, length)
-        strides = signal.strides + (signal.strides[-1],)
-        segments = np.lib.stride_tricks.as_strided(signal, shape=shape,
-                                                   strides=strides)[:, ::step, :]
-        segments = np.transpose(segments, (1, 0, 2))
-
-    _ = annot
-    if return_copy:
-        segments = segments.copy()
-    out_meta = {**meta, 'siglen': length}
-    return [segments, {}, out_meta, index]
-
-def augment_fs_signal(signal, annot, meta, index, distr, params):
-    '''
-    Augmentation of signal to random sampling rate. New sampling rate is sampled
-    from given probability distribution with specified parameters.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    distr: distribution type, either a name of any distribution from np.random, or
-           callable, or 'none', or 'delta'.
-    params: dict of parameters and values for distr. ignored if distr='none'.
-    '''
-    if hasattr(np.random, distr):
-        distr_fn = getattr(np.random, distr)
-        new_fs = distr_fn(**params)
-    elif callable(distr):
-        new_fs = distr_fn(**params)
-    elif distr == 'none':
-        return [signal, annot, meta, index]
-    elif distr == 'delta':
-        new_fs = params['loc']
-    if new_fs <= 0:
-        return None
-    return resample_signal(signal, annot, meta, index, new_fs)
-
-def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
-    '''
-    Multiple augmentation of signal to random sampling rates. New sampling rates are sampled
-    from list of probability distributions with specified parameters.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    list_of_distr: list of tuples (distr, params). See augment_fssignal for details.
-    '''
-    res = [augment_fs_signal(signal, annot, meta, index, distr_type, params)
-           for (distr_type, params) in list_of_distr]
-    out_sig = [x[0] for x in res]
-    out_annot = [x[1] for x in res]
-    out_meta = [x[2] for x in res]
-    out_sig.append([])
-    return [np.array(out_sig)[:-1], out_annot, out_meta, index]
 
 def predict_hmm_classes(signal, annot, meta, index, model):
     '''
