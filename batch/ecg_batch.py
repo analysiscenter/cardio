@@ -654,3 +654,35 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
             top_lim = np.ceil(sig[channel].max())
             bot_lim = np.floor(sig[channel].min())
             ax.set_ylim(bot_lim, top_lim)
+
+    @ds.model()
+    def hmm_annotation():
+        """ """
+        model = joblib.load("ecg_report/Intenship_submit/hmm_model" + '.pkl')
+        
+        return model
+
+    @ds.action
+    def predict_hmm_annotation(self, cwt_scales, cwt_wavelet, model_name):
+        """  """
+        model = self.get_model_by_name(model_name)
+        return self.predict_all_hmm_annotation(cwt_scales, cwt_wavelet, model)
+    
+    @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    def predict_all_hmm_annotation(self, cwt_scales, cwt_wavelet, model):
+        """ Action to generate features for HMM to find P, QRS and T peaks """
+        _ = cwt_scales, cwt_wavelet, model
+        return bt.predict_hmm_annot
+
+    @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    def calc_heart_rate(self):
+        """ """
+        return bt.calc_hr
+    
+    @ds.action
+    def calculate_report(self, index):
+        print(tabulate([['ЧСС', np.round(self.meta[index]['hr'], 2), 'Уд./сек.'], 
+                        ['PQ интервал', 0, 'сек.']], 
+                       headers=['Параметр', 'Значение', 'Ед. изм.'], tablefmt='orgtbl'))
