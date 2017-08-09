@@ -46,6 +46,18 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self._label_binarizer = None
         self.unique_labels = unique_labels
 
+    def _reraise_exceptions(self, results):
+        if ds.any_action_failed(results):
+            all_errors = self.get_errors(results)
+            print(all_errors)
+            traceback.print_tb(all_errors[0].__traceback__)
+            raise RuntimeError("Could not assemble the batch")
+
+    @staticmethod
+    def _check_2d(signal):
+        if signal.ndim != 2:
+            raise ValueError("Each signal in batch must be a 2-D ndarray")
+
     @property
     def components(self):
         return "signal", "annotation", "meta", "target"
@@ -66,7 +78,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     def label_binarizer(self):
         return self._label_binarizer
 
-    def update(self, signal=None, annotation=None, meta=None, target=None):
+    def _update(self, signal=None, annotation=None, meta=None, target=None):
         """
         Update content of ecg_batch
         """
@@ -80,16 +92,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             self.target = np.asarray(target)
         return self
 
-    def _reraise_exceptions(self, results):
-        if ds.any_action_failed(results):
-            all_errors = self.get_errors(results)
-            print(all_errors)
-            traceback.print_tb(all_errors[0].__traceback__)
-            raise RuntimeError("Could not assemble the batch")
-
     @ds.action
-    @ds.inbatch_parallel(init="indices", post="post_load_ecg", target="threads")
-    def load_ecg(self, index, src=None, fmt=None, components=None):
+    @ds.inbatch_parallel(init="indices", post="_post_load_signals", target="threads")
+    def load_signals(self, index, src=None, fmt=None):
         """
         Loads ecg data
 
@@ -108,14 +113,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         if fmt == "hea":
             return bt.load_wfdb(path)
         else:
-            raise TypeError("Unsupported type of source")
+            raise TypeError("Unsupported type of source {}".format(fmt))
 
-    def post_load_ecg(self, results, *args, **kwargs):
+    def _post_load_signals(self, results, *args, **kwargs):
         _ = args, kwargs
         self._reraise_exceptions(results)
         signal, annotation, meta, target = zip(*results)
         signal = np.array(signal + (None,))[:-1]
-        return self.update(signal, annotation, meta, target)
+        return self._update(signal, annotation, meta, target)
 
     @ds.action
     def load_labels(self, src):
@@ -134,16 +139,16 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         if isinstance(src, str):
             src = pd.read_csv(src, header=None, names=["index", "label"], index_col=0)["label"]
         self.unique_labels = np.sort(src[ds_indices].unique())
-        self.update(target=src[self.indices].values)
+        self._update(target=src[self.indices].values)
         return self
 
-    def filter_batch(self, keep_mask):
+    def _filter_batch(self, keep_mask):
         indices = self.indices[keep_mask]
         if len(indices) == 0:
             raise ds.SkipBatchException("All batch data was dropped")
         res_batch = EcgBatch(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
-        res_batch.update(self.signal[keep_mask], self.annotation[keep_mask],
-                         self.meta[keep_mask], self.target[keep_mask])
+        res_batch._update(self.signal[keep_mask], self.annotation[keep_mask],
+                          self.meta[keep_mask], self.target[keep_mask])
         return res_batch
 
     @ds.action
@@ -157,7 +162,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         drop_arr = np.asarray(drop_list)
         self.unique_labels = np.setdiff1d(self.unique_labels, drop_arr)
         keep_mask = ~np.in1d(self.target, drop_arr)
-        return self.filter_batch(keep_mask)
+        return self._filter_batch(keep_mask)
 
     @ds.action
     def keep_labels(self, keep_list):
@@ -170,62 +175,84 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         keep_arr = np.asarray(keep_list)
         self.unique_labels = np.intersect1d(self.unique_labels, keep_arr)
         keep_mask = np.in1d(self.target, keep_arr)
-        return self.filter_batch(keep_mask)
+        return self._filter_batch(keep_mask)
 
     @ds.action
     def replace_labels(self, replace_dict):
         self.unique_labels = np.array(sorted({replace_dict.get(t, t) for t in self.unique_labels}))
-        return self.update(target=[replace_dict.get(t, t) for t in self.target])
+        return self._update(target=[replace_dict.get(t, t) for t in self.target])
 
     @ds.action
     def binarize_labels(self):
-        return self.update(target=self.label_binarizer.transform(self.target))
+        return self._update(target=self.label_binarizer.transform(self.target))
+
+    @staticmethod
+    def _pad_signal(signal, length, pad_value):
+        pad_len = length - signal.shape[1]
+        sig = np.pad(signal, ((0, 0), (pad_len, 0)), "constant", constant_values=pad_value)
+        return sig
+
+    def _get_segmentation_parameter(self, var, i, var_name):
+        if isinstance(var, int):
+            return var
+        elif isinstance(var, dict):
+            var = var.get(self.target[i])
+            if var is None:
+                raise KeyError("Undefined {} for target {}".format(var_name, self.target[i]))
+            else:
+                return var
+        else:
+            raise ValueError("Unsupported {} type".format(var_name))
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def segment_signals(self, index, length, step, pad_value=0):
         i = self.get_pos(None, "signal", index)
-        if self.signal[i].ndim != 2:
-            raise ValueError("Each signal in batch must be a 2-D ndarray")
+        self._check_2d(self.signal[i])
+        step = self._get_segmentation_parameter(step, i, "step size")
         if self.signal[i].shape[1] < length:
-            pad_len = length - self.signal[i].shape[1]
-            self.signal[i] = np.pad(self.signal[i], ((0, 0), (pad_len, 0)), "constant", constant_values=pad_value)
+            tmp_sig = self._pad_signal(self.signal[i], length, pad_value)
+            self.signal[i] = tmp_sig[np.newaxis, ...]
         else:
-            if isinstance(step, int):
-                sig_step = step
-            elif isinstance(step, dict):
-                sig_step = step.get(self.target[i])
-                if sig_step is None:
-                    raise KeyError("Undefined step size")
-            else:
-                raise ValueError("Unsupported step type")
-            self.signal[i] = bt.segment_signals(self.signal[i], length, sig_step)
+            self.signal[i] = bt.segment_signals(self.signal[i], length, step)
+        self.meta[i]["siglen"] = length
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def random_segment_signals(self, index, length, n_segments, pad_value=0):
+        i = self.get_pos(None, "signal", index)
+        self._check_2d(self.signal[i])
+        n_segments = self._get_segmentation_parameter(n_segments, i, "number of segments")
+        if self.signal[i].shape[1] < length:
+            tmp_sig = self._pad_signal(self.signal[i], length, pad_value)
+            self.signal[i] = np.tile(tmp_sig, (n_segments, 1, 1))
+        else:
+            self.signal[i] = bt.random_segment_signals(self.signal[i], length, n_segments)
         self.meta[i]["siglen"] = length
 
     @ds.action
     def drop_short_signals(self, min_length, axis=-1):
         keep_mask = np.array([sig.shape[axis] >= min_length for sig in self.signal])
-        return self.filter_batch(keep_mask)
+        return self._filter_batch(keep_mask)
 
-    def _safe_resample(self, index, fs):
+    def _safe_fs_resample(self, index, fs):
         i = self.get_pos(None, "signal", index)
-        if self.signal[i].ndim != 2:
-            raise ValueError("Each signal in batch must be a 2-D ndarray")
+        self._check_2d(self.signal[i])
         new_len = max(1, int(fs * self.signal[i].shape[1] / self.meta[i]["fs"]))
         self.meta[i]["fs"] = fs
         self.meta[i]["siglen"] = new_len
-        self.signal[i] = bt.resample(self.signal[i], new_len)
+        self.signal[i] = bt.resample_signals(self.signal[i], new_len)
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def resample(self, index, fs):
+    def resample_signals(self, index, fs):
         if fs <= 0:
-            raise ValueError("Sampling frequency must be positive")
-        self._safe_resample(index, fs)
+            raise ValueError("Sampling rate must be a positive float")
+        self._safe_fs_resample(index, fs)
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def augment_fs(self, index, distr, **kwargs):
+    def random_resample_signals(self, index, distr, **kwargs):
         if hasattr(np.random, distr):
             distr_fn = getattr(np.random, distr)
             fs = distr_fn(**kwargs)
@@ -235,10 +262,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             raise ValueError("Unknown type of distribution parameter")
         if fs <= 0:
             fs = self[index].meta["fs"]
-        self._safe_resample(index, fs)
+        self._safe_fs_resample(index, fs)
 
     @ds.action
-    def convolve(self, kernel, axis=-1, padding_mode="edge", **kwargs):
+    def convolve_signals(self, kernel, padding_mode="edge", axis=-1, **kwargs):
         """Convolve signals with given kernel.
 
         Parameters
@@ -258,12 +285,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Convolved batch. Changes self.signal inplace.
         """
         for i in range(len(self.signal)):
-            self.signal[i] = bt.convolve(self.signal[i], kernel, axis, padding_mode, **kwargs)
+            self.signal[i] = bt.convolve_signals(self.signal[i], kernel, padding_mode, axis, **kwargs)
         return self
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def band_pass_filter(self, index, axis=-1, low=None, high=None):
+    def band_pass_signals(self, index, axis=-1, low=None, high=None):
         """Reject frequencies outside given range.
 
         Parameters
@@ -296,8 +323,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Batch with flipped signals.
         """
         i = self.get_pos(None, "signal", index)
-        if self.signal[i].ndim != 2:
-            raise ValueError("Each signal in batch must be a 2-D ndarray")
+        self._check_2d(self.signal[i])
         sig = bt.band_pass_filter(self.signal[i], self.meta[i]["fs"], axis=-1, low=5, high=50)
         sig = bt.convolve(sig, kernels.gaussian(11, 3), axis=-1)
         self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
@@ -393,9 +419,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             list_of_arrs.append(np.array([]))
             batch_annot[k] = np.array(list_of_arrs)[:-1]
 
-        return out_batch.update(signal=batch_data,
-                                annotation=batch_annot,
-                                meta=batch_meta)
+        return out_batch._update(signal=batch_data,
+                                 annotation=batch_annot,
+                                 meta=batch_meta)
 
     @ds.model()
     def hmm_learn():

@@ -27,9 +27,18 @@ def segment_signals(signal, length, step):
 
 
 @njit(nogil=True)
-def resample(signal, new_len):
+def random_segment_signals(signal, length, n_segments):
+    res = np.empty((n_segments, signal.shape[0], length), dtype=signal.dtype)
+    for i in range(res.shape[0]):
+        ix = np.random.randint(0, signal.shape[1] - length + 1)
+        res[i, :, :] = signal[:, ix : ix + length]
+    return res
+
+
+@njit(nogil=True)
+def resample_signals(signal, new_len):
     arg = np.linspace(0, signal.shape[1] - 1, new_len)
-    x_left = arg.astype(np.int32)
+    x_left = arg.astype(np.int32)  # pylint: disable=no-member
     x_right = x_left + 1
     x_right[-1] = x_left[-1]
     alpha = arg - x_left
@@ -38,7 +47,7 @@ def resample(signal, new_len):
     return y_left + (y_right - y_left) * alpha
 
 
-def convolve(signals, kernel, axis=-1, padding_mode="edge", **kwargs):
+def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
     """Convolve signals with given kernel.
 
     Parameters
@@ -80,7 +89,7 @@ def convolve(signals, kernel, axis=-1, padding_mode="edge", **kwargs):
     return signals
 
 
-def band_pass_filter(signals, freq, axis=-1, low=None, high=None):
+def band_pass_signals(signals, freq, axis=-1, low=None, high=None):
     """Reject frequencies outside given range.
 
     Parameters
