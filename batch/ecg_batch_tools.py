@@ -380,14 +380,19 @@ def predict_hmm_annot(signal, annot, meta, index, cwt_scales, cwt_wavelet, model
     return [signal, annot, meta, index]
 
 def find_intervals_borders(prediction, inter_val):
-    """ """
+    """ Finds starts and ends the the intervals with values from inter_val """
     intervals = [1 if x in inter_val else 0 for x in prediction]
     masque = np.diff(intervals)
     starts = (np.argwhere(masque==1).flatten() + 1).tolist()
     ends = (np.argwhere(masque==-1).flatten() + 1).tolist()
+    if prediction[0] in inter_val:
+        ends = ends[1:]
+    if prediction[-1] in inter_val:
+        starts = starts[:-1]
     return np.array(starts), np.array(ends)
 
 def find_maxes(signal, starts, ends):
+    """ Find index of the maximum of the segment """
     maxes = []
     for s, e in zip(starts, ends):
         maxes.append(s + np.argmax(signal[s:e]))

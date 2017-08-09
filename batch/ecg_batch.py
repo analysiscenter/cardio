@@ -9,6 +9,7 @@ import numpy as np
 import scipy
 import pandas as pd
 from matplotlib import pyplot as plt
+from tabulate import tabulate
 
 from sklearn.metrics import f1_score, log_loss
 from sklearn.externals import joblib
@@ -627,10 +628,9 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
 
 
     @ds.action
-    def print_ecg(self, index, start=0, end=None, fs=None):
+    def print_ecg(self, index, start=0, end=None, fs=None, annotate=False):
         """ Method for printing an ECG """
-
-        sig, _, meta = self[index]
+        sig, annotation, meta = self[index]
 
         if fs is None:
             fs = meta["fs"]
@@ -647,24 +647,35 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         fig = plt.figure(figsize=(10, 4*num_channels))
         for channel in range(num_channels):
             ax = fig.add_subplot(num_channels, 1, channel+1)
-            ax.plot((np.arange(start, end) / fs), sig[channel, :])
+            ax.plot( (np.arange(start, end) / fs), sig[channel,:] )
             ax.set_xlabel("t, сек")
             ax.set_ylabel(meta["units"][channel] if "units" in meta.keys() else "mV")
-            ax.grid("on")
-            top_lim = np.ceil(sig[channel].max())
-            bot_lim = np.floor(sig[channel].min())
-            ax.set_ylim(bot_lim, top_lim)
+            ax.grid("on", which='major')
+            if annotate:
+                r_starts, r_ends = bt.find_intervals_borders(annotation['hmm_predict'][start:end], [0,1,2])
+                for s, e in zip((r_starts + start)/fs,(r_ends + start)/fs):
+                    ax.axvspan(s, e, color='red', alpha=0.3)
+                p_starts, p_ends = bt.find_intervals_borders(annotation['hmm_predict'][start:end], [14,15,16])
+                for s, e in zip((p_starts + start)/fs,(p_ends + start)/fs):
+                    ax.axvspan(s, e, color='green', alpha=0.3)
+                t_starts, t_ends = bt.find_intervals_borders(annotation['hmm_predict'][start:end], [5,6,7,8,9,10])
+                for s, e in zip((t_starts + start)/fs,(t_ends + start)/fs):
+                    ax.axvspan(s, e, color='blue', alpha=0.3)
+            #top_lim = np.ceil(sig[channel].max())
+            #bot_lim = np.floor(sig[channel].min())
+            #ax.set_ylim(bot_lim, top_lim)
 
     @ds.model()
-    def hmm_annotation():
-        """ """
+    def load_hmm_annotation():
+        """ Loads HMM that is trained to annotate signals"""
         model = joblib.load("ecg_report/Intenship_submit/hmm_model" + '.pkl')
         
         return model
 
     @ds.action
     def predict_hmm_annotation(self, cwt_scales, cwt_wavelet, model_name):
-        """  """
+        """  Method that loads model hmmm_annotation and invokes method predict_all_hmm_annotations to
+        create annotations of all signals in batch and write it to annotation component under key 'hmm_annotation' """
         model = self.get_model_by_name(model_name)
         return self.predict_all_hmm_annotation(cwt_scales, cwt_wavelet, model)
     
@@ -678,11 +689,14 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
     def calc_heart_rate(self):
-        """ """
+        """ Calculates heart rate based on annotation and writes it in meta under key 'hr'.
+        Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation """
         return bt.calc_hr
     
     @ds.action
     def calculate_report(self, index):
+        """ Takes information from batch about specific signal by index and prints table with ecg report """
         print(tabulate([['ЧСС', np.round(self.meta[index]['hr'], 2), 'Уд./сек.'], 
-                        ['PQ интервал', 0, 'сек.']], 
+                        #['PQ интервал', 0, 'сек.'], 
+                        ['Вероятность аритмии', self.meta[index]['pred_af'], '%']],
                        headers=['Параметр', 'Значение', 'Ед. изм.'], tablefmt='orgtbl'))
