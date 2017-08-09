@@ -406,7 +406,7 @@ def calc_hr(signal, annotation, meta, index):
         starts, ends = find_intervals_borders(annotation['hmm_predict'], (1,))
         maxes = find_maxes(signal[0], starts, ends)
         fs = meta['fs']
-        meta['hr'] = (np.median(np.diff(maxes) / fs)** -1) * 60 
+        meta['hr'] = (np.median(np.diff(maxes) / fs)** -1) * 60
     else:
         raise ValueError("Either HMM annotation or sampling rate is missing")
 
