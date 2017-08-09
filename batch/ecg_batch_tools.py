@@ -8,8 +8,17 @@ from numba import njit
 
 
 def load_wfdb(path):
-    """
-    Load signal and meta, loading of annotation should be added
+    """Load signal and meta from wfdb file.
+
+    Parameters
+    ----------
+    path : str
+        Path to .hea file.
+
+    Returns
+    -------
+    signal_data : list
+        Four elements list containing signal, empty annotation, meta and empty target.    
     """
     path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
@@ -19,31 +28,76 @@ def load_wfdb(path):
 
 
 @njit(nogil=True)
-def segment_signals(signal, length, step):
-    res = np.empty(((signal.shape[1] - length) // step + 1, signal.shape[0], length), dtype=signal.dtype)
+def segment_signals(signals, length, step):
+    """Segment signals along axis 1 with given length and step.
+
+    Parameters
+    ----------
+    signals : 2-D ndarray
+        Signals to segment.
+    length : positive int
+        Length of each segment along axis 1.
+    step : positive int
+        Segmentation step.
+
+    Returns
+    -------
+    signals : 3-D ndarray
+        Segmented signals.
+    """
+    res = np.empty(((signals.shape[1] - length) // step + 1, signals.shape[0], length), dtype=signals.dtype)
     for i in range(res.shape[0]):
-        res[i, :, :] = signal[:, i * step : i * step + length]
+        res[i, :, :] = signals[:, i * step : i * step + length]
+    return res
+
+@njit(nogil=True)
+def random_segment_signals(signals, length, n_segments):
+    """Segment signals along axis 1 n_segments times with random start position and given length.
+
+    Parameters
+    ----------
+    signals : 2-D ndarray
+        Signals to segment.
+    length : positive int
+        Length of each segment along axis 1.
+    n_segments : positive int
+        Number of segments.
+
+    Returns
+    -------
+    signals : 3-D ndarray
+        Segmented signals.
+    """
+    res = np.empty((n_segments, signals.shape[0], length), dtype=signals.dtype)
+    for i in range(res.shape[0]):
+        ix = np.random.randint(0, signals.shape[1] - length + 1)
+        res[i, :, :] = signals[:, ix : ix + length]
     return res
 
 
 @njit(nogil=True)
-def random_segment_signals(signal, length, n_segments):
-    res = np.empty((n_segments, signal.shape[0], length), dtype=signal.dtype)
-    for i in range(res.shape[0]):
-        ix = np.random.randint(0, signal.shape[1] - length + 1)
-        res[i, :, :] = signal[:, ix : ix + length]
-    return res
+def resample_signals(signals, new_length):
+    """Resample signals to new length along axis 1 using linear interpolation.
 
+    Parameters
+    ----------
+    signals : 2-D ndarray
+        Signals to resample.
+    new_length : positive int
+        New signals shape along axis 1.
 
-@njit(nogil=True)
-def resample_signals(signal, new_len):
-    arg = np.linspace(0, signal.shape[1] - 1, new_len)
+    Returns
+    -------
+    signals : 2-D ndarray
+        Resampled signals.
+    """
+    arg = np.linspace(0, signals.shape[1] - 1, new_length)
     x_left = arg.astype(np.int32)  # pylint: disable=no-member
     x_right = x_left + 1
     x_right[-1] = x_left[-1]
     alpha = arg - x_left
-    y_left = signal[:, x_left]
-    y_right = signal[:, x_right]
+    y_left = signals[:, x_left]
+    y_right = signals[:, x_right]
     return y_left + (y_right - y_left) * alpha
 
 
@@ -57,10 +111,10 @@ def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
     kernel : array_like
         Convolution kernel.
     axis : int
-        Axis along which signal is sliced.
+        Axis along which signals are sliced.
     padding_mode : str or function
         np.pad padding mode.
-    **kwargs :
+    kwargs : misc
         Any additional named argments to np.pad.
 
     Returns
@@ -89,7 +143,7 @@ def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
     return signals
 
 
-def band_pass_signals(signals, freq, axis=-1, low=None, high=None):
+def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
     """Reject frequencies outside given range.
 
     Parameters
@@ -98,12 +152,12 @@ def band_pass_signals(signals, freq, axis=-1, low=None, high=None):
         Signals to filter.
     freq : positive float
         Sampling rate.
-    axis : int
-        Axis along which signal is sliced.
     low : positive float
         High-pass filter cutoff frequency (Hz).
     high : positive float
         Low-pass filter cutoff frequency (Hz).
+    axis : int
+        Axis along which signals are sliced.
 
     Returns
     -------

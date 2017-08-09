@@ -56,7 +56,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @staticmethod
     def _check_2d(signal):
         if signal.ndim != 2:
-            raise ValueError("Each signal in batch must be a 2-D ndarray")
+            raise ValueError("Each signal in batch must be 2-D ndarray")
 
     @property
     def components(self):
@@ -148,7 +148,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             raise ds.SkipBatchException("All batch data was dropped")
         res_batch = EcgBatch(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
         res_batch._update(self.signal[keep_mask], self.annotation[keep_mask],
-                          self.meta[keep_mask], self.target[keep_mask])
+                          self.meta[keep_mask], self.target[keep_mask])  # pylint: disable=protected-access
         return res_batch
 
     @ds.action
@@ -185,6 +185,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     def binarize_labels(self):
         return self._update(target=self.label_binarizer.transform(self.target))
+
+    @ds.action
+    def drop_short_signals(self, min_length, axis=-1):
+        keep_mask = np.array([sig.shape[axis] >= min_length for sig in self.signal])
+        return self._filter_batch(keep_mask)
 
     @staticmethod
     def _pad_signal(signal, length, pad_value):
@@ -230,11 +235,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             self.signal[i] = bt.random_segment_signals(self.signal[i], length, n_segments)
         self.meta[i]["siglen"] = length
 
-    @ds.action
-    def drop_short_signals(self, min_length, axis=-1):
-        keep_mask = np.array([sig.shape[axis] >= min_length for sig in self.signal])
-        return self._filter_batch(keep_mask)
-
     def _safe_fs_resample(self, index, fs):
         i = self.get_pos(None, "signal", index)
         self._check_2d(self.signal[i])
@@ -272,10 +272,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         kernel : array_like
             Convolution kernel.
-        axis : int
-            Axis along which signal is sliced.
         padding_mode : str or function
             np.pad padding mode.
+        axis : int
+            Axis along which signals are sliced.
         **kwargs :
             Any additional named argments to np.pad.
 
@@ -290,17 +290,17 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def band_pass_signals(self, index, axis=-1, low=None, high=None):
+    def band_pass_signals(self, index, low=None, high=None, axis=-1):
         """Reject frequencies outside given range.
 
         Parameters
         ----------
-        axis : int
-            Axis along which signal is sliced.
         low : positive float
             High-pass filter cutoff frequency (Hz).
         high : positive float
             Low-pass filter cutoff frequency (Hz).
+        axis : int
+            Axis along which signals are sliced.
 
         Returns
         -------
@@ -308,7 +308,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Filtered batch. Changes self.signal inplace.
         """
         i = self.get_pos(None, "signal", index)
-        self.signal[i] = bt.band_pass_filter(self.signal[i], self.meta[i]["fs"], axis, low, high)
+        self.signal[i] = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low, high, axis)
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
@@ -324,8 +324,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """
         i = self.get_pos(None, "signal", index)
         self._check_2d(self.signal[i])
-        sig = bt.band_pass_filter(self.signal[i], self.meta[i]["fs"], axis=-1, low=5, high=50)
-        sig = bt.convolve(sig, kernels.gaussian(11, 3), axis=-1)
+        sig = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low=5, high=50)
+        sig = bt.convolve_signals(sig, kernels.gaussian(11, 3))
         self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
 
     # The following action methods are not guaranteed to work properly
@@ -421,7 +421,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         return out_batch._update(signal=batch_data,
                                  annotation=batch_annot,
-                                 meta=batch_meta)
+                                 meta=batch_meta)  # pylint: disable=protected-access
 
     @ds.model()
     def hmm_learn():
