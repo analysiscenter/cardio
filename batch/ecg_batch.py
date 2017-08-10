@@ -669,7 +669,7 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     def load_hmm_annotation():
         """ Loads HMM that is trained to annotate signals"""
         try:
-            model = joblib.load("ecg_report/Intenship_submit/hmm_model" + '.pkl')
+            model = joblib.load("ecg_report/Intenship_submit/hmm_model2" + '.pkl')
         except FileNotFoundError:
             model = None
 
@@ -697,9 +697,32 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
         return bt.calc_hr
 
     @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    def calc_pq_interval(self):
+        """ Calculates PQ interval based on annotation and writes it in meta under key 'pq'.
+        Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation """
+        return bt.calc_pq
+
+    @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    def calc_qt_interval(self):
+        """ Calculates QT interval based on annotation and writes it in meta under key 'qt'.
+        Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation """
+        return bt.calc_qt
+
+    @ds.action
+    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
+    def calc_qrs_interval(self):
+        """ Calculates QRS interval based on annotation and writes it in meta under key 'qrs'.
+        Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation """
+        return bt.calc_qrs
+
+    @ds.action
     def calculate_report(self, index):
         """ Takes information from batch about specific signal by index and prints table with ecg report """
         print(tabulate([['ЧСС', np.round(self.meta[index]['hr'], 2), 'Уд./сек.'],
-                        #['PQ интервал', 0, 'сек.'],
+                        ['QRS интервал', np.round(self.meta[index]['qrs'], 2), 'сек.'],
+                        ['PQ интервал', np.round(self.meta[index]['pq'], 2), 'сек.'],
+                        ['QT интервал', np.round(self.meta[index]['qt'], 2), 'сек.'],
                         ['Вероятность аритмии', self.meta[index]['pred_af'], '%']],
                        headers=['Параметр', 'Значение', 'Ед. изм.'], tablefmt='orgtbl'))
