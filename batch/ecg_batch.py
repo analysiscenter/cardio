@@ -82,6 +82,13 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @unique_labels.setter
     def unique_labels(self, val):
+        """Set unqiue labels value to val. Updates self.label_binarizer instance.
+
+        Parameters
+        ----------
+        val : 1-D ndarray
+            New unique labels.
+        """
         self._unique_labels = val
         if self.unique_labels is None:
             self._label_binarizer = None
@@ -358,7 +365,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         arg : positive int
             Segmentation step or number of segments for given signal.
         """
-        self._check_2d(signal)
+        EcgBatch._check_2d(signal)
         if (length <= 0) or not isinstance(length, int):
             raise ValueError("Segment length must be positive integer")
         arg = EcgBatch._get_segmentation_arg(arg, arg_name, target)
@@ -418,7 +425,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Segmented batch. Changes self.signal and self.meta inplace.
         """
         i = self.get_pos(None, "signal", index)
-        n_segments = self._check_segmentation_args(self.signal[i], self.target[i], length, step, "number of segments")
+        n_segments = self._check_segmentation_args(self.signal[i], self.target[i], length, n_segments, "number of segments")
         if self.signal[i].shape[1] < length:
             tmp_sig = self._pad_signal(self.signal[i], length, pad_value)
             self.signal[i] = np.tile(tmp_sig, (n_segments, 1, 1))
