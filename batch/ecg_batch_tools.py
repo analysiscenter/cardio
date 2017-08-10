@@ -18,7 +18,7 @@ def load_wfdb(path):
     Returns
     -------
     signal_data : list
-        Four elements list containing signal, empty annotation, meta and empty target.    
+        Four elements list containing signal, empty annotation, meta and empty target.
     """
     path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
