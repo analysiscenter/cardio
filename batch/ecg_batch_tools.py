@@ -416,17 +416,17 @@ def calc_pq(signal, annotation, meta, index):
     """ Calculate pq based on HMM prediction """
 
     if ("hmm_predict" in annotation.keys()) and ('fs' in meta.keys()):
-        p_starts, _ = find_intervals_borders(annotation['hmm_predict'], (14,15,16))
+        p_starts, _ = find_intervals_borders(annotation['hmm_predict'], (14, 15, 16))
         q_starts, _ = find_intervals_borders(annotation['hmm_predict'], (0,))
-        
+
         q_starts = q_starts[q_starts>p_starts[0]]
         min_len = min(q_starts.shape[0], p_starts.shape[0])
         p_starts = p_starts[:min_len]
         q_starts = q_starts[:min_len]
-        pq = q_starts-p_starts
+        pq_intervals = q_starts-p_starts
 
         fs = meta['fs']
-        meta['pq'] = np.median(pq)/fs
+        meta['pq'] = np.median(pq_intervals)/fs
     else:
         raise ValueError("Either HMM annotation or sampling rate is missing")
 
@@ -436,17 +436,17 @@ def calc_qt(signal, annotation, meta, index):
     """ Calculate QT interval based on HMM prediction """
 
     if ("hmm_predict" in annotation.keys()) and ('fs' in meta.keys()):
-        _, t_ends = find_intervals_borders(annotation['hmm_predict'], (5,6,7,8,9,10))
+        _, t_ends = find_intervals_borders(annotation['hmm_predict'], (5, 6, 7, 8, 9, 10))
         q_starts, _ = find_intervals_borders(annotation['hmm_predict'], (0,))
-        
-        t_ends = t_ends[t_ends>q_starts[0]]
+
+        t_ends = t_ends[t_ends > q_starts[0]]
         min_len = min(q_starts.shape[0], t_ends.shape[0])
         t_ends = t_ends[:min_len]
         q_starts = q_starts[:min_len]
-        qt = t_ends-q_starts
-        
+        qt_intervals = t_ends-q_starts
+
         fs = meta['fs']
-        meta['qt'] = np.median(qt)/fs
+        meta['qt'] = np.median(qt_intervals)/fs
     else:
         raise ValueError("Either HMM annotation or sampling rate is missing")
 
@@ -458,15 +458,15 @@ def calc_qrs(signal, annotation, meta, index):
     if ("hmm_predict" in annotation.keys()) and ('fs' in meta.keys()):
         _, s_ends = find_intervals_borders(annotation['hmm_predict'], (2,))
         q_starts, _ = find_intervals_borders(annotation['hmm_predict'], (0,))
-        
-        s_ends = s_ends[s_ends>q_starts[0]]
+
+        s_ends = s_ends[s_ends > q_starts[0]]
         min_len = min(q_starts.shape[0], s_ends.shape[0])
         s_ends = s_ends[:min_len]
         q_starts = q_starts[:min_len]
-        qs = s_ends-q_starts
-        
+        qs_intervals = s_ends-q_starts
+
         fs = meta['fs']
-        meta['qrs'] = np.median(qs)/fs
+        meta['qrs'] = np.median(qs_intervals)/fs
     else:
         raise ValueError("Either HMM annotation or sampling rate is missing")
 
