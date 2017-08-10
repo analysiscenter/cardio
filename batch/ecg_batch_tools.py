@@ -419,7 +419,7 @@ def calc_pq(signal, annotation, meta, index):
         p_starts, _ = find_intervals_borders(annotation['hmm_predict'], (14, 15, 16))
         q_starts, _ = find_intervals_borders(annotation['hmm_predict'], (0,))
 
-        q_starts = q_starts[q_starts>p_starts[0]]
+        q_starts = q_starts[q_starts > p_starts[0]]
         min_len = min(q_starts.shape[0], p_starts.shape[0])
         p_starts = p_starts[:min_len]
         q_starts = q_starts[:min_len]
