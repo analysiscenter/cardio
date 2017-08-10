@@ -668,7 +668,10 @@ class EcgBatch(ds.Batch):#pylint: disable=too-many-public-methods
     @ds.model()
     def load_hmm_annotation():
         """ Loads HMM that is trained to annotate signals"""
-        model = joblib.load("ecg_report/Intenship_submit/hmm_model" + '.pkl')
+        try:
+            model = joblib.load("ecg_report/Intenship_submit/hmm_model" + '.pkl')
+        except FileNotFoundError:
+            model = None
 
         return model
 
