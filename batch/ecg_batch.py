@@ -129,6 +129,49 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             self.target = np.asarray(target)
         return self
 
+    @classmethod
+    def merge(cls, batches, batch_size=None):
+        """Concatenate list of EcgBatch instances and split the result in two batches of sizes
+        (batch_size, sum(lens of batches) - batch_size).
+
+        Parameters
+        ----------
+        batches : list
+            List of EcgBatch instances.
+        batch_size : positive int
+            Length of the first resulting batch.
+
+        Returns
+        -------
+        batches : tuple
+            Tuple of two EcgBatch instances. Each instance contains deepcopy of input batches data.
+        """
+        batches = [batch for batch in batches if batch is not None]
+        if len(batches) == 0:
+            return None, None
+        total_len = np.sum([len(batch) for batch in batches])
+        if batch_size is None:
+            batch_size = total_len
+        elif not isinstance(batch_size, int) or batch_size < 1:
+            raise ValueError("Batch size must be positive int")
+        indices = np.arange(total_len)
+
+        data = []
+        for i, comp in enumerate(batches[0].components):
+            data.append(np.concatenate([batch.get(component=comp) for batch in batches]))
+        data = copy.deepcopy(data)
+
+        new_indices = indices[:batch_size]
+        new_batch = cls(ds.DatasetIndex(new_indices), unique_labels=batches[0].unique_labels)
+        new_batch._data = tuple(comp[:batch_size] for comp in data)
+        if total_len <= batch_size:
+            rest_batch = None
+        else:
+            rest_indices = indices[batch_size:]
+            rest_batch = cls(ds.DatasetIndex(rest_indices), unique_labels=batches[0].unique_labels)
+            rest_batch._data = tuple(comp[batch_size:] for comp in data)
+        return new_batch, rest_batch
+
     @ds.action
     @ds.inbatch_parallel(init="indices", post="_post_load_signals", target="threads")
     def load_signals(self, index, src=None, fmt=None):
@@ -425,7 +468,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Segmented batch. Changes self.signal and self.meta inplace.
         """
         i = self.get_pos(None, "signal", index)
-        n_segments = self._check_segmentation_args(self.signal[i], self.target[i], length, n_segments, "number of segments")
+        n_segments = self._check_segmentation_args(self.signal[i], self.target[i], length,
+                                                   n_segments, "number of segments")
         if self.signal[i].shape[1] < length:
             tmp_sig = self._pad_signal(self.signal[i], length, pad_value)
             self.signal[i] = np.tile(tmp_sig, (n_segments, 1, 1))

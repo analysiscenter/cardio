@@ -50,6 +50,7 @@ def segment_signals(signals, length, step):
         res[i, :, :] = signals[:, i * step : i * step + length]
     return res
 
+
 @njit(nogil=True)
 def random_segment_signals(signals, length, n_segments):
     """Segment signals along axis 1 n_segments times with random start position and given length.
