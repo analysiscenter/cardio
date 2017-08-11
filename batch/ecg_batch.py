@@ -1,8 +1,6 @@
 """Contains ECG Batch class."""
 
-import os
 import copy
-import traceback
 import itertools
 import warnings
 
@@ -191,9 +189,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         if components is None:
             components = self.components
         components = np.asarray(components).ravel()
-        if (fmt=="csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components=="target"):
+        if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
             return self._load_labels(src)
-        elif fmt=="wfdb":
+        elif fmt == "wfdb":
             return self._load_wfdb(src=src, components=components)
         else:
             return super().load(src, fmt, components, *args, **kwargs)
