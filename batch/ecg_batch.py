@@ -157,19 +157,19 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         indices = np.arange(total_len)
 
         data = []
-        for i, comp in enumerate(batches[0].components):
+        for comp in batches[0].components:
             data.append(np.concatenate([batch.get(component=comp) for batch in batches]))
         data = copy.deepcopy(data)
 
         new_indices = indices[:batch_size]
         new_batch = cls(ds.DatasetIndex(new_indices), unique_labels=batches[0].unique_labels)
-        new_batch._data = tuple(comp[:batch_size] for comp in data)
+        new_batch._data = tuple(comp[:batch_size] for comp in data)  # pylint: disable=protected-access
         if total_len <= batch_size:
             rest_batch = None
         else:
             rest_indices = indices[batch_size:]
             rest_batch = cls(ds.DatasetIndex(rest_indices), unique_labels=batches[0].unique_labels)
-            rest_batch._data = tuple(comp[batch_size:] for comp in data)
+            rest_batch._data = tuple(comp[batch_size:] for comp in data)  # pylint: disable=protected-access
         return new_batch, rest_batch
 
     @ds.action
