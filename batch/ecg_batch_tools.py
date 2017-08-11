@@ -7,24 +7,29 @@ import wfdb
 from numba import njit
 
 
-def load_wfdb(path):
-    """Load signal and meta from wfdb file.
+def load_wfdb(path, components):
+    """Load given components from wfdb file.
 
     Parameters
     ----------
     path : str
         Path to .hea file.
+    components : iterable
+        Components to load.
 
     Returns
     -------
     signal_data : list
-        Four elements list containing signal, empty annotation, meta and empty target.
+        List of signal components.
     """
     path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
     signal = record.__dict__.pop("p_signals").T
     meta = record.__dict__
-    return [signal, {}, meta, None]
+    data = {"signal": signal,
+            "annotation": {},
+            "meta": meta}
+    return [data[comp] for comp in components]
 
 
 @njit(nogil=True)

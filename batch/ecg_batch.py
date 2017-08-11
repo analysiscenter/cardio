@@ -36,10 +36,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
         self._data = (None, None, None, None)
-        self.signal = np.array([])
-        self.annotation = np.array([])
-        self.meta = np.array([])
-        self.target = np.array([])
+        self.signal = np.array([np.array([])] * len(index) + [None])[:-1]
+        self.annotation = np.array([{}] * len(index))
+        self.meta = np.array([{}] * len(index))
+        self.target = np.array([None] * len(index))
         self._unique_labels = None
         self._label_binarizer = None
         self.unique_labels = unique_labels
@@ -54,9 +54,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """
         if ds.any_action_failed(results):
             all_errors = self.get_errors(results)
-            print(all_errors)
-            traceback.print_tb(all_errors[0].__traceback__)
-            raise RuntimeError("Could not assemble the batch")
+            raise RuntimeError("Cannot assemble the batch", all_errors)
 
     @staticmethod
     def _check_2d(signal):
@@ -131,7 +129,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @classmethod
     def merge(cls, batches, batch_size=None):
-        """Concatenate list of EcgBatch instances and split the result in two batches of sizes
+        """Concatenate list of EcgBatch instances and split the result into two batches of sizes
         (batch_size, sum(lens of batches) - batch_size).
 
         Parameters
@@ -173,15 +171,48 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         return new_batch, rest_batch
 
     @ds.action
-    @ds.inbatch_parallel(init="indices", post="_post_load_signals", target="threads")
-    def load_signals(self, index, src=None, fmt=None):
-        """
-        Loads ecg data
+    def load(self, src=None, fmt=None, components=None, *args, **kwargs):
+        """Load given batch components from source.
 
-        Arguments
-        index: list or array of ecg indices.
-        src: dict of type index: path to ecg.
-        fmt: format of ecg files. Supported formats: 'wfdb', 'npz'.
+        Parameters
+        ----------
+        src : misc
+            Source to load components from.
+        fmt : str
+            Source format.
+        components : iterable
+            Components to load.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with loaded components. Changes components inplace.
+        """
+        if components is None:
+            components = self.components
+        components = np.asarray(components).ravel()
+        if (fmt=="csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components=="target"):
+            return self._load_labels(src)
+        elif fmt=="wfdb":
+            return self._load_wfdb(src=src, components=components)
+        else:
+            return super().load(src, fmt, components, *args, **kwargs)
+
+    @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
+    def _load_wfdb(self, index, src=None, components=None):
+        """Load given components from wfdb files.
+
+        Parameters
+        ----------
+        src : dict
+            Path to wfdb file for every batch index. If None, path from FilesIndex is used.
+        components : iterable
+            Components to load.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with loaded components. Changes components inplace.
         """
         if src is not None:
             path = src[index]
@@ -189,34 +220,46 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             path = self.index.get_fullpath(index)  # pylint: disable=no-member
         else:
             raise ValueError("Source path is not specified")
-        fmt = fmt or os.path.splitext(path)[-1][1:]
-        if fmt == "hea":
-            return bt.load_wfdb(path)
-        else:
-            raise TypeError("Unsupported type of source {}".format(fmt))
+        return bt.load_wfdb(path, components)
 
-    def _post_load_signals(self, results, *args, **kwargs):
-        """Concatenate results of different load workers and update self.
+    def _assemble_load(self, results, *args, **kwargs):
+        """Concatenate results of different workers and update self.
 
         Parameters
         ----------
         results : list
             Workers' results.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Assembled batch. Changes components inplace.
         """
         _ = args, kwargs
         self._reraise_exceptions(results)
-        signal, annotation, meta, target = zip(*results)
-        signal = np.array(signal + (None,))[:-1]
-        return self.update(signal, annotation, meta, target)
+        components = kwargs.get("components", None)
+        if components is None:
+            components = self.components
+        for comp, data in zip(components, zip(*results)):
+            if comp == "signal":
+                data = np.array(data + (None,))[:-1]
+            else:
+                data = np.array(data)
+            setattr(self, comp, data)
+        return self
 
-    @ds.action
-    def load_labels(self, src):
-        """
-        Load labels from file with signal labels. File should have a csv format
-        and contain 2 columns: index of ecg and label.
+    def _load_labels(self, src):
+        """Load labels from csv file or pandas Series.
 
-        Arguments
-        path: path to the file with labels
+        Parameters
+        ----------
+        src : str or Series
+            Path to csv file or pandas Series. File should contain 2 columns: ecg index and label.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with loaded labels. Changes self.target inplace.
         """
         if not isinstance(src, (str, pd.Series)):
             raise TypeError("Unsupported type of source")
