@@ -286,7 +286,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         indices = self.indices[keep_mask]
         if len(indices) == 0:
             raise ds.SkipBatchException("All batch data was dropped")
-        res_batch = EcgBatch(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
+        res_batch = self.__class__(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
         res_batch.update(self.signal[keep_mask], self.annotation[keep_mask],
                          self.meta[keep_mask], self.target[keep_mask])
         return res_batch
