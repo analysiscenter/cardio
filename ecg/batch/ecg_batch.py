@@ -22,7 +22,7 @@ import keras.backend as K
 
 from hmmlearn import hmm
 
-import dataset as ds
+from .. import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
 from .keras_extra_layers import RFFT, Crop, Inception2D
