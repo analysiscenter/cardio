@@ -12,7 +12,7 @@ build:
     image_tag: $TAG
   ci:
     - pip3 install -r requirements-shippable.txt
-    - pylint3 -rn --rcfile pylintrc ecg --ignore=ecg/dataset
+    - pylint3 -rn --rcfile pylintrc ecg/batch ecg/models ecg/__init__.py
 
 integrations:
   hub:
