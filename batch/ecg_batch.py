@@ -32,7 +32,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
-from .ecg_batch_tools import InputDataError
 from .keras_extra_layers import RFFT, Crop, Inception2D
 
 
@@ -1108,9 +1107,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """
         i = self.get_pos(None, "signal", index)
 
-        print(tabulate([['HR', np.round(self.meta[i]['hr'], 2), 'beat/min'],
-                        ['QRS', np.round(self.meta[i]['qrs'], 2), 'sec'],
-                        ['PQ', np.round(self.meta[i]['pq'], 2), 'sec'],
-                        ['QT', np.round(self.meta[i]['qt'], 2), 'sec'],
-                        ['AF probability', self.meta[i]['pred_af'], '%']],
-                       headers=['Parameter', 'Value', 'Units'], tablefmt='orgtbl'))
+        print(tabulate([['ЧСС', np.round(self.meta[i]['hr'], 2), 'уд./мин.'],
+                        ['QRS', np.round(self.meta[i]['qrs'], 2), 'сек.'],
+                        ['PQ', np.round(self.meta[i]['pq'], 2), 'сек.'],
+                        ['QT', np.round(self.meta[i]['qt'], 2), 'сек.'],
+                        ['Вероятность аритмии', self.meta[i]['pred_af'], '%']],
+                       headers=['Параметр', 'Значение', 'Ед.изм.'], tablefmt='orgtbl'))
