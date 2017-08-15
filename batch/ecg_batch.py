@@ -966,47 +966,27 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         _ = list_of_layers
         return bt.merge_list_of_layers
 
-    def input_check_post(self, all_results, *args, **kwargs):
-        """ Post function to gather and handle results of check-ups
-        """
-        _ = args, kwargs
-        if ds.any_action_failed(all_results):
-            all_errors = self.get_errors(all_results)
-            print(all_errors)
-            raise ValueError("Checkup failed")
-
-    @ds.action
-    @ds.inbatch_parallel(
-        init='indices', post='input_check_post')
-    def check_signal_length(self, index, operator=np.greater_equal, length=0):
-        """Check if real length of the signal is appropriate.
-        Args:
-        operator - operator to use in check-up (np.greater_equal by default)
-        length - value to compare with real signal length
-        """
-        pos = self.index.get_pos(index)
-        if operator(self.signal[pos].shape[1], length):
-            return True
-        else:
-            raise InputDataError('Signal length is wrong')
-
-    @ds.action
-    @ds.inbatch_parallel(
-        init='indices', post='input_check_post')
-    def check_signal_fs(self, index, desired_fs=None):
-        """Check if sampling rate of the signal equals to desired
-        sampling rate.
-        """
-        pos = self.index.get_pos(index)
-        if np.equals(self.meta[pos]['fs'], desired_fs):
-            return True
-        else:
-            raise InputDataError('Signal sampling rate is wrong')
-
-
     @ds.action
     def print_ecg(self, index, start=0, end=None, fs=None, annotate=False): #pylint: disable=too-many-locals
-        """ Method for printing an ECG """
+        """ Method for printing an ECG.
+
+        Parameters
+        ----------
+        index : element of self.indices
+            Index of the signal in the batch to print report about.
+        start : int
+            From which second of the signal to start plotting.
+        end : int
+            Second of the signal to end plot.
+        fs : float
+            Sampling rate of the signal.
+        annotate : bool
+            Show annotation on the plot or not.
+
+        Returns
+        -------
+        None
+        """
         sig, annotation, meta = self[index]
 
         if fs is None:
@@ -1045,6 +1025,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.model()
     def load_hmm_annotation():
         """ Loads HMM that is trained to annotate signals"""
+
         try:
             model = joblib.load("ecg_report/Intenship_submit/hmm_model2" + '.pkl')
         except FileNotFoundError:
@@ -1055,16 +1036,20 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='threads')
     def generate_hmm_annotations(self, cwt_scales, cwt_wavelet, model_name):
-        """ Action to generate features for HMM to find P, QRS and T peaks 
-        Method loads model hmmm_annotation and creates annotations of
-        signals in batch and write it to annotation component under key 
+        """Annotatate signals in batch and write it to annotation component under key
         'hmm_annotation'.
 
         Parameters
         ----------
+        cwt_scales : array_like
+            Scales to use for Continuous Wavele Transformation
+        cwt_wavelet : object or str
+            Wavelet to use in CWT
 
         Returns
         -------
+        batch : EcgBatch
+            EcgBatch with annotations of signals
         """
         i = self.get_pos(None, signal, index)
         model = self.get_model_by_name(model_name)
@@ -1073,46 +1058,53 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self.annotation[i]["hmm_annotation"] = bt.predict_hmm_annot(self.signal[i],
                                                                     cwt_scales,
                                                                     cwt_wavelet,
-                                                                    model
-                                                                    )
+                                                                    model)
 
 
     @ds.action
-    @ds.inbatch_parallel(init="init", post="post_parallel", target='mpc')
+    @ds.inbatch_parallel(init="init", target='threads')
     def calc_ecg_parameters(self):
         """ Calculates PQ interval based on annotation and writes it in meta under key 'pq'.
         Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation.
 
         Parameters
         ----------
+        None
 
         Returns
         -------
-         """
-
+        batch : EcgBatch
+            Batch with report parameters stored in meta component.
+        """
         i = self.get_pos(None, signal, index)
 
-        self.meta[i]["hr"] = bt.calc_hr(self.signal[i], 
-                                             self.annotation[i]['hmm_annotation'],
-                                             self.meta[i]['fs']
-                                            )
+        self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
+                                        self.annotation[i]['hmm_annotation'],
+                                        self.meta[i]['fs'])
 
         self.meta[i]["pq"] = bt.calc_pq(self.annotation[i]['hmm_annotation'],
-                                            self.meta[i]['fs']
-                                            )
+                                        self.meta[i]['fs'])
 
         self.meta[i]["qt"] = bt.calc_qt(self.annotation[i]['hmm_annotation'],
-                                            self.meta[i]['fs']
-                                            )
+                                        self.meta[i]['fs'])
 
         self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
-                                            self.meta[i]['fs']
-                                            )
+                                          self.meta[i]['fs'])
 
     @ds.action
     def print_report(self, index):
-        """ Takes information from batch about specific signal by index and prints table with ecg report """
+        """ Takes information from batch about specific signal by index
+        and prints table with ecg report.
 
+        Parameters
+        ----------
+        index : element of self.indices
+            Index of the signal in the batch to print report about.
+
+        Returns
+        -------
+        None
+        """
         i = self.get_pos(None, signal, index)
 
         print(tabulate([['ЧСС', np.round(self.meta[i]['hr'], 2), 'Уд./сек.'],
@@ -1120,6 +1112,4 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                         ['PQ интервал', np.round(self.meta[i]['pq'], 2), 'сек.'],
                         ['QT интервал', np.round(self.meta[i]['qt'], 2), 'сек.']],
                         #['Вероятность аритмии', self.meta[i]['pred_af'], '%']],
-                       headers=['Параметр', 'Значение', 'Ед. изм.'], tablefmt='orgtbl'
-                      )
-             )
+                       headers=['Параметр', 'Значение', 'Ед. изм.'], tablefmt='orgtbl'))
