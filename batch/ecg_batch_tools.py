@@ -1,9 +1,8 @@
-""" contain tools for processing ECGs """
+"""Сontains ECG processing tools."""
 
 import os
 import numpy as np
 
-from scipy.signal import resample_poly
 import pywt
 from numba import njit
 
@@ -11,215 +10,107 @@ import wfdb
 import keras.backend as K
 
 
-class Error(Exception):
-    """Base class for custom errors
-    """
-    pass
-
-
-class InputDataError(Error):
-    """Class for errors that raised at input data
-    evaluation stage.
-
-    """
-    pass
-
-
-@njit(nogil=True)
-def get_pos_of_max(pred):
-    '''
-    Returns position of maximal element in a row.
-
-    Arguments
-    pred: 2d array.
-    '''
-    labels = np.zeros(pred.shape)
-    for i in range(len(labels)):
-        labels[i, pred[i].argmax()] = 1
-    return labels
-
-def resample_signal(signal, annot, meta, index, new_fs):
-    """
-    Resample signal along axis=1 to new sampling rate. Retruns resampled signal with modified meta.
-    Resampling of annotation will be implemented in the future.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    new_fs: target signal sampling rate in Hz.
-    """
-    fs = meta['fs']
-    new_len = int(new_fs * len(signal[0]) / fs)
-    if new_len < 1:
-        print('Error: new_len should be >= 1. Try to change new_fs')
-        return None
-    signal = resample_poly(signal, new_len, len(signal[0]), axis=1)
-    out_meta = {**meta, 'fs': new_fs, 'siglen': new_len}
-    return [signal, annot, out_meta, index]
-
-def segment_signal(signal, annot, meta, index, length, step, pad, return_copy):
-    """
-    Segment signal along axis=1 with constant step to segments with constant length.
-    If signal is shorter than target segment length, signal is zero-padded on the left if
-    pad is True or raise ValueError if pad is False.
-    Segmentation of annotation will be implemented in the future.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    length: length of segment.
-    step: step along axis=1.
-    pad: whether to apply zero-padding to short signals.
-    return_copy: if True, a copy of segments is returned and segments become intependent. If False,
-                 segments are not independent, but segmentation runtime becomes almost indepentent on
-                 signal length.
-
-    Attention: segmentation of meta and annotation is not implemented yet.
-    """
-    if signal.ndim != 2:
-        raise ValueError('Signal should have ndim = 2, found ndim = {0}'.format(signal.ndim))
-
-    if signal.shape[1] < length:
-        if pad:
-            pad_len = length - signal.shape[1]
-            segments = np.lib.pad(signal, ((0, 0), (pad_len, 0)),
-                                  'constant', constant_values=(0, 0))[np.newaxis, :, :]
-        else:
-            raise ValueError('Signal is shorter than segment length: %i < %i'
-                             % (signal.shape[1], length))
-    else:
-        shape = signal.shape[:-1] + (signal.shape[-1] - length + 1, length)
-        strides = signal.strides + (signal.strides[-1],)
-        segments = np.lib.stride_tricks.as_strided(signal, shape=shape,
-                                                   strides=strides)[:, ::step, :]
-        segments = np.transpose(segments, (1, 0, 2))
-
-    _ = annot
-    if return_copy:
-        segments = segments.copy()
-    out_meta = {**meta, 'siglen': length}
-    return [segments, {}, out_meta, index]
-
-def drop_label(signal, annot, meta, index, label):
-    '''
-    Drop signals labeled as noise in meta. Retruns input if signal is not labeles as noise and
-    retruns None otherwise.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    '''
-    if meta['diag'] == label:
-        return None
-    else:
-        return [signal, annot, meta, index]
-
-def replace_labels_in_meta(signal, annot, meta, index, new_labels):
-    '''
-    Replaces diag label by new label.
-
-    Arguments
-    new_labels: dict of previous and corresponding new labels.
-    '''
-    meta.update({'diag': new_labels[meta['diag']]})
-    return [signal, annot, meta, index]
-
-def augment_fs_signal(signal, annot, meta, index, distr, params):
-    '''
-    Augmentation of signal to random sampling rate. New sampling rate is sampled
-    from given probability distribution with specified parameters.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    distr: distribution type, either a name of any distribution from np.random, or
-           callable, or 'none', or 'delta'.
-    params: dict of parameters and values for distr. ignored if distr='none'.
-    '''
-    if hasattr(np.random, distr):
-        distr_fn = getattr(np.random, distr)
-        new_fs = distr_fn(**params)
-    elif callable(distr):
-        new_fs = distr_fn(**params)
-    elif distr == 'none':
-        return [signal, annot, meta, index]
-    elif distr == 'delta':
-        new_fs = params['loc']
-    if new_fs <= 0:
-        return None
-    return resample_signal(signal, annot, meta, index, new_fs)
-
-def augment_fs_signal_mult(signal, annot, meta, index, list_of_distr):
-    '''
-    Multiple augmentation of signal to random sampling rates. New sampling rates are sampled
-    from list of probability distributions with specified parameters.
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    list_of_distr: list of tuples (distr, params). See augment_fssignal for details.
-    '''
-    res = [augment_fs_signal(signal, annot, meta, index, distr_type, params)
-           for (distr_type, params) in list_of_distr]
-    out_sig = [x[0] for x in res]
-    out_annot = [x[1] for x in res]
-    out_meta = [x[2] for x in res]
-    out_sig.append([])
-    return [np.array(out_sig)[:-1], out_annot, out_meta, index]
-
-def predict_hmm_classes(signal, annot, meta, index, model):
-    '''
-    Get hmm predicted classes
-    '''
-    res = np.array(model.predict(signal.T)).reshape((1, -1))
-    annot.update({'hmm_predict': res})
-    return [signal, annot, meta, index]
-
-def get_gradient(signal, annot, meta, index, order):
-    '''
-    Compute derivative of given order
-
-    Arguments
-    signal, annot, meta, index: componets of ecg signal.
-    order: order of derivative to compute.
-    '''
-    grad = np.gradient(signal, axis=1)
-    for i in range(order - 1):#pylint: disable=unused-variable
-        grad = np.gradient(grad, axis=1)
-    annot.update({'grad_{0}'.format(order): grad})
-    return [signal, annot, meta, index]
-
-def band_pass_filter(signals, freq, axis=-1, low=None, high=None):
-    """Reject frequencies outside given range.
+def load_wfdb(path, components):
+    """Load given components from wfdb file.
 
     Parameters
     ----------
-    signals : ndarray
-        Signals to filter.
-    freq : positive float
-        Sampling rate.
-    axis : int
-        Axis along which signal is sliced.
-    low : positive float
-        High-pass filter cutoff frequency (Hz).
-    high : positive float
-        Low-pass filter cutoff frequency (Hz).
+    path : str
+        Path to .hea file.
+    components : iterable
+        Components to load.
 
     Returns
     -------
-    signals : ndarray
-        Filtered signals.
+    signal_data : list
+        List of signal components.
     """
-    if freq <= 0:
-        raise ValueError("Sampling rate must be a positive float")
-    sig_rfft = np.fft.rfft(signals, axis=axis)
-    sig_freq = np.fft.rfftfreq(signals.shape[axis], 1 / freq)
-    mask = np.zeros(len(sig_freq), dtype=bool)
-    if low is not None:
-        mask |= (sig_freq <= low)
-    if high is not None:
-        mask |= (sig_freq >= high)
-    slc = [slice(None)] * signals.ndim
-    slc[axis] = mask
-    sig_rfft[slc] = 0
-    return np.fft.irfft(sig_rfft, n=signals.shape[axis], axis=axis)
+    path = os.path.splitext(path)[0]
+    record = wfdb.rdsamp(path)
+    signal = record.__dict__.pop("p_signals").T
+    meta = record.__dict__
+    data = {"signal": signal,
+            "annotation": {},
+            "meta": meta}
+    return [data[comp] for comp in components]
 
-def convolve(signals, kernel, axis=-1, padding_mode="edge", **kwargs):
+
+@njit(nogil=True)
+def segment_signals(signals, length, step):
+    """Segment signals along axis 1 with given length and step.
+
+    Parameters
+    ----------
+    signals : 2-D ndarray
+        Signals to segment.
+    length : positive int
+        Length of each segment along axis 1.
+    step : positive int
+        Segmentation step.
+
+    Returns
+    -------
+    signals : 3-D ndarray
+        Segmented signals.
+    """
+    res = np.empty(((signals.shape[1] - length) // step + 1, signals.shape[0], length), dtype=signals.dtype)
+    for i in range(res.shape[0]):
+        res[i, :, :] = signals[:, i * step : i * step + length]
+    return res
+
+
+@njit(nogil=True)
+def random_segment_signals(signals, length, n_segments):
+    """Segment signals along axis 1 n_segments times with random start position and given length.
+
+    Parameters
+    ----------
+    signals : 2-D ndarray
+        Signals to segment.
+    length : positive int
+        Length of each segment along axis 1.
+    n_segments : positive int
+        Number of segments.
+
+    Returns
+    -------
+    signals : 3-D ndarray
+        Segmented signals.
+    """
+    res = np.empty((n_segments, signals.shape[0], length), dtype=signals.dtype)
+    for i in range(res.shape[0]):
+        ix = np.random.randint(0, signals.shape[1] - length + 1)
+        res[i, :, :] = signals[:, ix : ix + length]
+    return res
+
+
+@njit(nogil=True)
+def resample_signals(signals, new_length):
+    """Resample signals to new length along axis 1 using linear interpolation.
+
+    Parameters
+    ----------
+    signals : 2-D ndarray
+        Signals to resample.
+    new_length : positive int
+        New signals shape along axis 1.
+
+    Returns
+    -------
+    signals : 2-D ndarray
+        Resampled signals.
+    """
+    arg = np.linspace(0, signals.shape[1] - 1, new_length)
+    x_left = arg.astype(np.int32)  # pylint: disable=no-member
+    x_right = x_left + 1
+    x_right[-1] = x_left[-1]
+    alpha = arg - x_left
+    y_left = signals[:, x_left]
+    y_right = signals[:, x_right]
+    return y_left + (y_right - y_left) * alpha
+
+
+def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
     """Convolve signals with given kernel.
 
     Parameters
@@ -229,10 +120,10 @@ def convolve(signals, kernel, axis=-1, padding_mode="edge", **kwargs):
     kernel : array_like
         Convolution kernel.
     axis : int
-        Axis along which signal is sliced.
+        Axis along which signals are sliced.
     padding_mode : str or function
         np.pad padding mode.
-    **kwargs :
+    kwargs : misc
         Any additional named argments to np.pad.
 
     Returns
@@ -259,6 +150,78 @@ def convolve(signals, kernel, axis=-1, padding_mode="edge", **kwargs):
 
     signals = np.apply_along_axis(conv_func, arr=signals, axis=axis)
     return signals
+
+
+def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
+    """Reject frequencies outside given range.
+
+    Parameters
+    ----------
+    signals : ndarray
+        Signals to filter.
+    freq : positive float
+        Sampling rate.
+    low : positive float
+        High-pass filter cutoff frequency (Hz).
+    high : positive float
+        Low-pass filter cutoff frequency (Hz).
+    axis : int
+        Axis along which signals are sliced.
+
+    Returns
+    -------
+    signals : ndarray
+        Filtered signals.
+    """
+    if freq <= 0:
+        raise ValueError("Sampling rate must be a positive float")
+    sig_rfft = np.fft.rfft(signals, axis=axis)
+    sig_freq = np.fft.rfftfreq(signals.shape[axis], 1 / freq)
+    mask = np.zeros(len(sig_freq), dtype=bool)
+    if low is not None:
+        mask |= (sig_freq <= low)
+    if high is not None:
+        mask |= (sig_freq >= high)
+    slc = [slice(None)] * signals.ndim
+    slc[axis] = mask
+    sig_rfft[slc] = 0
+    return np.fft.irfft(sig_rfft, n=signals.shape[axis], axis=axis)
+
+
+@njit(nogil=True)
+def get_pos_of_max(pred):
+    '''
+    Returns position of maximal element in a row.
+
+    Arguments
+    pred: 2d array.
+    '''
+    labels = np.zeros(pred.shape)
+    for i in range(len(labels)):
+        labels[i, pred[i].argmax()] = 1
+    return labels
+
+def predict_hmm_classes(signal, annot, meta, index, model):
+    '''
+    Get hmm predicted classes
+    '''
+    res = np.array(model.predict(signal.T)).reshape((1, -1))
+    annot.update({'hmm_predict': res})
+    return [signal, annot, meta, index]
+
+def get_gradient(signal, annot, meta, index, order):
+    '''
+    Compute derivative of given order
+
+    Arguments
+    signal, annot, meta, index: componets of ecg signal.
+    order: order of derivative to compute.
+    '''
+    grad = np.gradient(signal, axis=1)
+    for i in range(order - 1):#pylint: disable=unused-variable
+        grad = np.gradient(grad, axis=1)
+    annot.update({'grad_{0}'.format(order): grad})
+    return [signal, annot, meta, index]
 
 def convolve_layer(signal, annot, meta, index, layer, kernel):
     '''
@@ -295,48 +258,6 @@ def merge_list_of_layers(signal, annot, meta, index, list_of_layers):
     res = np.concatenate(res, axis=0)[np.newaxis, :, :]
     return [res, annot, meta, index]
 
-def load_wfdb(index, path):
-    """
-    Load signal and meta, loading of annotation should be added
-    """
-    path = os.path.splitext(path)[0]
-    record = wfdb.rdsamp(path)
-    signal = record.__dict__.pop('p_signals')
-    meta = record.__dict__
-    signal = signal.T
-    return [signal, {}, meta, index]
-
-def load_npz(index, path):
-    """
-    Load signal and meta, loading of annotation should be added
-    """
-    path = os.path.splitext(path)[0]
-    data = np.load(path + ".npz")
-    signal = data["signal"]
-    annot = data["annotation"].tolist()
-    meta = data["meta"].tolist()
-    return [signal, annot, meta, index]
-
-def dump_ecg_signal(signal, annot, meta, index, path, fmt):
-    """
-    Save ecg in a separate file as 'path/<index>.<fmt>'
-    """
-    if fmt == "npz":
-        np.savez(os.path.join(path, str(index) + "." + fmt),
-                 signal=signal,
-                 annotation=annot,
-                 meta=meta)
-    else:
-        raise NotImplementedError("The format is not supported yet")
-    return [signal, annot, meta, index]
-
-def selu(x):
-    """Scaled Exponential Linear Unit. (Klambauer et al., 2017)
-    """
-    alpha = 1.6732632423543772848170429916717
-    scale = 1.0507009873554804934193349852946
-    return scale * K.elu(x, alpha)
-
 def get_activations(model, model_inputs, layer_name=None):
     """Retrieve activation values from a layer of a model given the input.
     """
@@ -367,57 +288,55 @@ def get_activations(model, model_inputs, layer_name=None):
 
     return np.array(activations)
 
-def predict_hmm_annot(signal, annot, meta, index, cwt_scales, cwt_wavelet, model):
+def predict_hmm_annot(signal, cwt_scales, cwt_wavelet, model):
     ''' Predict peak for the signal based on features generated by gen_hmm_features '''
-    # TODO: currently  works on first lead signal only
+    # NOTE: Currently works on first lead signal only
     sig = signal[0, :]
+
     cwtmatr = pywt.cwt(sig, np.array(cwt_scales), cwt_wavelet)[0]
     features = ((cwtmatr - np.mean(cwtmatr, axis=1).reshape(-1, 1))/
                 np.std(cwtmatr, axis=1).reshape(-1, 1)).T
 
     prediction = model.predict(features).reshape((1, -1)).flatten()
-    annot.update({'hmm_predict': prediction})
-    return [signal, annot, meta, index]
+    return prediction
 
 def find_intervals_borders(prediction, inter_val):
     """ Finds starts and ends the the intervals with values from inter_val """
     intervals = [1 if x in inter_val else 0 for x in prediction]
     masque = np.diff(intervals)
-    starts = (np.argwhere(masque == 1).flatten() + 1).tolist()
-    ends = (np.argwhere(masque == -1).flatten() + 1).tolist()
+    starts = (np.argwhere(masque == 1).flatten() + 1)
+    ends = (np.argwhere(masque == -1).flatten() + 1)
     if prediction[0] in inter_val:
         ends = ends[1:]
     if prediction[-1] in inter_val:
         starts = starts[:-1]
-    return np.array(starts), np.array(ends)
+    return starts, ends
 
-def find_maxes(signal, starts, ends):
+@njit(nogil=True)
+def find_maxes(signal, starts, ends, maxes):
     """ Find index of the maximum of the segment """
-    maxes = []
-    for start, end in zip(starts, ends):
-        maxes.append(start + np.argmax(signal[start:end]))
+    
+    for i in range(maxes.shape[0]):
+        maxes[i] = starts[i] + np.argmax(signal[0][starts[i]:ends[i]])
 
-    return np.array(maxes)
+    return maxes
 
-def calc_hr(signal, annotation, meta, index):
+def calc_hr(signal, hmm_annotation, fs):
     """ Calculate heart rate based on HMM prediction """
 
-    if ("hmm_predict" in annotation.keys()) and ('fs' in meta.keys()):
-        starts, ends = find_intervals_borders(annotation['hmm_predict'], (1,))
-        maxes = find_maxes(signal[0], starts, ends)
-        fs = meta['fs']
-        meta['hr'] = (np.median(np.diff(maxes) / fs)** -1) * 60
-    else:
-        raise ValueError("Either HMM annotation or sampling rate is missing")
+    starts, ends = find_intervals_borders(hmm_annotation, (1,))
+    # NOTE: Currently works on first lead signal only
+    maxes = find_maxes(signal, starts, ends, maxes=np.empty_like(starts))
 
-    return [signal, annotation, meta, index]
+    hr_val = (np.median(np.diff(maxes) / fs) ** -1) * 60
 
-def calc_pq(signal, annotation, meta, index):
+    return hr_val
+
+def calc_pq(hmm_annotation, fs):
     """ Calculate pq based on HMM prediction """
 
-    if ("hmm_predict" in annotation.keys()) and ('fs' in meta.keys()):
-        p_starts, _ = find_intervals_borders(annotation['hmm_predict'], (14, 15, 16))
-        q_starts, _ = find_intervals_borders(annotation['hmm_predict'], (0,))
+        p_starts, _ = find_intervals_borders(hmm_annotation, (14, 15, 16))
+        q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
 
         q_starts = q_starts[q_starts > p_starts[0]]
         min_len = min(q_starts.shape[0], p_starts.shape[0])
@@ -425,49 +344,38 @@ def calc_pq(signal, annotation, meta, index):
         q_starts = q_starts[:min_len]
         pq_intervals = q_starts-p_starts
 
-        fs = meta['fs']
-        meta['pq'] = np.median(pq_intervals)/fs
-    else:
-        raise ValueError("Either HMM annotation or sampling rate is missing")
+        pq_val = np.median(pq_intervals) / fs
 
-    return [signal, annotation, meta, index]
+    return pq_val
 
-def calc_qt(signal, annotation, meta, index):
+def calc_qt(hmm_annotation, fs):
     """ Calculate QT interval based on HMM prediction """
 
-    if ("hmm_predict" in annotation.keys()) and ('fs' in meta.keys()):
-        _, t_ends = find_intervals_borders(annotation['hmm_predict'], (5, 6, 7, 8, 9, 10))
-        q_starts, _ = find_intervals_borders(annotation['hmm_predict'], (0,))
+    _, t_ends = find_intervals_borders(hmm_annotation, (5, 6, 7, 8, 9, 10))
+    q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
 
-        t_ends = t_ends[t_ends > q_starts[0]]
-        min_len = min(q_starts.shape[0], t_ends.shape[0])
-        t_ends = t_ends[:min_len]
-        q_starts = q_starts[:min_len]
-        qt_intervals = t_ends-q_starts
+    t_ends = t_ends[t_ends > q_starts[0]]
+    min_len = min(q_starts.shape[0], t_ends.shape[0])
+    t_ends = t_ends[:min_len]
+    q_starts = q_starts[:min_len]
+    qt_intervals = t_ends-q_starts
 
-        fs = meta['fs']
-        meta['qt'] = np.median(qt_intervals)/fs
-    else:
-        raise ValueError("Either HMM annotation or sampling rate is missing")
+    qt_val = np.median(qt_intervals) / fs
 
-    return [signal, annotation, meta, index]
+    return qt_val
 
-def calc_qrs(signal, annotation, meta, index):
+def calc_qrs(hmm_annotation, fs):
     """ Calculate QRS interval based on HMM prediction """
 
-    if ("hmm_predict" in annotation.keys()) and ('fs' in meta.keys()):
-        _, s_ends = find_intervals_borders(annotation['hmm_predict'], (2,))
-        q_starts, _ = find_intervals_borders(annotation['hmm_predict'], (0,))
+    _, s_ends = find_intervals_borders(hmm_annotation, (2,))
+    q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
 
-        s_ends = s_ends[s_ends > q_starts[0]]
-        min_len = min(q_starts.shape[0], s_ends.shape[0])
-        s_ends = s_ends[:min_len]
-        q_starts = q_starts[:min_len]
-        qs_intervals = s_ends-q_starts
+    s_ends = s_ends[s_ends > q_starts[0]]
+    min_len = min(q_starts.shape[0], s_ends.shape[0])
+    s_ends = s_ends[:min_len]
+    q_starts = q_starts[:min_len]
+    qs_intervals = s_ends-q_starts
 
-        fs = meta['fs']
-        meta['qrs'] = np.median(qs_intervals)/fs
-    else:
-        raise ValueError("Either HMM annotation or sampling rate is missing")
+    qrs_val = np.median(qs_intervals) / fs
 
-    return [signal, annotation, meta, index]
+    return qrs_val
