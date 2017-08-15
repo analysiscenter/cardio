@@ -1118,7 +1118,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         print(tabulate([['ЧСС', np.round(self.meta[i]['hr'], 2), 'Уд./сек.'],
                         ['QRS интервал', np.round(self.meta[i]['qrs'], 2), 'сек.'],
                         ['PQ интервал', np.round(self.meta[i]['pq'], 2), 'сек.'],
-                        ['QT интервал', np.round(self.meta[i]['qt'], 2), 'сек.'],
+                        ['QT интервал', np.round(self.meta[i]['qt'], 2), 'сек.']],
                         #['Вероятность аритмии', self.meta[i]['pred_af'], '%']],
                        headers=['Параметр', 'Значение', 'Ед. изм.'], tablefmt='orgtbl'
                       )

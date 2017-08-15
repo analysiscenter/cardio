@@ -335,16 +335,16 @@ def calc_hr(signal, hmm_annotation, fs):
 def calc_pq(hmm_annotation, fs):
     """ Calculate pq based on HMM prediction """
 
-        p_starts, _ = find_intervals_borders(hmm_annotation, (14, 15, 16))
-        q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
+    p_starts, _ = find_intervals_borders(hmm_annotation, (14, 15, 16))
+    q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
 
-        q_starts = q_starts[q_starts > p_starts[0]]
-        min_len = min(q_starts.shape[0], p_starts.shape[0])
-        p_starts = p_starts[:min_len]
-        q_starts = q_starts[:min_len]
-        pq_intervals = q_starts-p_starts
+    q_starts = q_starts[q_starts > p_starts[0]]
+    min_len = min(q_starts.shape[0], p_starts.shape[0])
+    p_starts = p_starts[:min_len]
+    q_starts = q_starts[:min_len]
+    pq_intervals = q_starts-p_starts
 
-        pq_val = np.median(pq_intervals) / fs
+    pq_val = np.median(pq_intervals) / fs
 
     return pq_val
 
