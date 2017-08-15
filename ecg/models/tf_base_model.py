@@ -1,9 +1,11 @@
 """Contains tensorflow base model class."""
 
+import rensorflow as tf
+
 from .base_model import BaseModel
 
 
-class TFBaseModel(BaseModel):
+class TFBaseModel(BaseModel):  # pylint: disable=abstract-method
     """Base tensorflow model class."""
 
     def __init__(self):
@@ -19,7 +21,7 @@ class TFBaseModel(BaseModel):
     @property
     def session(self):
         """Get tensorflow session."""
-        return self._sess
+        return self._session
 
     def _create_session(self):
         if self._session is None:

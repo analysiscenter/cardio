@@ -1,3 +1,6 @@
+"""Contains beta model."""
+
+import numpy as np
 import tensorflow as tf
 
 from ..tf_base_model import TFBaseModel
@@ -25,13 +28,13 @@ class BetaModel(TFBaseModel):
         # model training step
         self._train_step = None
 
-    def build():
+    def build(self):  # pylint: disable=protected-access
         k = 0.001
         input_shape = (None, 1, 2048)
         output_shape = (None, 1)
 
-        self._graph = tf.Graph()
-        with self._graph.as_default():
+        self.graph = tf.Graph()
+        with self.graph.as_default():
             self._input_layer = tf.placeholder(tf.float32, shape=input_shape, name="input_layer")
             input_channels_last = tf.reshape(self._input_layer, [-1, 2048, 1], name="channels_last")
 
@@ -39,7 +42,7 @@ class BetaModel(TFBaseModel):
             target_flat = tf.reshape((1 - 2 * k) * self._target + k, [-1])
 
             self._is_training = tf.placeholder(tf.bool, shape=[], name="batch_norm_mode")
-            
+
             n_filters = [10, 10, 10, 15, 15, 15, 20, 20, 20, 30, 30]
             kernel_size = [5, 5, 5, 5, 5, 5, 3, 3, 3, 3, 3]
             cell = input_channels_last
@@ -47,12 +50,12 @@ class BetaModel(TFBaseModel):
                 cell = conv_cell("cell_" + str(i + 1), cell, self._is_training, n, s)
 
             flat = tf.contrib.layers.flatten(cell)
-            with tf.variable_scope("dense_1"):
+            with tf.variable_scope("dense_1"):  # pylint: disable=not-context-manager
                 dense = tf.layers.dense(flat, 8, use_bias=False, name="dense")
                 bnorm = tf.layers.batch_normalization(dense, training=self._is_training, name="batch_norm")
                 act = tf.nn.elu(bnorm, name="activation")
 
-            with tf.variable_scope("dense_2"):
+            with tf.variable_scope("dense_2"):  # pylint: disable=not-context-manager
                 dense = tf.layers.dense(act, 2, use_bias=False, name="dense")
                 bnorm = tf.layers.batch_normalization(dense, training=self._is_training, name="batch_norm")
                 output_layer = tf.nn.softplus(bnorm, name="output_layer")
@@ -60,8 +63,8 @@ class BetaModel(TFBaseModel):
             self._alpha = output_layer[:, 0]
             self._beta = output_layer[:, 1]
             self._loss = tf.reduce_mean(tf.lbeta(output_layer) -
-                                  (self._alpha - 1) * tf.log(target_flat) -
-                                  (self._beta - 1) * tf.log1p(-target_flat))
+                                        (self._alpha - 1) * tf.log(target_flat) -
+                                        (self._beta - 1) * tf.log1p(-target_flat))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
@@ -88,7 +91,7 @@ class BetaModel(TFBaseModel):
                 raise ValueError("loss_list must be a list")
         return self
 
-    def test_on_batch(self, batch, loss_list=None):
+    def test_on_batch(self, batch):
         self._create_session()
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: False}
@@ -106,7 +109,7 @@ class BetaModel(TFBaseModel):
         for a, b in zip(alpha, beta):
             mean = np.mean(a / (a + b))
             var = np.mean(a*b / ((a + b)**2 * (a + b + 1)) + (a / (a + b))**2) - mean**2
-            d = dict(zip(batch.label_binarizer.classes_, (1 - mean, mean)))
-            d["uncertainty"] = 4 * var
-            res.append(d)
+            res_dict = dict(zip(batch.label_binarizer.classes_, (1 - mean, mean)))
+            res_dict["uncertainty"] = 4 * var
+            res.append(res_dict)
         return res
