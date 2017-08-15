@@ -1,4 +1,4 @@
-"""Contains ECG Batch class."""
+"""Contains ECG Batch class.""" #pylint: disable=too-many-lines
 
 import os
 import sys
@@ -1009,18 +1009,20 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             ax.set_ylabel(meta["units"][channel] if "units" in meta.keys() else "mV")
             ax.grid("on", which='major')
             if annotate:
-                r_starts, r_ends = bt.find_intervals_borders(annotation['hmm_predict'][start:end], [0, 1, 2])
+                r_starts, r_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
+                                                             [0, 1, 2])
                 for begin, stop in zip((r_starts + start)/fs, (r_ends + start)/fs):
                     ax.axvspan(begin, stop, color='red', alpha=0.3)
-                p_starts, p_ends = bt.find_intervals_borders(annotation['hmm_predict'][start:end], [14, 15, 16])
+
+                p_starts, p_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
+                                                             [14, 15, 16])
                 for begin, stop in zip((p_starts + start)/fs, (p_ends + start)/fs):
                     ax.axvspan(begin, stop, color='green', alpha=0.3)
-                t_starts, t_ends = bt.find_intervals_borders(annotation['hmm_predict'][start:end], [5, 6, 7, 8, 9, 10])
+
+                t_starts, t_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
+                                                             [5, 6, 7, 8, 9, 10])
                 for begin, stop in zip((t_starts + start)/fs, (t_ends + start)/fs):
                     ax.axvspan(begin, stop, color='blue', alpha=0.3)
-            #top_lim = np.ceil(sig[channel].max())
-            #bot_lim = np.floor(sig[channel].min())
-            #ax.set_ylim(bot_lim, top_lim)
 
     @ds.model()
     def load_hmm_annotation():
@@ -1034,8 +1036,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         return model
 
     @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='threads')
-    def generate_hmm_annotations(self, cwt_scales, cwt_wavelet, model_name):
+    @ds.inbatch_parallel(init="indices", target='threads')
+    def generate_hmm_annotations(self, index, cwt_scales, cwt_wavelet, model_name):
         """Annotatate signals in batch and write it to annotation component under key
         'hmm_annotation'.
 
@@ -1051,7 +1053,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         batch : EcgBatch
             EcgBatch with annotations of signals.
         """
-        i = self.get_pos(None, signal, index)
+        i = self.get_pos(None, "signal", index)
         model = self.get_model_by_name(model_name)
         self._check_2d(self.signal[i])
 
@@ -1062,7 +1064,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="init", target='threads')
-    def calc_ecg_parameters(self):
+    def calc_ecg_parameters(self, index):
         """ Calculates PQ interval based on annotation and writes it in meta under key 'pq'.
         Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation.
 
@@ -1075,7 +1077,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         batch : EcgBatch
             Batch with report parameters stored in meta component.
         """
-        i = self.get_pos(None, signal, index)
+        i = self.get_pos(None, "signal", index)
 
         self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
                                         self.annotation[i]['hmm_annotation'],
@@ -1104,7 +1106,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         -------
         None
         """
-        i = self.get_pos(None, signal, index)
+        i = self.get_pos(None, "signal", index)
 
         print(tabulate([['HR', np.round(self.meta[i]['hr'], 2), 'beat/min'],
                         ['QRS', np.round(self.meta[i]['qrs'], 2), 'sec'],

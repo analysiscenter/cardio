@@ -7,7 +7,6 @@ import pywt
 from numba import njit
 
 import wfdb
-import keras.backend as K
 
 
 def load_wfdb(path, components):
@@ -302,19 +301,19 @@ def find_intervals_borders(hmm_annotation, inter_val):
     ends : numpy.array
         Indices of the ens of the intervals.
     """
-    intervals = [1 if x in inter_val else 0 for x in prediction]
+    intervals = [1 if x in inter_val else 0 for x in hmm_annotation]
     masque = np.diff(intervals)
     starts = (np.argwhere(masque == 1).flatten() + 1)
     ends = (np.argwhere(masque == -1).flatten() + 1)
-    if prediction[0] in inter_val:
+    if hmm_annotation[0] in inter_val:
         ends = ends[1:]
-    if prediction[-1] in inter_val:
+    if hmm_annotation[-1] in inter_val:
         starts = starts[:-1]
     return starts, ends
 
 @njit(nogil=True)
 def find_maxes(signal, starts, ends, maxes):
-    """ Find index of the maximum of the segment. 
+    """ Find index of the maximum of the segment.
 
     Parameters
     ----------
@@ -332,14 +331,14 @@ def find_maxes(signal, starts, ends, maxes):
     maxes : numpy.array
         Indices of max values of each interval.
     """
-    
+
     for i in range(maxes.shape[0]):
         maxes[i] = starts[i] + np.argmax(signal[0][starts[i]:ends[i]])
 
     return maxes
 
 def calc_hr(signal, hmm_annotation, fs):
-    """ Calculate heart rate based on HMM prediction. 
+    """ Calculate heart rate based on HMM prediction.
 
     Parameters
     ----------
@@ -349,7 +348,7 @@ def calc_hr(signal, hmm_annotation, fs):
         Annotation for the signal from hmm_annotation model.
     fs : float
         Sampling rate of the signal.
-    
+
     Returns
     -------
     hr_val : float
@@ -373,7 +372,7 @@ def calc_pq(hmm_annotation, fs):
         Annotation for the signal from hmm_annotation model.
     fs : float
         Sampling rate of the signal.
-    
+
     Returns
     -------
     pq_val : float
@@ -402,11 +401,11 @@ def calc_qt(hmm_annotation, fs):
         Annotation for the signal from hmm_annotation model.
     fs : float
         Sampling rate of the signal.
-    
+
     Returns
     -------
     qt_val : float
-        Duration of QT interval in seconds. 
+        Duration of QT interval in seconds.
     """
 
     _, t_ends = find_intervals_borders(hmm_annotation, (5, 6, 7, 8, 9, 10))
@@ -431,7 +430,7 @@ def calc_qrs(hmm_annotation, fs):
         Annotation for the signal from hmm_annotation model.
     fs : float
         Sampling rate of the signal.
-    
+
     Returns
     -------
     qrs_val : float
