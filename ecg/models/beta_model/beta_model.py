@@ -34,7 +34,7 @@ class BetaModel(TFBaseModel):
         output_shape = (None, 1)
 
         self.graph = tf.Graph()
-        with self.graph.as_default():
+        with self.graph.as_default():  # pylint: disable=not-context-manager
             self._input_layer = tf.placeholder(tf.float32, shape=input_shape, name="input_layer")
             input_channels_last = tf.reshape(self._input_layer, [-1, 2048, 1], name="channels_last")
 
