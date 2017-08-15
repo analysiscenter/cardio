@@ -1005,7 +1005,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         for channel in range(num_channels):
             ax = fig.add_subplot(num_channels, 1, channel+1)
             ax.plot((np.arange(start, end) / fs), sig[channel, :])
-            ax.set_xlabel("t, сек")
+            ax.set_xlabel("t, sec")
             ax.set_ylabel(meta["units"][channel] if "units" in meta.keys() else "mV")
             ax.grid("on", which='major')
             if annotate:
@@ -1042,14 +1042,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Parameters
         ----------
         cwt_scales : array_like
-            Scales to use for Continuous Wavele Transformation
+            Scales to use for Continuous Wavele Transformation.
         cwt_wavelet : object or str
-            Wavelet to use in CWT
+            Wavelet to use in CWT.
 
         Returns
         -------
         batch : EcgBatch
-            EcgBatch with annotations of signals
+            EcgBatch with annotations of signals.
         """
         i = self.get_pos(None, signal, index)
         model = self.get_model_by_name(model_name)
@@ -1059,7 +1059,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                                                                     cwt_scales,
                                                                     cwt_wavelet,
                                                                     model)
-
 
     @ds.action
     @ds.inbatch_parallel(init="init", target='threads')
@@ -1107,9 +1106,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """
         i = self.get_pos(None, signal, index)
 
-        print(tabulate([['ЧСС', np.round(self.meta[i]['hr'], 2), 'Уд./сек.'],
-                        ['QRS интервал', np.round(self.meta[i]['qrs'], 2), 'сек.'],
-                        ['PQ интервал', np.round(self.meta[i]['pq'], 2), 'сек.'],
-                        ['QT интервал', np.round(self.meta[i]['qt'], 2), 'сек.']],
-                        #['Вероятность аритмии', self.meta[i]['pred_af'], '%']],
-                       headers=['Параметр', 'Значение', 'Ед. изм.'], tablefmt='orgtbl'))
+        print(tabulate([['HR', np.round(self.meta[i]['hr'], 2), 'beat/min'],
+                        ['QRS', np.round(self.meta[i]['qrs'], 2), 'sec'],
+                        ['PQ', np.round(self.meta[i]['pq'], 2), 'sec'],
+                        ['QT', np.round(self.meta[i]['qt'], 2), 'sec'],
+                        ['AF probability', self.meta[i]['pred_af'], '%']],
+                       headers=['Parameter', 'Value', 'Units'], tablefmt='orgtbl'))
