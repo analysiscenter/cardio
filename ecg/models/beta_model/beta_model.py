@@ -79,37 +79,40 @@ class BetaModel(TFBaseModel):
         split_indices = np.cumsum([item.signal.shape[0] for item in batch])[:-1]
         return x, y, split_indices
 
+    @staticmethod
+    def _append_result(res, res_list, accept_none=False):
+        if not accept_none and res_list is None:
+            raise ValueError("List with results must not be None")
+        if res_list is not None:
+            res_list.append(res)
+
     def train_on_batch(self, batch, loss_list=None):
         self._create_session()
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: True}
         _, loss = self.session.run([self._train_step, self._loss], feed_dict=feed_dict)
-        if loss_list is not None:
-            if isinstance(loss_list, list):
-                loss_list.append(loss)
-            else:
-                raise ValueError("loss_list must be a list")
-        return self
+        _append_result(loss, loss_list, accept_none=True)
+        return batch
 
-    def test_on_batch(self, batch):
+    def test_on_batch(self, batch, loss_list=None):
         self._create_session()
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: False}
         loss = self.session.run(self._loss, feed_dict=feed_dict)
-        return loss
+        _append_result(loss, loss_list)
+        return batch
 
-    def predict_on_batch(self, batch):
+    def predict_on_batch(self, batch, predictions_list=None):
         self._create_session()
         x, _, split_indices = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._is_training: False}
         alpha, beta = self.session.run([self._alpha, self._beta], feed_dict=feed_dict)
         alpha = np.split(alpha, split_indices)
         beta = np.split(beta, split_indices)
-        res = []
         for a, b in zip(alpha, beta):
             mean = np.mean(a / (a + b))
             var = np.mean(a*b / ((a + b)**2 * (a + b + 1)) + (a / (a + b))**2) - mean**2
             res_dict = dict(zip(batch.label_binarizer.classes_, (1 - mean, mean)))
             res_dict["uncertainty"] = 4 * var
-            res.append(res_dict)
-        return res
+            _append_result(res_dict, predictions_list)
+        return batch
