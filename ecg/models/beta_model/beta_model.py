@@ -91,7 +91,7 @@ class BetaModel(TFBaseModel):
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: True}
         _, loss = self.session.run([self._train_step, self._loss], feed_dict=feed_dict)
-        _append_result(loss, loss_list, accept_none=True)
+        self._append_result(loss, loss_list, accept_none=True)
         return batch
 
     def test_on_batch(self, batch, loss_list=None):
@@ -99,7 +99,7 @@ class BetaModel(TFBaseModel):
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: False}
         loss = self.session.run(self._loss, feed_dict=feed_dict)
-        _append_result(loss, loss_list)
+        self._append_result(loss, loss_list)
         return batch
 
     def predict_on_batch(self, batch, predictions_list=None):
@@ -114,5 +114,5 @@ class BetaModel(TFBaseModel):
             var = np.mean(a*b / ((a + b)**2 * (a + b + 1)) + (a / (a + b))**2) - mean**2
             res_dict = dict(zip(batch.label_binarizer.classes_, (1 - mean, mean)))
             res_dict["uncertainty"] = 4 * var
-            _append_result(res_dict, predictions_list)
+            self._append_result(res_dict, predictions_list)
         return batch

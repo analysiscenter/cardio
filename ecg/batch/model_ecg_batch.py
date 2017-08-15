@@ -9,8 +9,8 @@ class ModelEcgBatch(EcgBatch):
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded, unique_labels)
 
-    @ds.model
-    def beta(self):
+    @ds.model()
+    def beta():
         return BetaModel().build()
 
     @ds.action(singleton=True)
