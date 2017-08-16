@@ -269,9 +269,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """
         if not isinstance(src, (str, pd.Series)):
             raise TypeError("Unsupported type of source")
-        if self.pipeline is None:
+        if (self.pipeline is None) and (self.unique_labels is None):
             raise RuntimeError("Batch must be created in pipeline")
-        ds_indices = self.pipeline.dataset.indices
+        if self.pipeline:
+            ds_indices = self.pipeline.dataset.indices
+        elif self.unique_labels:
+            ds_indices = self.indices
         if isinstance(src, str):
             src = pd.read_csv(src, header=None, names=["index", "label"], index_col=0)["label"]
         self.unique_labels = np.sort(src[ds_indices].unique())
@@ -986,7 +989,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         -------
         None
         """
-        sig, annotation, meta = self[index]
+        i = self.get_pos(None, "signal", index)
+
+        sig = self.signal[i]
+        annotation = self.annotation[i]
+        meta = self.meta[i]
 
         if fs is None:
             fs = meta["fs"]
@@ -1028,7 +1035,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """ Loads HMM that is trained to annotate signals"""
 
         try:
-            model = joblib.load("ecg_report/Intenship_submit/hmm_model2" + '.pkl')
+            model = joblib.load('/notebooks/dpodvyaznikov/clada/ecg_report/Intenship_submit/hmm_model_2.pkl')
         except FileNotFoundError:
             model = None
 
@@ -1062,7 +1069,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                                                                     model)
 
     @ds.action
-    @ds.inbatch_parallel(init="init", target='threads')
+    @ds.inbatch_parallel(init="indices", target='threads')
     def calc_ecg_parameters(self, index):
         """ Calculates PQ interval based on annotation and writes it in meta under key 'pq'.
         Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation.

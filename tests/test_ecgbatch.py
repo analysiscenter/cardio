@@ -3,7 +3,6 @@
 
 import os
 import sys
-from copy import deepcopy
 import random
 
 import numpy as np
@@ -31,7 +30,7 @@ def setup_module_load(request):
 
     if np.all([os.path.isfile(os.path.join(path, file)) for file in files]):
         ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
-        batch_init = EcgBatch(ind)
+        batch_init = EcgBatch(ind, unique_labels=["A", "O", "N"])
     else:
         raise FileNotFoundError("Test files not found in 'tests/data/'!")
 
@@ -39,11 +38,15 @@ def setup_module_load(request):
         '''
         Teardown module
         '''
-        inds = ["A00001", "A00002", "A00004", 
-                "A00005", "A00008", "A00013"]
+        # Dump in .npz format is not implemented in EcgBatch.
+        # Following section is commented but not deleted 
+        # to maintain structure of the test suite.
 
-        for ind in inds:
-            os.remove(os.path.join(path, ind+".npz"))
+        # inds = ["A00001", "A00002", "A00004", 
+        #         "A00005", "A00008", "A00013"]
+
+        # for ind in inds:
+        #     os.remove(os.path.join(path, ind+".npz"))
 
     request.addfinalizer(teardown_module_load)
     return batch_init, path
@@ -55,12 +58,16 @@ def setup_class_methods(request):
     '''
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
-    batch_loaded = EcgBatch(ind).load_ecg(src=None, fmt="wfdb")
+    target_path = os.path.join(path, "REFERENCE.csv")
+    batch_loaded = (EcgBatch(ind, unique_labels=["A", "O", "N"])
+                    .load(fmt="wfdb", components=["signal", "annotation", "meta"])
+                    .load(src=target_path, fmt="csv", components=["target"]))
 
     def teardown_class_methods():
         '''
         Teardown class
         '''
+
     request.addfinalizer(teardown_class_methods)
     return batch_loaded
 
@@ -71,13 +78,18 @@ def setup_class_pipeline(request):
     '''
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+    target_path = os.path.join(path, "REFERENCE.csv")
     ecg_dataset = ds.Dataset(ind, batch_class=EcgBatch)
-    ecg_pipeline = ecg_dataset.pipeline().load_ecg(src=None, fmt="wfdb")
+    ecg_pipeline = (ecg_dataset
+                    .p
+                    .load(src=None, fmt="wfdb", components=["signal", "annotation", "meta"])
+                    .load(src=target_path, fmt="csv", components=["target"]))
+
     def teardown_class_pipeline():
         '''
         Teardown class
         '''
-        pass
+
     request.addfinalizer(teardown_class_pipeline)
     return ecg_dataset, ecg_pipeline
 
@@ -91,107 +103,57 @@ class TestEcgBatchLoad():
         '''
         Test of wfdb loader
         '''
-        batch = deepcopy(setup_module_load[0])
-        batch = batch.load_ecg(src=None, fmt='wfdb')
+        batch = setup_module_load[0]
+        batch = batch.load(fmt="wfdb", components=["signal", "annotation", "meta"])
         assert isinstance(batch.signal, np.ndarray)
-        assert isinstance(batch.meta, dict)
-        assert isinstance(batch.annotation, dict)
-        assert batch.signal.shape == (6, )
-        assert len(batch.meta) == 6
+        assert isinstance(batch.meta, np.ndarray)
+        assert isinstance(batch.annotation, np.ndarray)
+        assert batch.signal.shape == (6,)
+        assert batch.annotation.shape == (6,)
+        assert batch.meta.shape == (6,)
+        assert isinstance(batch.signal[0], np.ndarray)
+        assert isinstance(batch.annotation[0], dict)
+        assert isinstance(batch.meta[0], dict)
         del batch
 
-    def test_dump(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
-        '''
-        Test of dump to npz
-        '''
-        batch = deepcopy(setup_module_load[0])
-        path = setup_module_load[1]
-        batch = batch.load_ecg(src=None, fmt='wfdb')
-        batch = batch.dump_ecg(path=path, fmt='npz')
-        files = os.listdir(path)
-        assert "A00001.npz" in files
-        assert "A00004.npz" in files
-        del batch
+    def test_load_target(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
+       '''
+       Test of wfdb loader
+       '''
+       batch = setup_module_load[0]
+       path = setup_module_load[1]
+       target_path = os.path.join(path, "REFERENCE.csv")
+       batch = batch.load(src=target_path, fmt="csv", components=["target"])
+       assert isinstance(batch.target, np.ndarray)
+       assert batch.target.shape == (6,)
+       assert isinstance(batch.target[0], str)
+       assert batch["A00001"].target == 'N'
+       assert batch["A00004"].target == 'A'
+       assert batch["A00008"].target == 'O'
+       del batch
 
-    def test_load_npz(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
-        '''
-        Test of npz loader
-        '''
-        path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, '*.npz'), no_ext=True, sort=True)
-        batch = EcgBatch(ind)
-        batch = batch.load_ecg(src=None, fmt='npz')
-        assert isinstance(batch.signal, np.ndarray)
-        assert isinstance(batch.meta, dict)
-        assert isinstance(batch.annotation, dict)
-        assert batch.signal.shape == (6, )
-        assert batch.signal[0].shape == (1, 9000)
-        assert len(batch.meta) == 6
-        del batch
+   # At this moment dump is not implemented in EcgBatch.
+   # Following section is commented but not deleted 
+   # to maintain structure of the test suite.
 
+   # def test_dump(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
+   #     '''
+   #     Test of dump to npz
+   #     '''
+   #     batch = setup_module_load[0]
+   #     path = setup_module_load[1]
+   #     batch = batch.load_ecg(src=None, fmt='wfdb')
+   #     batch = batch.dump_ecg(path=path, fmt='npz')
+   #     files = os.listdir(path)
+   #     assert "A00001.npz" in files
+   #     assert "A00004.npz" in files
+   #     del batch
 
 @pytest.mark.usefixtures("setup_class_methods")
 class TestEcgBatchSingleMethods:
     '''
     Class for testing other single methods of EcgBatch class
     '''
-
-    def test_augment_fs(self, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
-        '''
-        Testing augmentation of sampling rate
-        '''
-        batch = deepcopy(setup_class_methods)
-        old_fs = batch[batch.indices[0]][2]['fs']
-        new_fs = old_fs+50
-        batch = batch.augment_fs([("delta", {'loc': new_fs})])
-        assert batch.indices.shape == (6,)
-        assert batch.meta["A00001"]['fs'] == new_fs
-        assert batch.meta["A00004"]['fs'] == new_fs
-
-    def test_load_labels(self, setup_module_load, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
-        '''
-        Testing of labels loader
-        '''
-        batch = deepcopy(setup_class_methods)
-        path = setup_module_load[1]
-        batch = batch.load_labels(os.path.join(path, "REFERENCE.csv"))
-        if "diag" in batch.meta["A00001"].keys():
-            assert batch.meta["A00001"]['diag'] == 'N'
-            assert batch.meta["A00004"]['diag'] == 'A'
-            assert batch.meta["A00008"]['diag'] == 'O'
-        else:
-            raise ValueError("No key 'diag' in meta!")
-
-    def test_split_to_segments(self, setup_class_methods): #pylint: disable=no-self-use,redefined-outer-name
-        '''
-        Testing of segmentator
-        '''
-        batch = deepcopy(setup_class_methods)
-        batch = batch.split_to_segments(
-            4500, 4499, pad=True, return_copy=False)
-        assert batch.indices.shape == (16, )
-        assert batch.signal[0].shape == (1, 4500)
-
-    def test_replace_all_labels(self, setup_class_methods, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
-        '''
-        Testing of label replacer
-        '''
-        batch = deepcopy(setup_class_methods)
-        path = setup_module_load[1]
-        batch = batch.load_labels(os.path.join(path, "REFERENCE.csv"))
-        batch = batch.replace_all_labels({"A":"A", "N":"NonA", "O":"NonA"})
-        assert batch.meta["A00001"]['diag'] == "NonA"
-        assert batch.meta["A00004"]['diag'] == "A"
-        assert batch.meta["A00008"]['diag'] == "NonA"
-
-    def test_flip_signals(self, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
-        '''
-        Testing function that flips signals if R-peaks are directed downwards
-        '''
-        batch = deepcopy(setup_class_methods)
-
-        batch = batch.flip_signals()
-        assert batch.indices.shape == (6,)
 
     def test_update(self): #pylint: disable=no-self-use,redefined-outer-name
         '''
@@ -203,16 +165,64 @@ class TestEcgBatchSingleMethods:
 
         seq1 = np.array([1, 2, 3]).reshape(1, -1)
         seq2 = np.array([1, 2, 3, 4]).reshape(1, -1)
-        data = np.array([seq1, seq2, []], dtype=object)[:-1]
-        annotation = None
-        meta = dict(zip(new_inds, [{"new_meta":True}, {"new_meta":True}]))
-        batch.update(data, annotation, meta)
-        A00001_pos = batch.index.get_pos("A00001")
-        A00004_pos = batch.index.get_pos("A00004")
-        assert batch.signal[A00001_pos].shape == (1, 3)
-        assert batch.signal[A00004_pos].shape == (1, 4)
-        assert batch.meta["A00001"]["new_meta"]
-        assert batch.meta["A00004"]["new_meta"]
+        signal = np.array([seq1, seq2, []], dtype=object)[:-1]
+        annotation = np.array([{}] * len(new_inds))
+        meta = np.array([{"new_meta":True}, {"new_meta":True}])
+        target = np.array(["N","A"])
+        batch.update(signal, annotation, meta, target)
+        assert batch.signal[0].shape == (1, 3)
+        assert batch.signal[1].shape == (1, 4)
+        assert batch["A00001"].meta["new_meta"]
+        assert batch["A00004"].meta["new_meta"]
+        assert batch["A00001"].target == "N"
+        assert batch["A00004"].target == "A"
+
+    # def test_drop_labels():
+    #     pass
+
+    # def test_keep_labels():
+    #     pass
+
+    # def test_binarize_labels():
+    #     pass
+
+    # def tets_drop_short_signal():
+    #     pass
+
+    def test_segment_signals(self, setup_class_methods): #pylint: disable=no-self-use,redefined-outer-name
+        '''
+        Testing of segmentator
+        '''
+        batch = setup_class_methods
+        batch = batch.segment_signals(4500, 4499)
+        assert batch.indices.shape == (6,)
+        assert batch.signal[0].shape == (2, 1, 4500)
+
+    def test_replace_labels(self, setup_class_methods, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
+        '''
+        Testing of label replacer
+        '''
+        batch = setup_class_methods
+        path = setup_module_load[1]
+        batch = batch.replace_labels({"A":"A", "N":"NonA", "O":"NonA"})
+        assert batch["A00001"].target == "NonA"
+        assert batch["A00004"].target == "A"
+        assert batch["A00008"].target == "NonA"
+
+    # def test_resample_signals():
+    #     pass
+
+    # def test_band_pass_signals():
+    #     pass
+
+    def test_flip_signals(self, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
+        '''
+        Testing function that flips signals if R-peaks are directed downwards
+        '''
+        batch = setup_class_methods
+
+        batch = batch.flip_signals()
+        assert batch.indices.shape == (6,)
 
 
 @pytest.mark.usefixtures("setup_class_pipeline")
@@ -221,8 +231,8 @@ class TestEcgBatchPipelineLoad:
     '''
 
     def test_pipeline_load(self, setup_class_pipeline):
-        ecg_dtst = deepcopy(setup_class_pipeline[0])
-        ppln = ecg_dtst.pipeline().load_ecg(src=None, fmt="wfdb")
+        ecg_dtst = setup_class_pipeline[0]
+        ppln = ecg_dtst.pipeline().load(fmt="wfdb", components=["signal", "annotation", "meta"])
 
         batch_size = 2
         epochs = ecg_dtst.indices.shape[0] // batch_size
@@ -230,13 +240,13 @@ class TestEcgBatchPipelineLoad:
         assert epochs == 3
 
         for i in range(epochs):
-            ppln_batch = ppln.next_batch(batch_size=batch_size, shuffle=False)
+            ppln_batch = ppln.next_batch(batch_size)
             assert ppln_batch.indices.shape[0] == batch_size
             assert ppln_batch.signal.shape[0] == batch_size
             
             first_indice = ppln_batch.indices[0]
 
-            assert len(ppln_batch[first_indice]) == 3
+            assert isinstance(ppln_batch[first_indice], ds.components.EcgBatchComponents)
 
 
 @pytest.mark.usefixtures("setup_class_pipeline")
@@ -265,15 +275,10 @@ class TestEcgBatchPipelineMethods:
         path = setup_module_load[1]
         ecg_ppln = setup_class_pipeline[1]
         new_fs = 300 + 50
-        ppln = (ecg_ppln.load_labels(os.path.join(path, "REFERENCE.csv"))
-                        .flip_signals()
-                        .augment_fs([("delta", {'loc': new_fs})])
-                        .split_to_segments(4500, 4499, pad=True, return_copy=False)
-                        .replace_all_labels({"A":"A", "N":"NonA", "O":"NonA"}))
+        ppln = (ecg_ppln.flip_signals()
+                        .segment_signals(4500, 4499)
+                        .replace_labels({"A":"A", "N":"NonA", "O":"NonA"}))
 
-        batch = ppln.next_batch(batch_size=2, shuffle=False)
-        assert batch.signal[0].shape == (1, 4500)
-        assert batch.meta[batch.indices[0]]['diag'] in ["A", "NonA"]
-
-
-# list_of_methods_to_implement = [ ]
+        batch = ppln.next_batch(2)
+        assert batch.signal[0].shape == (2, 1, 4500)
+        assert batch.target[0] in ["A", "NonA"]
