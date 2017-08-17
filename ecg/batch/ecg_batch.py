@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import scipy
 
-from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import f1_score, log_loss
 from sklearn.externals import joblib
 
@@ -25,6 +24,7 @@ from hmmlearn import hmm
 from .. import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
+from .utils import LabelBinarizer
 from .keras_extra_layers import RFFT, Crop, Inception2D
 
 
