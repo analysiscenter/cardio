@@ -68,7 +68,7 @@ class BetaModel(TFBaseModel):
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
-                self._train_step = tf.train.AdamOptimizer().minimize(self._loss)
+                self._train_step = tf.train.AdamOptimizer(use_locking=True).minimize(self._loss)
 
         return self
 
@@ -102,17 +102,24 @@ class BetaModel(TFBaseModel):
         self._append_result(loss, loss_list)
         return batch
 
-    def predict_on_batch(self, batch, predictions_list=None):
+    @staticmethod
+    def _get_beta_stats(a, b):
+        mean = np.mean(a / (a + b))
+        var = np.mean(a*b / ((a + b)**2 * (a + b + 1)) + (a / (a + b))**2) - mean**2
+        return mean, var
+
+    def predict_on_batch(self, batch, predictions_list=None, target_list=None):
         self._create_session()
         x, _, split_indices = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._is_training: False}
         alpha, beta = self.session.run([self._alpha, self._beta], feed_dict=feed_dict)
         alpha = np.split(alpha, split_indices)
         beta = np.split(beta, split_indices)
-        for a, b in zip(alpha, beta):
-            mean = np.mean(a / (a + b))
-            var = np.mean(a*b / ((a + b)**2 * (a + b + 1)) + (a / (a + b))**2) - mean**2
-            res_dict = dict(zip(batch.label_binarizer.classes_, (1 - mean, mean)))
-            res_dict["uncertainty"] = 4 * var
-            self._append_result(res_dict, predictions_list)
+        for a, b, t in zip(alpha, beta, batch.target):
+            mean, var = self._get_beta_stats(a, b)
+            predictions_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, (1 - mean, mean))),
+                                "uncertainty": 4 * var}
+            self._append_result(predictions_dict, predictions_list)
+            target_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, (1 - t[0], t[0])))}
+            self._append_result(target_dict, target_list, accept_none=True)
         return batch

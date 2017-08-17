@@ -13,17 +13,17 @@ class ModelEcgBatch(EcgBatch):
     def beta():
         return BetaModel().build()
 
-    @ds.action(singleton=True)
+    @ds.action
     def train_on_batch(self, model_name, *args, **kwargs):
         model = self.get_model_by_name(model_name)
         return model.train_on_batch(self, *args, **kwargs)
 
-    @ds.action(singleton=True)
+    @ds.action
     def test_on_batch(self, model_name, *args, **kwargs):
         model = self.get_model_by_name(model_name)
         return model.test_on_batch(self, *args, **kwargs)
 
-    @ds.action(singleton=True)
+    @ds.action
     def predict_on_batch(self, model_name, *args, **kwargs):
         model = self.get_model_by_name(model_name)
         return model.predict_on_batch(self, *args, **kwargs)
