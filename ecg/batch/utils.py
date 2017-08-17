@@ -2,11 +2,11 @@ import numpy as np
 import sklearn
 
 
-class LabelBinarizer(sklearn.preprocessing.LabelBinarizer):
+class LabelBinarizer(sklearn.preprocessing.LabelBinarizer):  # pylint: disable=invalid-name
     def transform(self, y):
         Y = super().transform(y)
         if len(self.classes_) == 1:
-            Y = 1 - Y
+            Y = 1 - Y  # pylint: disable=redefined-variable-type
         if len(self.classes_) == 2:
             Y = np.hstack((1 - Y, Y))
         return Y

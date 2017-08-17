@@ -62,7 +62,8 @@ class BetaModel(TFBaseModel):
 
             self._alpha = output_layer[:, 0]
             self._beta = output_layer[:, 1]
-            self._loss = tf.reduce_mean(tf.lbeta(output_layer) - tf.reduce_sum((output_layer - 1) * tf.log(target_flat), axis=1))
+            self._loss = tf.reduce_mean(tf.lbeta(output_layer) -
+                                        tf.reduce_sum((output_layer - 1) * tf.log(target_flat), axis=1))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):

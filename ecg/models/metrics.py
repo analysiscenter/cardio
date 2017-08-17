@@ -1,3 +1,4 @@
+import numpy as np
 import sklearn
 
 
@@ -43,7 +44,7 @@ def classification_report(y_true, y_pred, **kwargs):
     return sklearn.metrics.classification_report(y_true, y_pred, **kwargs)
 
 
-metrics_dict = {
+METRICS_DICT = {
     "f1_score": f1_score,
     "auc": auc,
     "classification_report": classification_report,
@@ -54,7 +55,7 @@ def calculate_metrics(metrics_list, y_true, y_pred):
     metrics_res = []
     for metric in metrics_list:
         if isinstance(metric, str):
-            metric_fn = metrics_dict.get(metric)
+            metric_fn = METRICS_DICT.get(metric)
             if metric_fn is None:
                 raise KeyError("Unknown metric name {}".format(metric))
         elif callable(metric):
