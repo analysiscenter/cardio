@@ -31,7 +31,7 @@ class BetaModel(TFBaseModel):
     def build(self):  # pylint: disable=protected-access
         k = 0.001
         input_shape = (None, 1, 2048)
-        output_shape = (None, 1)
+        output_shape = (None, 2)
 
         self._graph = tf.Graph()
         with self.graph.as_default():  # pylint: disable=not-context-manager
@@ -39,7 +39,7 @@ class BetaModel(TFBaseModel):
             input_channels_last = tf.reshape(self._input_layer, [-1, 2048, 1], name="channels_last")
 
             self._target = tf.placeholder(tf.float32, shape=output_shape, name="target")
-            target_flat = tf.reshape((1 - 2 * k) * self._target + k, [-1])
+            target_flat = (1 - 2 * k) * self._target + k
 
             self._is_training = tf.placeholder(tf.bool, shape=[], name="batch_norm_mode")
 
@@ -62,9 +62,7 @@ class BetaModel(TFBaseModel):
 
             self._alpha = output_layer[:, 0]
             self._beta = output_layer[:, 1]
-            self._loss = tf.reduce_mean(tf.lbeta(output_layer) -
-                                        (self._alpha - 1) * tf.log(target_flat) -
-                                        (self._beta - 1) * tf.log1p(-target_flat))
+            self._loss = tf.reduce_mean(tf.lbeta(output_layer) - tf.reduce_sum((output_layer - 1) * tf.log(target_flat), axis=1))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
