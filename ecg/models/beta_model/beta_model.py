@@ -116,9 +116,9 @@ class BetaModel(TFBaseModel):
         beta = np.split(beta, split_indices)
         for a, b, t in zip(alpha, beta, batch.target):
             mean, var = self._get_beta_stats(a, b)
-            predictions_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, (1 - mean, mean))),
+            predictions_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, (mean, 1 - mean))),
                                 "uncertainty": 4 * var}
             self._append_result(predictions_dict, predictions_list)
-            target_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, (1 - t[0], t[0])))}
+            target_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, t))}
             self._append_result(target_dict, target_list, accept_none=True)
         return batch
