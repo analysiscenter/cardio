@@ -269,12 +269,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """
         if not isinstance(src, (str, pd.Series)):
             raise TypeError("Unsupported type of source")
-        if (self.pipeline is None) and (self.unique_labels is None):
+        if self.pipeline is None:
             raise RuntimeError("Batch must be created in pipeline")
-        if self.pipeline:
-            ds_indices = self.pipeline.dataset.indices
-        elif self.unique_labels:
-            ds_indices = self.indices
+        ds_indices = self.pipeline.dataset.indices
         if isinstance(src, str):
             src = pd.read_csv(src, header=None, names=["index", "label"], index_col=0)["label"]
         self.unique_labels = np.sort(src[ds_indices].unique())
