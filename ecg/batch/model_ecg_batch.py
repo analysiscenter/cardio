@@ -11,7 +11,7 @@ class ModelEcgBatch(EcgBatch):
 
     @ds.model(mode="dynamic")
     def beta(batch):
-        signal_shape = batch.signal[0].shape
+        signal_shape = batch.signal[0].shape[1:]
         if len(signal_shape) != 2:
             raise ValueError("Beta model expects 2-D signals")
         target_shape = batch.target.shape[1:]

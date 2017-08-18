@@ -40,7 +40,7 @@ class BetaModel(TFBaseModel):
             input_channels_last = tf.transpose(self._input_layer, perm=[0, 2, 1], name="channels_last")
 
             self._target = tf.placeholder(tf.float32, shape=self._output_shape, name="target")
-            target_flat = (1 - 2 * k) * self._target + k
+            target = (1 - 2 * k) * self._target + k
 
             self._is_training = tf.placeholder(tf.bool, shape=[], name="batch_norm_mode")
 
@@ -59,16 +59,14 @@ class BetaModel(TFBaseModel):
             with tf.variable_scope("dense_2"):  # pylint: disable=not-context-manager
                 dense = tf.layers.dense(act, self._output_shape[1], use_bias=False, name="dense")
                 bnorm = tf.layers.batch_normalization(dense, training=self._is_training, name="batch_norm")
-                output_layer = tf.nn.softplus(bnorm, name="output_layer")
+                self._output_layer = tf.nn.softplus(bnorm, name="output_layer")
 
-            self._alpha = output_layer[:, 0]
-            self._beta = output_layer[:, 1]
-            self._loss = tf.reduce_mean(tf.lbeta(output_layer) -
-                                        tf.reduce_sum((output_layer - 1) * tf.log(target_flat), axis=1))
+            self._loss = tf.reduce_mean(tf.lbeta(self._output_layer) -
+                                        tf.reduce_sum((self._output_layer - 1) * tf.log(target), axis=1))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
-                self._train_step = tf.train.AdamOptimizer(use_locking=True).minimize(self._loss)
+                self._train_step = tf.train.AdamOptimizer().minimize(self._loss)
 
         return self
 
@@ -103,22 +101,24 @@ class BetaModel(TFBaseModel):
         return batch
 
     @staticmethod
-    def _get_beta_stats(a, b):
-        mean = np.mean(a / (a + b))
-        var = np.mean(a*b / ((a + b)**2 * (a + b + 1)) + (a / (a + b))**2) - mean**2
+    def _get_dirichlet_stats(alpha):
+        alpha_sum = np.sum(alpha, axis=1)[:, np.newaxis]
+        comp_m1 = alpha / alpha_sum
+        comp_m2 = (alpha * (alpha + 1)) / (alpha_sum * (alpha_sum + 1))
+        mean = np.mean(comp_m1, axis=0)
+        var = np.mean(comp_m2, axis=0) - mean**2
         return mean, var
 
     def predict_on_batch(self, batch, predictions_list=None, target_list=None):
         self._create_session()
         x, _, split_indices = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._is_training: False}
-        alpha, beta = self.session.run([self._alpha, self._beta], feed_dict=feed_dict)
+        alpha = self.session.run(self._output_layer, feed_dict=feed_dict)
         alpha = np.split(alpha, split_indices)
-        beta = np.split(beta, split_indices)
-        for a, b, t in zip(alpha, beta, batch.target):
-            mean, var = self._get_beta_stats(a, b)
-            predictions_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, (mean, 1 - mean))),
-                                "uncertainty": 4 * var}
+        for a, t in zip(alpha, batch.target):
+            mean, var = self._get_dirichlet_stats(a)
+            predictions_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, mean)),
+                                "uncertainty": var}
             self._append_result(predictions_dict, predictions_list)
             target_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, t))}
             self._append_result(target_dict, target_list, accept_none=True)
