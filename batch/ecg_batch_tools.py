@@ -381,17 +381,30 @@ def calc_pq(hmm_annotation, fs):
 
     p_starts, _ = find_intervals_borders(hmm_annotation, (14, 15, 16))
     q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
+    r_starts, _ = find_intervals_borders(hmm_annotation, (1,))
 
-    q_starts = q_starts[q_starts > p_starts[0]]
-    min_len = min(q_starts.shape[0], p_starts.shape[0])
-    p_starts = p_starts[:min_len]
-    q_starts = q_starts[:min_len]
+    p_final = []
+    q_final = []
 
-    # In case of lack of any peaks
-    if min(len(q_starts), len(p_starts)) == 0:
-        return "-"
+    for i in range(len(r_starts)-1):
+        low = r_starts[i]
+        high = r_starts[i+1]
+        
+        p_vals = p_starts[(low<p_starts)&(p_starts<high)]
+        q_vals = q_starts[(low<q_starts)&(q_starts<high)]
+        
+        if (len(p_vals)<1 or len(q_vals)<1):
+            continue
+        elif (len(p_vals)>1 or len(q_vals)>1):
+            print("More than one peak!")
+        else:
+            p_final.append(p_vals[0])
+            q_final.append(q_vals[0])
+        
+    p_final = np.array(p_final)
+    q_final = np.array(q_final)
 
-    pq_intervals = q_starts-p_starts
+    pq_intervals = q_final-p_final
 
     pq_val = np.median(pq_intervals) / fs
 
@@ -418,21 +431,34 @@ def calc_qt(hmm_annotation, fs):
 
     _, t_ends = find_intervals_borders(hmm_annotation, (5, 6, 7, 8, 9, 10))
     q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
+    r_starts, _ = find_intervals_borders(hmm_annotation, (1,))
 
-    t_ends = t_ends[t_ends > q_starts[0]]
-    min_len = min(q_starts.shape[0], t_ends.shape[0])
-    t_ends = t_ends[:min_len]
-    q_starts = q_starts[:min_len]
+    t_final = []
+    q_final = []
 
-    # In case of lack of any peaks
-    if min(len(q_starts), len(t_ends)) == 0:
-        return "-"
+    for i in range(len(r_starts)-1):
+        low = r_starts[i]
+        high = r_starts[i+1]
+        
+        t_vals = t_ends[(low<t_ends)&(t_ends<high)]
+        q_vals = q_starts[(low<q_starts)&(q_starts<high)]
+        
+        if (len(t_vals)<1 or len(q_vals)<1):
+            continue
+        elif (len(t_vals)>1 or len(q_vals)>1):
+            print("More than one peak!")
+        else:
+            t_final.append(t_vals[0])
+            q_final.append(q_vals[0])
+        
+    t_final = np.array(t_final[1:])
+    q_final = np.array(q_final[:-1])
 
-    qt_intervals = t_ends-q_starts
+    qt_intervals = t_final-q_final
 
     qt_val = np.median(qt_intervals) / fs
 
-    if ((qt_val < 0) or (qt_val > 0.3)):
+    if ((qt_val < 0) or (qt_val > 0.7)):
         qt_val = "-"
 
     return qt_val
@@ -455,21 +481,34 @@ def calc_qrs(hmm_annotation, fs):
 
     _, s_ends = find_intervals_borders(hmm_annotation, (2,))
     q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
+    r_starts, _ = find_intervals_borders(hmm_annotation, (1,))
 
-    s_ends = s_ends[s_ends > q_starts[0]]
-    min_len = min(q_starts.shape[0], s_ends.shape[0])
-    s_ends = s_ends[:min_len]
-    q_starts = q_starts[:min_len]
+    s_final = []
+    q_final = []
 
-    # In case of lack of any peaks
-    if min(len(q_starts), len(s_ends)) == 0:
-        return "-"
-
-    qs_intervals = s_ends-q_starts
+    for i in range(len(r_starts)-1):
+        low = r_starts[i]
+        high = r_starts[i+1]
+        
+        s_vals = s_ends[(low<s_ends)&(s_ends<high)]
+        q_vals = q_starts[(low<q_starts)&(q_starts<high)]
+        
+        if (len(s_vals)<1 or len(q_vals)<1):
+            continue
+        elif (len(s_vals)>1 or len(q_vals)>1):
+            print("More than one peak!")
+        else:
+            s_final.append(s_vals[0])
+            q_final.append(q_vals[0])
+        
+    s_final = np.array(s_final[1:])
+    q_final = np.array(q_final[:-1])
+    
+    qs_intervals = s_final-q_final
 
     qrs_val = np.median(qs_intervals) / fs
 
-    if ((qrs_val < 0) or (qrs_val > 0.3)):
+    if ((qrs_val < 0) or (qrs_val > 0.25)):
         qrs_val = "-"
 
     return qrs_val
