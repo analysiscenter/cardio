@@ -503,7 +503,7 @@ def calc_qrs(hmm_annotation, fs):
 
     s_final = np.array(s_final[1:])
     q_final = np.array(q_final[:-1])
-    
+
     qs_intervals = s_final-q_final
 
     qrs_val = np.median(qs_intervals) / fs
