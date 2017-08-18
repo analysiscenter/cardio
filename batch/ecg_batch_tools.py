@@ -389,18 +389,18 @@ def calc_pq(hmm_annotation, fs):
     for i in range(len(r_starts)-1):
         low = r_starts[i]
         high = r_starts[i+1]
-        
-        p_vals = p_starts[(low<p_starts)&(p_starts<high)]
-        q_vals = q_starts[(low<q_starts)&(q_starts<high)]
-        
-        if (len(p_vals)<1 or len(q_vals)<1):
+
+        p_vals = p_starts[(low < p_starts) & (p_starts < high)]
+        q_vals = q_starts[(low < q_starts) & (q_starts < high)]
+
+        if len(p_vals) < 1 or len(q_vals) < 1:
             continue
-        elif (len(p_vals)>1 or len(q_vals)>1):
+        elif len(p_vals) > 1 or len(q_vals) > 1:
             print("More than one peak!")
         else:
             p_final.append(p_vals[0])
             q_final.append(q_vals[0])
-        
+
     p_final = np.array(p_final)
     q_final = np.array(q_final)
 
@@ -408,7 +408,7 @@ def calc_pq(hmm_annotation, fs):
 
     pq_val = np.median(pq_intervals) / fs
 
-    if ((pq_val < 0) or (pq_val > 0.3)):
+    if (pq_val < 0) or (pq_val > 0.3):
         pq_val = "-"
 
     return pq_val
@@ -439,18 +439,18 @@ def calc_qt(hmm_annotation, fs):
     for i in range(len(r_starts)-1):
         low = r_starts[i]
         high = r_starts[i+1]
-        
-        t_vals = t_ends[(low<t_ends)&(t_ends<high)]
-        q_vals = q_starts[(low<q_starts)&(q_starts<high)]
-        
-        if (len(t_vals)<1 or len(q_vals)<1):
+
+        t_vals = t_ends[(low < t_ends) & (t_ends < high)]
+        q_vals = q_starts[(low < q_starts) & (q_starts < high)]
+
+        if len(t_vals) < 1 or len(q_vals) < 1:
             continue
-        elif (len(t_vals)>1 or len(q_vals)>1):
+        elif len(t_vals) > 1 or len(q_vals) > 1:
             print("More than one peak!")
         else:
             t_final.append(t_vals[0])
             q_final.append(q_vals[0])
-        
+
     t_final = np.array(t_final[1:])
     q_final = np.array(q_final[:-1])
 
@@ -458,7 +458,7 @@ def calc_qt(hmm_annotation, fs):
 
     qt_val = np.median(qt_intervals) / fs
 
-    if ((qt_val < 0) or (qt_val > 0.7)):
+    if (qt_val < 0) or (qt_val > 0.7):
         qt_val = "-"
 
     return qt_val
@@ -489,18 +489,18 @@ def calc_qrs(hmm_annotation, fs):
     for i in range(len(r_starts)-1):
         low = r_starts[i]
         high = r_starts[i+1]
-        
-        s_vals = s_ends[(low<s_ends)&(s_ends<high)]
-        q_vals = q_starts[(low<q_starts)&(q_starts<high)]
-        
-        if (len(s_vals)<1 or len(q_vals)<1):
+
+        s_vals = s_ends[(low < s_ends) & (s_ends < high)]
+        q_vals = q_starts[(low < q_starts) & (q_starts < high)]
+
+        if len(s_vals) < 1 or len(q_vals) < 1:
             continue
-        elif (len(s_vals)>1 or len(q_vals)>1):
+        elif len(s_vals) > 1 or len(q_vals) > 1:
             print("More than one peak!")
         else:
             s_final.append(s_vals[0])
             q_final.append(q_vals[0])
-        
+
     s_final = np.array(s_final[1:])
     q_final = np.array(q_final[:-1])
     
@@ -508,7 +508,7 @@ def calc_qrs(hmm_annotation, fs):
 
     qrs_val = np.median(qs_intervals) / fs
 
-    if ((qrs_val < 0) or (qrs_val > 0.25)):
+    if (qrs_val < 0) or (qrs_val > 0.25):
         qrs_val = "-"
 
     return qrs_val
