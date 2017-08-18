@@ -9,11 +9,17 @@ class ModelEcgBatch(EcgBatch):
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded, unique_labels)
 
-    @ds.model()
-    def beta():
-        return BetaModel().build()
+    @ds.model(mode="dynamic")
+    def beta(batch):
+        signal_shape = batch.signal[0].shape
+        if len(signal_shape) != 2:
+            raise ValueError("Beta model expects 2-D signals")
+        target_shape = batch.target.shape[1:]
+        if len(target_shape) != 1:
+            raise ValueError("Beta model expects 1-D targets")
+        return BetaModel(signal_shape, target_shape).build()
 
-    @ds.action
+    @ds.action(use_lock="beta_train")
     def train_on_batch(self, model_name, *args, **kwargs):
         model = self.get_model_by_name(model_name)
         return model.train_on_batch(self, *args, **kwargs)

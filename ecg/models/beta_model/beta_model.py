@@ -10,8 +10,11 @@ from ...batch import EcgBatch
 
 
 class BetaModel(TFBaseModel):
-    def __init__(self):
+    def __init__(self, input_shape, output_shape):
         super().__init__()
+
+        self._input_shape = (None,) + input_shape
+        self._output_shape = (None,) + output_shape
 
         # model placeholders
         self._input_layer = None
@@ -30,15 +33,13 @@ class BetaModel(TFBaseModel):
 
     def build(self):  # pylint: disable=protected-access
         k = 0.001
-        input_shape = (None, 1, 2048)
-        output_shape = (None, 2)
 
         self._graph = tf.Graph()
         with self.graph.as_default():  # pylint: disable=not-context-manager
-            self._input_layer = tf.placeholder(tf.float32, shape=input_shape, name="input_layer")
-            input_channels_last = tf.reshape(self._input_layer, [-1, 2048, 1], name="channels_last")
+            self._input_layer = tf.placeholder(tf.float32, shape=self._input_shape, name="input_layer")
+            input_channels_last = tf.transpose(self._input_layer, perm=[0, 2, 1], name="channels_last")
 
-            self._target = tf.placeholder(tf.float32, shape=output_shape, name="target")
+            self._target = tf.placeholder(tf.float32, shape=self._output_shape, name="target")
             target_flat = (1 - 2 * k) * self._target + k
 
             self._is_training = tf.placeholder(tf.bool, shape=[], name="batch_norm_mode")
@@ -56,7 +57,7 @@ class BetaModel(TFBaseModel):
                 act = tf.nn.elu(bnorm, name="activation")
 
             with tf.variable_scope("dense_2"):  # pylint: disable=not-context-manager
-                dense = tf.layers.dense(act, 2, use_bias=False, name="dense")
+                dense = tf.layers.dense(act, self._output_shape[1], use_bias=False, name="dense")
                 bnorm = tf.layers.batch_normalization(dense, training=self._is_training, name="batch_norm")
                 output_layer = tf.nn.softplus(bnorm, name="output_layer")
 
