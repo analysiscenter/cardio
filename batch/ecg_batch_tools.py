@@ -386,9 +386,17 @@ def calc_pq(hmm_annotation, fs):
     min_len = min(q_starts.shape[0], p_starts.shape[0])
     p_starts = p_starts[:min_len]
     q_starts = q_starts[:min_len]
+
+    # In case of lack of any peaks
+    if min(len(q_starts), len(p_starts)) == 0:
+        return "-"
+
     pq_intervals = q_starts-p_starts
 
     pq_val = np.median(pq_intervals) / fs
+
+    if ((pq_val < 0) or (pq_val > 0.3)):
+        pq_val = "-"
 
     return pq_val
 
@@ -415,9 +423,17 @@ def calc_qt(hmm_annotation, fs):
     min_len = min(q_starts.shape[0], t_ends.shape[0])
     t_ends = t_ends[:min_len]
     q_starts = q_starts[:min_len]
+
+    # In case of lack of any peaks
+    if min(len(q_starts), len(t_ends)) == 0:
+        return "-"
+
     qt_intervals = t_ends-q_starts
 
     qt_val = np.median(qt_intervals) / fs
+
+    if ((qt_val < 0) or (qt_val > 0.3)):
+        qt_val = "-"
 
     return qt_val
 
@@ -444,8 +460,16 @@ def calc_qrs(hmm_annotation, fs):
     min_len = min(q_starts.shape[0], s_ends.shape[0])
     s_ends = s_ends[:min_len]
     q_starts = q_starts[:min_len]
+
+    # In case of lack of any peaks
+    if min(len(q_starts), len(s_ends)) == 0:
+        return "-"
+
     qs_intervals = s_ends-q_starts
 
     qrs_val = np.median(qs_intervals) / fs
+
+    if ((qrs_val < 0) or (qrs_val > 0.3)):
+        qrs_val = "-"
 
     return qrs_val
