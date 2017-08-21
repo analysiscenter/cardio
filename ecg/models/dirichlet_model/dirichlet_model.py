@@ -76,7 +76,7 @@ class DirichletModel(TFBaseModel):
         with self.graph.as_default():  # pylint: disable=not-context-manager
             self._session = tf.Session()
             saver = tf.train.import_meta_graph(graph_path)
-            saver.restore(sess, checkpoint_path)
+            saver.restore(self._session, checkpoint_path)
         tensor_names = ["input_layer", "target", "is_training", "output_layer", "loss", "global_step", "train_step"]
         for name in tensor_names:
             setattr(self, "_" + name, self.graph.get_tensor_by_name(name + ":0"))
