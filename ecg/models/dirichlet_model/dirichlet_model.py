@@ -1,5 +1,6 @@
 """Contains Dirichlet model."""
 
+import dill
 import numpy as np
 import tensorflow as tf
 
@@ -10,6 +11,7 @@ from ..layers import conv_cell
 class DirichletModel(TFBaseModel):
     def __init__(self):
         super().__init__()
+        self._classes = None
 
         self._input_layer = None
         self._target = None
@@ -21,7 +23,8 @@ class DirichletModel(TFBaseModel):
         self._global_step = None
         self._train_step = None
 
-    def build(self, input_shape, output_shape):  # pylint: disable=protected-access
+    def build(self, input_shape, output_shape, classes):  # pylint: disable=protected-access
+        self._classes = classes
         input_shape = (None,) + input_shape
         output_shape = (None,) + output_shape
         k = 0.001
@@ -69,9 +72,12 @@ class DirichletModel(TFBaseModel):
         with self.graph.as_default():  # pylint: disable=not-context-manager
             saver = tf.train.Saver()
             saver.save(self.session, path, global_step=self._global_step)
+        classes_path = "{}-{}.dill".format(path, self.session.run(self._global_step))
+        with open(classes_path, "wb") as file:
+            dill.dump(self._classes, file)
         return self
 
-    def load(self, graph_path, checkpoint_path):  # pylint: disable=arguments-differ
+    def load(self, graph_path, checkpoint_path, classes_path):  # pylint: disable=arguments-differ
         self._graph = tf.Graph()
         with self.graph.as_default():  # pylint: disable=not-context-manager
             self._session = tf.Session()
@@ -80,6 +86,8 @@ class DirichletModel(TFBaseModel):
         tensor_names = ["input_layer", "target", "is_training", "output_layer", "loss", "global_step", "train_step"]
         for name in tensor_names:
             setattr(self, "_" + name, self.graph.get_tensor_by_name(name + ":0"))
+        with open(classes_path, "rb") as file:
+            self._classes = dill.load(file)
         return self
 
     @staticmethod
@@ -122,8 +130,10 @@ class DirichletModel(TFBaseModel):
         return mean, var
 
     def predict_on_batch(self, batch, predictions_list=None, target_list=None):  # pylint: disable=arguments-differ
+        if np.any(np.equal(batch.target, None)) and target_list is not None:
+            raise ValueError("Signal labels must be loaded if target_list is not None")
         self._create_session()
-        n_classes = len(batch.label_binarizer.classes_)
+        n_classes = len(self._classes)
         max_var = (n_classes - 1) /  n_classes**2
         x, _, split_indices = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._is_training: False}
@@ -132,9 +142,10 @@ class DirichletModel(TFBaseModel):
         for a, t in zip(alpha, batch.target):
             mean, var = self._get_dirichlet_stats(a)
             uncertainty = var[np.argmax(mean)] / max_var
-            predictions_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, mean)),
+            predictions_dict = {"class_prob": dict(zip(self._classes, mean)),
                                 "uncertainty": uncertainty}
             self._append_result(predictions_dict, predictions_list)
-            target_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, t))}
-            self._append_result(target_dict, target_list, accept_none=True)
+            if target_list is not None:
+                target_dict = {"class_prob": dict(zip(self._classes, t))}
+                self._append_result(target_dict, target_list)
         return batch

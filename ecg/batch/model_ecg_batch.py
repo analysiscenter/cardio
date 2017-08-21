@@ -17,13 +17,13 @@ class ModelEcgBatch(EcgBatch):
         target_shape = batch.target.shape[1:]
         if len(target_shape) != 1:
             raise ValueError("Dirichlet model expects 1-D targets")
-        return DirichletModel().build(signal_shape, target_shape)
+        classes = batch.label_binarizer.classes_
+        return DirichletModel().build(signal_shape, target_shape, classes)
 
     @ds.model(mode="dynamic")
     def dirichlet_pretrained(batch):  # pylint: disable=no-self-argument
-        graph_path = batch.pipeline.get_variable("graph_path")
-        checkpoint_path = batch.pipeline.get_variable("checkpoint_path")
-        return DirichletModel().load(graph_path, checkpoint_path)
+        args = [batch.pipeline.get_variable(path) for path in ("graph_path", "checkpoint_path", "classes_path")]
+        return DirichletModel().load(*args)
 
     @ds.action(use_lock="train_lock")
     def train_on_batch(self, model_name, *args, **kwargs):
