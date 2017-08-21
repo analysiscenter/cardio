@@ -2,7 +2,8 @@ import numpy as np
 import sklearn
 
 
-class LabelBinarizer(sklearn.preprocessing.LabelBinarizer):  # pylint: disable=invalid-name
+class LabelBinarizer(sklearn.preprocessing.LabelBinarizer):
+    # pylint: disable=invalid-name
     def transform(self, y):
         Y = super().transform(y)
         if len(self.classes_) == 1:

@@ -1,15 +1,13 @@
-"""Contains beta model."""
+"""Contains Dirichlet model."""
 
 import numpy as np
 import tensorflow as tf
 
 from ..tf_base_model import TFBaseModel
 from ..layers import conv_cell
-from ... import dataset as ds
-from ...batch import EcgBatch
 
 
-class BetaModel(TFBaseModel):
+class DirichletModel(TFBaseModel):
     def __init__(self):
         super().__init__()
 
@@ -76,7 +74,7 @@ class BetaModel(TFBaseModel):
         if res_list is not None:
             res_list.append(res)
 
-    def train_on_batch(self, batch, loss_list=None):
+    def train_on_batch(self, batch, loss_list=None):  # pylint: disable=arguments-differ
         self._create_session()
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: True}
@@ -84,7 +82,7 @@ class BetaModel(TFBaseModel):
         self._append_result(loss, loss_list, accept_none=True)
         return batch
 
-    def test_on_batch(self, batch, loss_list=None):
+    def test_on_batch(self, batch, loss_list=None):  # pylint: disable=arguments-differ
         self._create_session()
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: False}
@@ -101,7 +99,7 @@ class BetaModel(TFBaseModel):
         var = np.mean(comp_m2, axis=0) - mean**2
         return mean, var
 
-    def predict_on_batch(self, batch, predictions_list=None, target_list=None):
+    def predict_on_batch(self, batch, predictions_list=None, target_list=None):  # pylint: disable=arguments-differ
         self._create_session()
         n_classes = len(batch.label_binarizer.classes_)
         max_var = (n_classes - 1) /  n_classes**2
