@@ -8,8 +8,8 @@ class BaseModel:
         """Load model."""
         raise NotImplementedError
 
-    def dump(self, *args, **kwargs):
-        """Dump model."""
+    def save(self, *args, **kwargs):
+        """Save model."""
         raise NotImplementedError
 
     def train_on_batch(self, batch, **kwargs):

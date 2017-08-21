@@ -18,6 +18,7 @@ class DirichletModel(TFBaseModel):
         self._output_layer = None
 
         self._loss = None
+        self._global_step = None
         self._train_step = None
 
     def build(self, input_shape, output_shape):  # pylint: disable=protected-access
@@ -33,7 +34,7 @@ class DirichletModel(TFBaseModel):
             self._target = tf.placeholder(tf.float32, shape=output_shape, name="target")
             target = (1 - 2 * k) * self._target + k
 
-            self._is_training = tf.placeholder(tf.bool, shape=[], name="batch_norm_mode")
+            self._is_training = tf.placeholder(tf.bool, shape=[], name="is_training")
 
             n_filters = [10, 10, 10, 15, 15, 15, 20, 20, 20, 30, 30]
             kernel_size = [5, 5, 5, 5, 5, 5, 3, 3, 3, 3, 3]
@@ -53,11 +54,20 @@ class DirichletModel(TFBaseModel):
                 self._output_layer = tf.nn.softplus(bnorm, name="output_layer")
 
             self._loss = tf.reduce_mean(tf.lbeta(self._output_layer) -
-                                        tf.reduce_sum((self._output_layer - 1) * tf.log(target), axis=1))
+                                        tf.reduce_sum((self._output_layer - 1) * tf.log(target), axis=1),
+                                        name="loss")
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
-                self._train_step = tf.train.AdamOptimizer().minimize(self._loss)
+                self._global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name="global_step")
+                opt = tf.train.AdamOptimizer()
+                self._train_step = opt.minimize(self._loss, global_step=self._global_step, name="train_step")
+        return self
+
+    def save(self, path):
+        with self.graph.as_default():  # pylint: disable=not-context-manager
+            saver = tf.train.Saver()
+            saver.save(self.session, path, global_step=self._global_step)
         return self
 
     @staticmethod
