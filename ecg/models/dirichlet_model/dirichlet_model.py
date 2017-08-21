@@ -51,8 +51,9 @@ class DirichletModel(TFBaseModel):
             with tf.variable_scope("dense_2"):  # pylint: disable=not-context-manager
                 dense = tf.layers.dense(act, output_shape[1], use_bias=False, name="dense")
                 bnorm = tf.layers.batch_normalization(dense, training=self._is_training, name="batch_norm")
-                self._output_layer = tf.nn.softplus(bnorm, name="output_layer")
+                act = tf.nn.softplus(bnorm, name="activation")
 
+            self._output_layer = tf.identity(act, name="output_layer")
             self._loss = tf.reduce_mean(tf.lbeta(self._output_layer) -
                                         tf.reduce_sum((self._output_layer - 1) * tf.log(target), axis=1),
                                         name="loss")
@@ -64,10 +65,21 @@ class DirichletModel(TFBaseModel):
                 self._train_step = opt.minimize(self._loss, global_step=self._global_step, name="train_step")
         return self
 
-    def save(self, path):
+    def save(self, path):  # pylint: disable=arguments-differ
         with self.graph.as_default():  # pylint: disable=not-context-manager
             saver = tf.train.Saver()
             saver.save(self.session, path, global_step=self._global_step)
+        return self
+
+    def load(self, graph_path, checkpoint_path):  # pylint: disable=arguments-differ
+        self._graph = tf.Graph()
+        with self.graph.as_default():  # pylint: disable=not-context-manager
+            self._session = tf.Session()
+            saver = tf.train.import_meta_graph(graph_path)
+            saver.restore(sess, checkpoint_path)
+        tensor_names = ["input_layer", "target", "is_training", "output_layer", "loss", "global_step", "train_step"]
+        for name in tensor_names:
+            setattr(self, "_" + name, self.graph.get_tensor_by_name(name + ":0"))
         return self
 
     @staticmethod

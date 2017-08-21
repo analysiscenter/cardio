@@ -11,7 +11,6 @@ class TFBaseModel(BaseModel):  # pylint: disable=abstract-method
     def __init__(self):
         self._graph = None
         self._session = None
-        self._initialize_variables = True
 
     @property
     def graph(self):
@@ -29,5 +28,4 @@ class TFBaseModel(BaseModel):  # pylint: disable=abstract-method
                 raise ValueError("Model graph cannot be empty")
             with self.graph.as_default():
                 self._session = tf.Session()
-                if self._initialize_variables:
-                    self._session.run(tf.global_variables_initializer())
+                self._session.run(tf.global_variables_initializer())
