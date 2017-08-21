@@ -17,7 +17,7 @@ class ModelEcgBatch(EcgBatch):
         target_shape = batch.target.shape[1:]
         if len(target_shape) != 1:
             raise ValueError("Beta model expects 1-D targets")
-        return BetaModel(signal_shape, target_shape).build()
+        return BetaModel().build(signal_shape, target_shape)
 
     @ds.action(use_lock="beta_train")
     def train_on_batch(self, model_name, *args, **kwargs):

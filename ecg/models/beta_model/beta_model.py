@@ -10,36 +10,29 @@ from ...batch import EcgBatch
 
 
 class BetaModel(TFBaseModel):
-    def __init__(self, input_shape, output_shape):
+    def __init__(self):
         super().__init__()
 
-        self._input_shape = (None,) + input_shape
-        self._output_shape = (None,) + output_shape
-
-        # model placeholders
         self._input_layer = None
         self._target = None
         self._is_training = None
 
-        # model output
-        self._alpha = None
-        self._beta = None
+        self._output_layer = None
 
-        # model loss
         self._loss = None
-
-        # model training step
         self._train_step = None
 
-    def build(self):  # pylint: disable=protected-access
+    def build(self, input_shape, output_shape):  # pylint: disable=protected-access
+        input_shape = (None,) + input_shape
+        output_shape = (None,) + output_shape
         k = 0.001
 
         self._graph = tf.Graph()
         with self.graph.as_default():  # pylint: disable=not-context-manager
-            self._input_layer = tf.placeholder(tf.float32, shape=self._input_shape, name="input_layer")
+            self._input_layer = tf.placeholder(tf.float32, shape=input_shape, name="input_layer")
             input_channels_last = tf.transpose(self._input_layer, perm=[0, 2, 1], name="channels_last")
 
-            self._target = tf.placeholder(tf.float32, shape=self._output_shape, name="target")
+            self._target = tf.placeholder(tf.float32, shape=output_shape, name="target")
             target = (1 - 2 * k) * self._target + k
 
             self._is_training = tf.placeholder(tf.bool, shape=[], name="batch_norm_mode")
@@ -57,7 +50,7 @@ class BetaModel(TFBaseModel):
                 act = tf.nn.elu(bnorm, name="activation")
 
             with tf.variable_scope("dense_2"):  # pylint: disable=not-context-manager
-                dense = tf.layers.dense(act, self._output_shape[1], use_bias=False, name="dense")
+                dense = tf.layers.dense(act, output_shape[1], use_bias=False, name="dense")
                 bnorm = tf.layers.batch_normalization(dense, training=self._is_training, name="batch_norm")
                 self._output_layer = tf.nn.softplus(bnorm, name="output_layer")
 
@@ -67,7 +60,6 @@ class BetaModel(TFBaseModel):
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
                 self._train_step = tf.train.AdamOptimizer().minimize(self._loss)
-
         return self
 
     @staticmethod
@@ -111,14 +103,17 @@ class BetaModel(TFBaseModel):
 
     def predict_on_batch(self, batch, predictions_list=None, target_list=None):
         self._create_session()
+        n_classes = len(batch.label_binarizer.classes_)
+        max_var = (n_classes - 1) /  n_classes**2
         x, _, split_indices = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._is_training: False}
         alpha = self.session.run(self._output_layer, feed_dict=feed_dict)
         alpha = np.split(alpha, split_indices)
         for a, t in zip(alpha, batch.target):
             mean, var = self._get_dirichlet_stats(a)
+            uncertainty = var[np.argmax(mean)] / max_var
             predictions_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, mean)),
-                                "uncertainty": var}
+                                "uncertainty": uncertainty}
             self._append_result(predictions_dict, predictions_list)
             target_dict = {"class_prob": dict(zip(batch.label_binarizer.classes_, t))}
             self._append_result(target_dict, target_list, accept_none=True)
