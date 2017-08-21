@@ -10,8 +10,8 @@ import pytest
 
 sys.path.append(os.path.join("."))
 
-from batch import EcgBatch
-from batch import ds
+from ecg.batch import EcgBatch
+from ecg.batch import ds
 
 random.seed(170720143422)
 
@@ -21,7 +21,7 @@ def setup_module_load(request):
     Fixture to setup module. Performs check for presence of test files,
     creates initial batch object.
     '''
-    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
     files = ["A00001.hea", "A00001.mat", "A00002.hea", "A00002.mat",
              "A00004.hea", "A00004.mat", "A00005.hea", "A00005.mat",
              "A00008.hea", "A00008.mat", "A00013.hea", "A00013.mat", "REFERENCE.csv"]
@@ -37,15 +37,6 @@ def setup_module_load(request):
         '''
         Teardown module
         '''
-        # Dump in .npz format is not implemented in EcgBatch.
-        # Following section is commented but not deleted 
-        # to maintain structure of the test suite.
-
-        # inds = ["A00001", "A00002", "A00004", 
-        #         "A00005", "A00008", "A00013"]
-
-        # for ind in inds:
-        #     os.remove(os.path.join(path, ind+".npz"))
 
     request.addfinalizer(teardown_module_load)
     return ind, path
