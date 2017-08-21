@@ -29,7 +29,7 @@ from hmmlearn import hmm
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 
-import dataset as ds
+from .. import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
 from .keras_extra_layers import RFFT, Crop, Inception2D
