@@ -8,7 +8,7 @@ from ..tf_base_model import TFBaseModel
 from ..layers import conv_cell
 
 
-class DirichletModel(TFBaseModel):
+class DirichletModel(TFBaseModel):  # pylint: disable=too-many-instance-attributes
     def __init__(self):
         super().__init__()
         self._classes = None

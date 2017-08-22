@@ -25,9 +25,9 @@ class ModelEcgBatch(EcgBatch):
         if config is None:
             raise ValueError("Model config must be specified")
         paths = ("graph_path", "checkpoint_path", "classes_path")
-        if not (set(paths) <= config.keys()):
-            missing_paths = ", ".join(sorted(set(paths) - config.keys()))
-            raise KeyError("Model config does not contain {}".format(missing_paths))
+        diff = set(paths) - config.keys()
+        if diff:
+            raise KeyError("Model config does not contain {}".format(", ".join(sorted(diff))))
         args = [config[path] for path in paths]
         return DirichletModel().load(*args)
 

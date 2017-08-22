@@ -20,7 +20,7 @@ def get_labels(predictions_list):
     return np.array(true_labels), np.array(pred_labels)
 
 
-def get_probs(predictions_list, metric_name="Metric"):
+def get_probs(predictions_list):
     true_probs = []
     pred_probs = []
     for predictions_dict in predictions_list:

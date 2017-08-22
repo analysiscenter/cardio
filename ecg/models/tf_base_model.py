@@ -1,7 +1,5 @@
 """Contains tensorflow base model class."""
 
-import tensorflow as tf
-
 from .base_model import BaseModel
 
 
