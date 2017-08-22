@@ -66,6 +66,9 @@ class DirichletModel(TFBaseModel):
                 self._global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name="global_step")
                 opt = tf.train.AdamOptimizer()
                 self._train_step = opt.minimize(self._loss, global_step=self._global_step, name="train_step")
+
+            self._session = tf.Session()
+            self.session.run(tf.global_variables_initializer())
         return self
 
     def save(self, path):  # pylint: disable=arguments-differ
@@ -98,26 +101,22 @@ class DirichletModel(TFBaseModel):
         return x, y, split_indices
 
     @staticmethod
-    def _append_result(res, res_list, accept_none=False):
-        if not accept_none and res_list is None:
-            raise ValueError("List with results must not be None")
-        if res_list is not None:
-            res_list.append(res)
+    def _append_result(batch, var_name, result):
+        if var_name is not None:
+            batch.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(result)
 
-    def train_on_batch(self, batch, loss_list=None):  # pylint: disable=arguments-differ
-        self._create_session()
+    def train_on_batch(self, batch, loss_var_name=None):  # pylint: disable=arguments-differ
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: True}
         _, loss = self.session.run([self._train_step, self._loss], feed_dict=feed_dict)
-        self._append_result(loss, loss_list, accept_none=True)
+        self._append_result(batch, loss_var_name, loss)
         return batch
 
-    def test_on_batch(self, batch, loss_list=None):  # pylint: disable=arguments-differ
-        self._create_session()
+    def test_on_batch(self, batch, loss_var_name):  # pylint: disable=arguments-differ
         x, y, _ = self._concatenate_batch(batch)
         feed_dict = {self._input_layer: x, self._target: y, self._is_training: False}
         loss = self.session.run(self._loss, feed_dict=feed_dict)
-        self._append_result(loss, loss_list)
+        self._append_result(batch, loss_var_name, loss)
         return batch
 
     @staticmethod
@@ -129,10 +128,7 @@ class DirichletModel(TFBaseModel):
         var = np.mean(comp_m2, axis=0) - mean**2
         return mean, var
 
-    def predict_on_batch(self, batch, predictions_list=None, target_list=None):  # pylint: disable=arguments-differ
-        if np.any(np.equal(batch.target, None)) and target_list is not None:
-            raise ValueError("Signal labels must be loaded if target_list is not None")
-        self._create_session()
+    def predict_on_batch(self, batch, predictions_var_name):  # pylint: disable=arguments-differ
         n_classes = len(self._classes)
         max_var = (n_classes - 1) /  n_classes**2
         x, _, split_indices = self._concatenate_batch(batch)
@@ -142,10 +138,9 @@ class DirichletModel(TFBaseModel):
         for a, t in zip(alpha, batch.target):
             mean, var = self._get_dirichlet_stats(a)
             uncertainty = var[np.argmax(mean)] / max_var
-            predictions_dict = {"class_prob": dict(zip(self._classes, mean)),
+            predictions_dict = {"target_pred": dict(zip(self._classes, mean)),
                                 "uncertainty": uncertainty}
-            self._append_result(predictions_dict, predictions_list)
-            if target_list is not None:
-                target_dict = {"class_prob": dict(zip(self._classes, t))}
-                self._append_result(target_dict, target_list)
+            if t is not None:
+                predictions_dict["target_true"] = dict(zip(self._classes, t))
+            self._append_result(batch, predictions_var_name, predictions_dict)
         return batch

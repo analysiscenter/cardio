@@ -10,7 +10,7 @@ class ModelEcgBatch(EcgBatch):
         super().__init__(index, preloaded, unique_labels)
 
     @ds.model(mode="dynamic")
-    def dirichlet(batch):  # pylint: disable=no-self-argument
+    def dirichlet(batch, config=None):  # pylint: disable=no-self-argument
         signal_shape = batch.signal[0].shape[1:]
         if len(signal_shape) != 2:
             raise ValueError("Dirichlet model expects 2-D signals")
@@ -21,8 +21,14 @@ class ModelEcgBatch(EcgBatch):
         return DirichletModel().build(signal_shape, target_shape, classes)
 
     @ds.model(mode="dynamic")
-    def dirichlet_pretrained(batch):  # pylint: disable=no-self-argument
-        args = [batch.pipeline.get_variable(path) for path in ("graph_path", "checkpoint_path", "classes_path")]
+    def dirichlet_pretrained(batch, config=None):  # pylint: disable=no-self-argument
+        if config is None:
+            raise ValueError("Model config must be specified")
+        paths = ("graph_path", "checkpoint_path", "classes_path")
+        if not (set(paths) <= config.keys()):
+            missing_paths = ", ".join(sorted(set(paths) - config.keys()))
+            raise KeyError("Model config does not contain {}".format(missing_paths))
+        args = [config[path] for path in paths]
         return DirichletModel().load(*args)
 
     @ds.action(use_lock="train_lock")

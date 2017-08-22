@@ -21,11 +21,3 @@ class TFBaseModel(BaseModel):  # pylint: disable=abstract-method
     def session(self):
         """Get tensorflow session."""
         return self._session
-
-    def _create_session(self):
-        if self._session is None:
-            if self._graph is None:
-                raise ValueError("Model graph cannot be empty")
-            with self.graph.as_default():
-                self._session = tf.Session()
-                self._session.run(tf.global_variables_initializer())

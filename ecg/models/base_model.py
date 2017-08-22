@@ -12,14 +12,14 @@ class BaseModel:
         """Save model."""
         raise NotImplementedError
 
-    def train_on_batch(self, batch, **kwargs):
+    def train_on_batch(self, batch, *args, **kwargs):
         """Run a single gradient update on a single batch."""
         raise NotImplementedError
 
-    def test_on_batch(self, batch, **kwargs):
+    def test_on_batch(self, batch, *args, **kwargs):
         """Test the model on a single batch."""
         raise NotImplementedError
 
-    def predict_on_batch(self, batch, **kwargs):
+    def predict_on_batch(self, batch, *args, **kwargs):
         """Returns predictions for a single batch."""
         raise NotImplementedError
