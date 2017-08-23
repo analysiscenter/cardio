@@ -1,6 +1,5 @@
 """Contains base model class."""
 
-
 class BaseModel:
     """Base model class."""
 
@@ -21,5 +20,5 @@ class BaseModel:
         raise NotImplementedError
 
     def predict_on_batch(self, batch, *args, **kwargs):
-        """Return predictions for a single batch."""
+        """Get model predictions for a single batch."""
         raise NotImplementedError

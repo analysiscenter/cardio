@@ -1,4 +1,4 @@
-"""Contains ECG Batch class with models actions."""
+"""Contains ECG Batch class with models' actions."""
 
 from .. import dataset as ds
 from .ecg_batch import EcgBatch
@@ -6,7 +6,7 @@ from ..models import DirichletModel
 
 
 class ModelEcgBatch(EcgBatch):
-    """ECG Batch class with models actions."""
+    """ECG Batch class with models' actions."""
 
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded, unique_labels)
