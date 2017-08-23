@@ -18,9 +18,10 @@ def get_class_prob(predictions_dict):
 
     Returns
     -------
-    true_dict, pred_dict : tuple
-        Tuple of two dicts: true and predicted targets - values for "target_true" and "target_pred"
-        keys respectively from the predictions_dict.
+    true_dict : dict
+        True target - value for "target_true" key from the predictions_dict.
+    pred_dict : dict
+        Predicted target - value for "target_pred" key from the predictions_dict.
     """
     true_dict = predictions_dict.get("target_true")
     pred_dict = predictions_dict.get("target_pred")
@@ -40,8 +41,10 @@ def get_labels(predictions_list):
 
     Returns
     -------
-    true_labels, pred_labels : tuple
-        Tuple of two 1-D ndarrays: true and predicted class labels.
+    true_labels : 1-D ndarray
+        True class labels.
+    pred_labels : 1-D ndarray
+        Predicted class labels.
     """
     true_labels = []
     pred_labels = []
@@ -63,8 +66,10 @@ def get_probs(predictions_list):
 
     Returns
     -------
-    true_probs, pred_probs : tuple
-        Tuple of two 2-D ndarrays: true and predicted class probabilities.
+    true_probs : 2-D ndarray
+        True class probabilities.
+    pred_probs : 2-D ndarray
+        Predicted class probabilities.
     """
     true_probs = []
     pred_probs = []
@@ -99,7 +104,7 @@ def f1_score(predictions_list, average="macro", **kwargs):
 
 
 def auc(predictions_list, average="macro", **kwargs):
-    """Compute area under the curve.
+    """Compute area under the ROC curve.
 
     Parameters
     ----------

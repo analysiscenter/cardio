@@ -13,7 +13,7 @@ class ModelEcgBatch(EcgBatch):
 
     @ds.model(mode="dynamic")
     def dirichlet(batch, config=None):  # pylint: disable=no-self-argument
-        """Build dynamic dirichlet model.
+        """Build dynamic Dirichlet model.
 
         Parameters
         ----------
@@ -37,9 +37,9 @@ class ModelEcgBatch(EcgBatch):
         classes = batch.label_binarizer.classes_
         return DirichletModel().build(signal_shape, target_shape, classes)
 
-    @ds.model(mode="dynamic")
-    def dirichlet_pretrained(batch, config=None):  # pylint: disable=no-self-argument
-        """Load pretrained dirichlet model.
+    @ds.model(mode="static")
+    def dirichlet_pretrained(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained Dirichlet model.
 
         Parameters
         ----------
@@ -53,6 +53,7 @@ class ModelEcgBatch(EcgBatch):
         model : DirichletModel
             Loaded model.
         """
+        _ = pipeline
         if config is None:
             raise ValueError("Model config must be specified")
         paths = ("graph_path", "checkpoint_path", "classes_path")
@@ -83,7 +84,7 @@ class ModelEcgBatch(EcgBatch):
 
     @ds.action
     def test_on_batch(self, model_name, *args, **kwargs):
-        """Test a model with given model_name on a single batch.
+        """Get model loss for a single batch.
 
         Parameters
         ----------

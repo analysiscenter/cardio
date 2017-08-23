@@ -139,8 +139,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         Returns
         -------
-        batches : tuple
-            Tuple of two EcgBatch instances. Each instance contains deepcopy of input batches data.
+        new_batch : cls
+            Batch of no more than batch_size first items from concatenation of input batches.
+            Contains deepcopy of input batches data.
+        rest_batch : cls
+            Batch of the remaining items. Contains deepcopy of input batches data.
         """
         batches = [batch for batch in batches if batch is not None]
         if len(batches) == 0:

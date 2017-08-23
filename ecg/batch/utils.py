@@ -5,7 +5,9 @@ import sklearn
 
 
 class LabelBinarizer(sklearn.preprocessing.LabelBinarizer):
-    """Encode categorical features using a one-hot scheme."""
+    """Encode categorical features using a one-hot scheme. Unlike sklearn.preprocessing.LabelBinarizer,
+    each label will be encoded using n_classes numbers even for binary problems.
+    """
     # pylint: disable=invalid-name
 
     def transform(self, y):

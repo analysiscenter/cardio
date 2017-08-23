@@ -16,7 +16,7 @@ class BaseModel:
         raise NotImplementedError
 
     def test_on_batch(self, batch, *args, **kwargs):
-        """Test the model on a single batch."""
+        """Get model loss for a single batch."""
         raise NotImplementedError
 
     def predict_on_batch(self, batch, *args, **kwargs):
