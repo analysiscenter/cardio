@@ -1117,3 +1117,18 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                         ['QT', np.round(self.meta[i]['qt'], 2), 'сек.'],
                         ['Вероятность аритмии', self.meta[i]['pred_af'], '%']],
                        headers=['Параметр', 'Значение', 'Ед.изм.'], tablefmt='orgtbl'))
+
+    @ds.action
+    def append_api_result(self, var_name):
+        if var_name is not None:
+            for ind in self.indices:
+                res_dict = {"heart_rate": self[ind].meta['hr'],
+                            "qrs_interval": self[ind].meta['qrs'],
+                            "pq_interval": self[ind].meta['pq'],
+                            "qt_interval": self[ind].meta['qt'],
+                            "units": self[ind].meta['units'],
+                            "frequency": self[ind].meta['fs'], 
+                            "signal":self[ind].signal,
+                            "annotation": self[ind].annotation["hmm_annotation"]}
+                self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+        return self
