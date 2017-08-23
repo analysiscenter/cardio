@@ -304,13 +304,13 @@ def find_intervals_borders(hmm_annotation, inter_val):
     """
     intervals = np.zeros(hmm_annotation.shape, dtype=np.int8)
     for val in inter_val:
-        intervals = np.logical_or(intervals, (hmm_annotation==val).astype(np.int8)).astype(np.int8)    
+        intervals = np.logical_or(intervals, (hmm_annotation == val).astype(np.int8)).astype(np.int8)
     masque = np.diff(intervals)
     starts = np.where(masque == 1)[0] + 1
     ends = np.where(masque == -1)[0] + 1
-    if np.any(inter_val==hmm_annotation[:1]):
+    if np.any(inter_val == hmm_annotation[:1]):
         ends = ends[1:]
-    if np.any(inter_val==hmm_annotation[-1:]):
+    if np.any(inter_val == hmm_annotation[-1:]):
         starts = starts[:-1]
     return starts, ends
 
@@ -337,7 +337,7 @@ def find_maxes(signal, starts, ends):
     maxes = np.empty(starts.shape)
     for i in range(maxes.shape[0]):
         maxes[i] = starts[i] + np.argmax(signal[0][starts[i]:ends[i]])
-    
+
     return maxes
 
 def calc_hr(signal, hmm_annotation, fs):
@@ -360,7 +360,7 @@ def calc_hr(signal, hmm_annotation, fs):
 
     starts, ends = find_intervals_borders(hmm_annotation, (1,))
     # NOTE: Currently works on first lead signal only
-    maxes = find_maxes(signal, starts, ends, maxes=np.empty_like(starts))
+    maxes = find_maxes(signal, starts, ends)
 
     hr_val = (np.median(np.diff(maxes) / fs) ** -1) * 60
 
