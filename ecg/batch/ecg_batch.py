@@ -594,7 +594,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             np.pad padding mode.
         axis : int
             Axis along which signals are sliced.
-        **kwargs :
+        **kwargs : misc
             Any additional named argments to np.pad.
 
         Returns

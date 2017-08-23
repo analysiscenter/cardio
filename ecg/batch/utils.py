@@ -1,4 +1,4 @@
-"""Miscellaneous ecg batch utils."""
+"""Miscellaneous ECG Batch utils."""
 
 import numpy as np
 import sklearn

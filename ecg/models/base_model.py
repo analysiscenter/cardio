@@ -21,5 +21,5 @@ class BaseModel:
         raise NotImplementedError
 
     def predict_on_batch(self, batch, *args, **kwargs):
-        """Returns predictions for a single batch."""
+        """Return predictions for a single batch."""
         raise NotImplementedError
