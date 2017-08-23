@@ -1120,6 +1120,18 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     def append_api_result(self, var_name):
+        """ Writes information about ecg signals in batch to pipeline variable
+        var_name as dictionaries.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of pipeline variable to write results to.
+
+        Returns
+        -------
+        None
+        """
         if var_name is not None:
             for ind in self.indices:
                 res_dict = {"heart_rate": self[ind].meta['hr'],
@@ -1127,7 +1139,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                             "pq_interval": self[ind].meta['pq'],
                             "qt_interval": self[ind].meta['qt'],
                             "units": self[ind].meta['units'],
-                            "frequency": self[ind].meta['fs'], 
+                            "frequency": self[ind].meta['fs'],
                             "signal":self[ind].signal,
                             "annotation": self[ind].annotation["hmm_annotation"]}
                 self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
