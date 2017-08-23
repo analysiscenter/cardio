@@ -11,6 +11,7 @@ class ModelEcgBatch(EcgBatch):
 
     @ds.model(mode="dynamic")
     def dirichlet(batch, config=None):  # pylint: disable=no-self-argument
+        _ = config
         signal_shape = batch.signal[0].shape[1:]
         if len(signal_shape) != 2:
             raise ValueError("Dirichlet model expects 2-D signals")

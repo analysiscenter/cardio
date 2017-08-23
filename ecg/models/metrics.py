@@ -2,6 +2,9 @@ import numpy as np
 import sklearn
 
 
+__all__ = ["f1_score", "auc", "classification_report", "calculate_metrics"]
+
+
 def get_class_prob(predictions_dict):
     true_dict = predictions_dict.get("target_true")
     pred_dict = predictions_dict.get("target_pred")
