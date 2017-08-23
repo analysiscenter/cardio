@@ -284,6 +284,7 @@ def predict_hmm_annot(signal, cwt_scales, cwt_wavelet, model):
     prediction = model.predict(features).reshape((1, -1)).flatten()
     return prediction
 
+@njit(nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
     """ Finds starts and ends of the intervals with values from inter_val.
 
@@ -301,18 +302,20 @@ def find_intervals_borders(hmm_annotation, inter_val):
     ends : numpy.array
         Indices of the ens of the intervals.
     """
-    intervals = [1 if x in inter_val else 0 for x in hmm_annotation]
+    intervals = np.zeros(hmm_annotation.shape, dtype=np.int8)
+    for val in inter_val:
+        intervals = np.logical_or(intervals, (hmm_annotation==val).astype(np.int8)).astype(np.int8)    
     masque = np.diff(intervals)
-    starts = (np.argwhere(masque == 1).flatten() + 1)
-    ends = (np.argwhere(masque == -1).flatten() + 1)
-    if hmm_annotation[0] in inter_val:
+    starts = np.where(masque == 1)[0] + 1
+    ends = np.where(masque == -1)[0] + 1
+    if np.any(inter_val==hmm_annotation[:1]):
         ends = ends[1:]
-    if hmm_annotation[-1] in inter_val:
+    if np.any(inter_val==hmm_annotation[-1:]):
         starts = starts[:-1]
     return starts, ends
 
 @njit(nogil=True)
-def find_maxes(signal, starts, ends, maxes):
+def find_maxes(signal, starts, ends):
     """ Find index of the maximum of the segment.
 
     Parameters
@@ -331,10 +334,10 @@ def find_maxes(signal, starts, ends, maxes):
     maxes : numpy.array
         Indices of max values of each interval.
     """
-
+    maxes = np.empty(starts.shape)
     for i in range(maxes.shape[0]):
         maxes[i] = starts[i] + np.argmax(signal[0][starts[i]:ends[i]])
-
+    
     return maxes
 
 def calc_hr(signal, hmm_annotation, fs):

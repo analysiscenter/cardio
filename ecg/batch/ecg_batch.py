@@ -1013,17 +1013,17 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             ax.grid("on", which='major')
             if annotate:
                 r_starts, r_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
-                                                             [0, 1, 2])
+                                                             np.array([0, 1, 2]))
                 for begin, stop in zip((r_starts + start)/fs, (r_ends + start)/fs):
                     ax.axvspan(begin, stop, color='red', alpha=0.3)
 
                 p_starts, p_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
-                                                             [14, 15, 16])
+                                                             np.array([14, 15, 16]))
                 for begin, stop in zip((p_starts + start)/fs, (p_ends + start)/fs):
                     ax.axvspan(begin, stop, color='green', alpha=0.3)
 
                 t_starts, t_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
-                                                             [5, 6, 7, 8, 9, 10])
+                                                             np.array([5, 6, 7, 8, 9, 10]))
                 for begin, stop in zip((t_starts + start)/fs, (t_ends + start)/fs):
                     ax.axvspan(begin, stop, color='blue', alpha=0.3)
 
