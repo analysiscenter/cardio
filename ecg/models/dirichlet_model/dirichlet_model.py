@@ -1,4 +1,4 @@
-"""Contains Dirichlet model."""
+"""Contains Dirichlet model class."""
 
 import dill
 import numpy as np
