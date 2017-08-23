@@ -231,12 +231,12 @@ class TestEcgBatchDataset:
         assert epochs == 3
 
         for i in range(epochs):
-            ppln_batch = ppln.next_batch(batch_size)
+            ppln_batch = ppln.next_batch(batch_size, shuffle=False)
             assert ppln_batch.indices.shape == (batch_size,)
             assert ppln_batch.signal.shape == (batch_size,)
             assert np.unique(ppln_batch.target).shape == (1,)
+            
             first_indice = ppln_batch.indices[0]
-
             assert isinstance(ppln_batch[first_indice], ds.components.EcgBatchComponents)
 
 
@@ -253,8 +253,7 @@ class TestEcgBatchPipelineMethods:
                         .segment_signals(4500, 4499)
                         .replace_labels({"A":"A", "N":"NonA", "O":"NonA"}))
 
-        batch = ppln.next_batch(len(ppln))
-
+        batch = ppln.next_batch(len(ppln), shuffle=False)
         assert len(batch) == 4
         assert batch.signal[0].shape == (2, 1, 4500)
         assert np.unique(batch.target)[0] == "NonA"
@@ -266,7 +265,7 @@ class TestEcgBatchPipelineMethods:
                         .resample_signals(150)
                         .binarize_labels())
 
-        batch = ppln.next_batch(len(ppln))
+        batch = ppln.next_batch(len(ppln), shuffle=False)
 
         assert len(batch) == 2
         assert batch.meta[0]["fs"] == 150
@@ -280,6 +279,6 @@ class TestEcgBatchPipelineMethods:
                         .segment_signals(4500, 4499)
                         .replace_labels({"A":"A", "N":"NonA", "O":"NonA"}))
 
-        batch = ppln.next_batch(2)
+        batch = ppln.next_batch(2, shuffle=False)
         assert batch.signal[0].shape == (2, 1, 4500)
         assert batch.target[0] in ["A", "NonA"]
