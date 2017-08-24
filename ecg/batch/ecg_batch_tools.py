@@ -340,6 +340,7 @@ def find_maxes(signal, starts, ends):
 
     return maxes
 
+@njit(nogil=True)
 def calc_hr(signal, hmm_annotation, fs):
     """ Calculate heart rate based on HMM prediction.
 
@@ -366,6 +367,7 @@ def calc_hr(signal, hmm_annotation, fs):
 
     return hr_val
 
+@njit(nogil=True)
 def calc_pq(hmm_annotation, fs):
     """ Calculate PQ based on HMM prediction.
 
@@ -386,36 +388,35 @@ def calc_pq(hmm_annotation, fs):
     q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
     r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
 
-    p_final = []
-    q_final = []
+    p_final = - np.ones(r_starts.shape[0] - 1)
+    q_final = - np.ones(r_starts.shape[0] - 1)
 
-    for i in range(len(r_starts)-1):
+    maxlen = np.array((p_ends.max(), q_starts.max(), r_starts.max())).max()
+
+    temp_p = np.zeros(maxlen)
+    temp_p[p_starts] = 1
+    temp_q = np.zeros(maxlen)
+    temp_q[q_starts] = 1
+
+    for i in range(len(r_starts) - 1):
         low = r_starts[i]
-        high = r_starts[i+1]
+        high = r_starts[i + 1]
 
-        p_vals = p_starts[(low < p_starts) & (p_starts < high)]
-        q_vals = q_starts[(low < q_starts) & (q_starts < high)]
+        inds_p = np.where(temp_p[low:high])[0] + low
+        inds_q = np.where(temp_q[low:high])[0] + low
 
-        if len(p_vals) < 1 or len(q_vals) < 1:
-            continue
-        elif len(p_vals) > 1 or len(q_vals) > 1:
-            print("More than one peak!")
-        else:
-            p_final.append(p_vals[0])
-            q_final.append(q_vals[0])
+        if inds_p.shape[0] == 1 and inds_q.shape[0] == 1:
+            p_final[i] = inds_p[0]
+            q_final[i] = inds_q[0]
 
-    p_final = np.array(p_final)
-    q_final = np.array(q_final)
+    p_final = p_final[p_final > -1]
+    q_final = q_final[q_final > -1]
 
-    pq_intervals = q_final-p_final
+    intervals = q_final - p_final
 
-    pq_val = np.median(pq_intervals) / fs
+    return np.median(intervals) / fs
 
-    if (pq_val < 0) or (pq_val > 0.3):
-        pq_val = "-"
-
-    return pq_val
-
+@njit(nogil=True)
 def calc_qt(hmm_annotation, fs):
     """ Calculate QT interval based on HMM prediction.
 
@@ -436,36 +437,35 @@ def calc_qt(hmm_annotation, fs):
     q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
     r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
 
-    t_final = []
-    q_final = []
+    t_final = - np.ones(r_starts.shape[0] - 1)
+    q_final = - np.ones(r_starts.shape[0] - 1)
 
-    for i in range(len(r_starts)-1):
+    maxlen = np.array((s_ends.max(), q_starts.max(), r_starts.max())).max()
+
+    temp_t = np.zeros(maxlen)
+    temp_t[t_ends] = 1
+    temp_q = np.zeros(maxlen)
+    temp_q[q_starts] = 1
+
+    for i in range(len(r_starts) - 1):
         low = r_starts[i]
-        high = r_starts[i+1]
+        high = r_starts[i + 1]
 
-        t_vals = t_ends[(low < t_ends) & (t_ends < high)]
-        q_vals = q_starts[(low < q_starts) & (q_starts < high)]
+        inds_t = np.where(temp_t[low:high])[0] + low
+        inds_q = np.where(temp_q[low:high])[0] + low
 
-        if len(t_vals) < 1 or len(q_vals) < 1:
-            continue
-        elif len(t_vals) > 1 or len(q_vals) > 1:
-            print("More than one peak!")
-        else:
-            t_final.append(t_vals[0])
-            q_final.append(q_vals[0])
+        if inds_t.shape[0] == 1 and inds_q.shape[0] == 1:
+            t_final[i] = inds_t[0]
+            q_final[i] = inds_q[0]
 
-    t_final = np.array(t_final[1:])
-    q_final = np.array(q_final[:-1])
+    t_final = t_final[t_final > -1][1:]
+    q_final = q_final[q_final > -1][:-1]
 
-    qt_intervals = t_final-q_final
+    intervals = t_final - q_final
 
-    qt_val = np.median(qt_intervals) / fs
+    return np.median(intervals) / fs
 
-    if (qt_val < 0) or (qt_val > 0.7):
-        qt_val = "-"
-
-    return qt_val
-
+@njit(nogil=True)
 def calc_qrs(hmm_annotation, fs):
     """ Calculate QRS interval based on HMM prediction.
 
@@ -481,37 +481,34 @@ def calc_qrs(hmm_annotation, fs):
     qrs_val : float
         Duration of QRS interval in seconds.
     """
+    _, s_ends = bt.find_intervals_borders(hmm_annotation, np.array([2]))
+    q_starts, _ = bt.find_intervals_borders(hmm_annotation, np.array([0]))
+    r_starts, _ = bt.find_intervals_borders(hmm_annotation, np.array([1]))
 
-    _, s_ends = find_intervals_borders(hmm_annotation, np.array([2]))
-    q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
-    r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
+    s_final = - np.ones(r_starts.shape[0] - 1)
+    q_final = - np.ones(r_starts.shape[0] - 1)
 
-    s_final = []
-    q_final = []
+    maxlen = np.array((s_ends.max(), q_starts.max(), r_starts.max())).max()
 
-    for i in range(len(r_starts)-1):
+    temp_s = np.zeros(maxlen)
+    temp_s[s_ends] = 1
+    temp_q = np.zeros(maxlen)
+    temp_q[q_starts] = 1
+
+    for i in range(len(r_starts) - 1):
         low = r_starts[i]
-        high = r_starts[i+1]
+        high = r_starts[i + 1]
 
-        s_vals = s_ends[(low < s_ends) & (s_ends < high)]
-        q_vals = q_starts[(low < q_starts) & (q_starts < high)]
+        inds_s = np.where(temp_s[low:high])[0] + low
+        inds_q = np.where(temp_q[low:high])[0] + low
 
-        if len(s_vals) < 1 or len(q_vals) < 1:
-            continue
-        elif len(s_vals) > 1 or len(q_vals) > 1:
-            print("More than one peak!")
-        else:
-            s_final.append(s_vals[0])
-            q_final.append(q_vals[0])
+        if inds_s.shape[0] == 1 and inds_q.shape[0] == 1:
+            s_final[i] = inds_s[0]
+            q_final[i] = inds_q[0]
 
-    s_final = np.array(s_final[1:])
-    q_final = np.array(q_final[:-1])
+    s_final = s_final[s_final > -1][1:]
+    q_final = q_final[q_final > -1][:-1]
 
-    qs_intervals = s_final-q_final
+    intervals = s_final - q_final
 
-    qrs_val = np.median(qs_intervals) / fs
-
-    if (qrs_val < 0) or (qrs_val > 0.25):
-        qrs_val = "-"
-
-    return qrs_val
+    return np.median(intervals) / fs
