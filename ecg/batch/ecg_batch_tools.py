@@ -358,7 +358,7 @@ def calc_hr(signal, hmm_annotation, fs):
         Heart rate in beats per minute.
     """
 
-    starts, ends = find_intervals_borders(hmm_annotation, (1,))
+    starts, ends = find_intervals_borders(hmm_annotation, np.array([1]))
     # NOTE: Currently works on first lead signal only
     maxes = find_maxes(signal, starts, ends)
 
@@ -382,9 +382,9 @@ def calc_pq(hmm_annotation, fs):
         Duration of PQ interval in seconds.
     """
 
-    p_starts, _ = find_intervals_borders(hmm_annotation, (14, 15, 16))
-    q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
-    r_starts, _ = find_intervals_borders(hmm_annotation, (1,))
+    p_starts, _ = find_intervals_borders(hmm_annotation, np.array([14, 15, 16]))
+    q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
+    r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
 
     p_final = []
     q_final = []
@@ -432,9 +432,9 @@ def calc_qt(hmm_annotation, fs):
         Duration of QT interval in seconds.
     """
 
-    _, t_ends = find_intervals_borders(hmm_annotation, (5, 6, 7, 8, 9, 10))
-    q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
-    r_starts, _ = find_intervals_borders(hmm_annotation, (1,))
+    _, t_ends = find_intervals_borders(hmm_annotation, np.array([5, 6, 7, 8, 9, 10]))
+    q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
+    r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
 
     t_final = []
     q_final = []
@@ -482,9 +482,9 @@ def calc_qrs(hmm_annotation, fs):
         Duration of QRS interval in seconds.
     """
 
-    _, s_ends = find_intervals_borders(hmm_annotation, (2,))
-    q_starts, _ = find_intervals_borders(hmm_annotation, (0,))
-    r_starts, _ = find_intervals_borders(hmm_annotation, (1,))
+    _, s_ends = find_intervals_borders(hmm_annotation, np.array([2]))
+    q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
+    r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
 
     s_final = []
     q_final = []
