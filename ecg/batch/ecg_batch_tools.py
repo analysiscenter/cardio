@@ -391,7 +391,7 @@ def calc_pq(hmm_annotation, fs):
     p_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = np.array((p_ends.max(), q_starts.max(), r_starts.max())).max()
+    maxlen = np.array((p_starts.max(), q_starts.max(), r_starts.max())).max()
 
     temp_p = np.zeros(maxlen)
     temp_p[p_starts] = 1
@@ -440,7 +440,7 @@ def calc_qt(hmm_annotation, fs):
     t_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = np.array((s_ends.max(), q_starts.max(), r_starts.max())).max()
+    maxlen = np.array((t_ends.max(), q_starts.max(), r_starts.max())).max()
 
     temp_t = np.zeros(maxlen)
     temp_t[t_ends] = 1
@@ -481,9 +481,9 @@ def calc_qrs(hmm_annotation, fs):
     qrs_val : float
         Duration of QRS interval in seconds.
     """
-    _, s_ends = bt.find_intervals_borders(hmm_annotation, np.array([2]))
-    q_starts, _ = bt.find_intervals_borders(hmm_annotation, np.array([0]))
-    r_starts, _ = bt.find_intervals_borders(hmm_annotation, np.array([1]))
+    _, s_ends = find_intervals_borders(hmm_annotation, np.array([2]))
+    q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
+    r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
 
     s_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
