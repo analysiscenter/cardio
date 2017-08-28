@@ -1137,6 +1137,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                 res_dict = {"units": self[ind].meta['units'],
                             "frequency": self[ind].meta['fs'],
                             "signal":self[ind].signal}
+                self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
         elif var_name == "api/v1/ecg/items/id/predict":
             for ind in self.indices:
@@ -1148,7 +1149,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                             "frequency": self[ind].meta['fs'],
                             "signal":self[ind].signal,
                             "annotation": self[ind].annotation["hmm_annotation"]}
-
-        self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+                self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
         
         return self

@@ -299,15 +299,15 @@ class TestIntervalBatchTools:
         starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, np.array([1, 2]))
 
         # Assert
-        assert starts_3 == np.array([6, 25, 46, 65])
-        assert ends_3 == np.array([9, 30, 49, 70])
+        assert np.all(np.equal(starts_3, np.array([6, 25, 46, 65])))
+        assert np.all(np.equal(ends_3, np.array([9, 30, 49, 70])))
 
-        assert starts_12 == np.array([18, 37, 58])
-        assert ends_12 == np.array([25, 46, 65])
+        assert np.all(np.equal(starts_12, np.array([18, 37, 58])))
+        assert np.all(np.equal(ends_12, np.array([25, 46, 65])))
 
     def test_find_maxes(self):
         # Arrange
-        hmm_annotation1 = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 0,
+        hmm_annotation = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 0,
                                     0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
                                     1, 2, 2, 2, 2, 3, 3, 3, 3, 3,
                                     4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2)
@@ -317,12 +317,15 @@ class TestIntervalBatchTools:
         signal = np.array([1, 1, 1, 2, 2, 8, 3, 9, 3, 0,
                            0, 0, 4, 4, 4, 0, 0, 0, 1, 8,
                            1, 2, 2, 2, 2, 9, 3, 3, 3, 3,
-                           4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2)
+                           4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2).reshape(1,-1)
 
         # Act
+        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation, np.array([3]))
+        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, np.array([1, 2]))
+
         maxes_3 = bt.find_maxes(signal, starts_3, ends_3)
         maxes_12 = bt.find_maxes(signal, starts_12, ends_12)
 
         # Assert
-        assert maxes_3 == np.array([6, 25, 46, 65])
-        assert maxes_12 == np.array([19, 45, 59])
+        assert np.all(np.equal(maxes_3, np.array([7, 25, 47, 65])))
+        assert np.all(np.equal(maxes_12, np.array([19, 45, 59])))
