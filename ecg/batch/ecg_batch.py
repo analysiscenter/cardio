@@ -1150,5 +1150,5 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                             "signal":self[ind].signal,
                             "annotation": self[ind].annotation["hmm_annotation"]}
                 self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
-        
+
         return self
