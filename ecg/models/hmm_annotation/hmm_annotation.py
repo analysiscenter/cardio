@@ -121,7 +121,8 @@ class HMMAnnotation(GaussianHMM):
 
         return self
 
-    def load(self, path):
+    @staticmethod
+    def load(path):
         """Load HMMAnnotation model.
 
         Parameters
@@ -154,4 +155,6 @@ class HMMAnnotation(GaussianHMM):
         """
         for ind in batch.indices:
             batch[ind].annotation["hmm_annotation"] = \
-            self.predict(self[ind].annotation["hmm_features"]).reshape((1, -1)).flatten()
+            self.predict(batch[ind].annotation["hmm_features"]).reshape((1, -1)).flatten()
+
+        return batch
