@@ -1,8 +1,5 @@
 """Contains ECG Batch class.""" #pylint: disable=too-many-lines
 
-import os
-import sys
-
 import copy
 import itertools
 import warnings
@@ -10,7 +7,6 @@ import warnings
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from tabulate import tabulate
 import scipy
 
 from sklearn.metrics import f1_score, log_loss
@@ -1029,33 +1025,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                 for begin, stop in zip((t_starts + start)/fs, (t_ends + start)/fs):
                     ax.axvspan(begin, stop, color='blue', alpha=0.3)
 
-    @ds.model(mode="static")
-    def hmm_annotation_pretrained(pipeline, config=None):
-        """Load pretrained HMM annotation model.
-
-        Parameters
-        ----------
-        pipeline : dataset.Pipeline
-            Pipeline in which model is used.
-        config : dict
-            Model config.
-
-        Returns
-        -------
-        model : HMMAnnotationModel
-            Loaded model.
-        """
-
-        _ = pipeline
-        if config is None:
-            raise ValueError("Model config must be specified!")
-        try:
-            model = joblib.load(config['path'])
-        except FileNotFoundError:
-            model = None
-
-        return model
-
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')
     def generate_hmm_features(self, index, cwt_scales, cwt_wavelet):
@@ -1078,8 +1047,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self._check_2d(self.signal[i])
 
         self.annotation[i]["hmm_features"] = bt.gen_hmm_features(self.signal[i],
-                                                                    cwt_scales,
-                                                                    cwt_wavelet)
+                                                                 cwt_scales,
+                                                                 cwt_wavelet)
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')

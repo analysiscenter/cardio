@@ -121,9 +121,9 @@ class ModelEcgBatch(EcgBatch):
         return model.predict_on_batch(self, *args, **kwargs)
 
     # HMM Annotation
-    
+
     @ds.model(mode="static")
-    def hmm_annotation_pretrained(pipeline, config=None):
+    def hmm_annotation_pretrained(pipeline, config=None): # pylint: disable=no-self-argument
         """Load pretrained HMM annotation model.
 
         Parameters

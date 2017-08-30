@@ -5,7 +5,7 @@ from sklearn.externals import joblib
 
 class HMMAnnotation(GaussianHMM):
     """ Model to generate ECG signal annotations from wavelet features.
-    
+
     Parameters
     ----------
     n_components : int
@@ -70,19 +70,19 @@ class HMMAnnotation(GaussianHMM):
     n_features : int
         Dimensionality of the Gaussian emissions.
 
-    monitor\_ : ConvergenceMonitor
+    monitor_ : ConvergenceMonitor
         Monitor object used to check the convergence of EM.
 
-    transmat\_ : array, shape (n_components, n_components)
+    transmat_ : array, shape (n_components, n_components)
         Matrix of transition probabilities between states.
 
-    startprob\_ : array, shape (n_components, )
+    startprob_ : array, shape (n_components, )
         Initial state occupation distribution.
 
-    means\_ : array, shape (n_components, n_features)
+    means_ : array, shape (n_components, n_features)
         Mean parameters for each state.
 
-    covars\_ : array
+    covars_ : array
         Covariance parameters for each state.
 
         The shape depends on ``covariance_type``::
@@ -94,42 +94,16 @@ class HMMAnnotation(GaussianHMM):
     """
 
 
-    def __init__(self, n_components=1, covariance_type='diag', min_covar=0.001, startprob_prior=1.0, 
-                 transmat_prior=1.0, means_prior=0, means_weight=0, covars_prior=0.01, covars_weight=1, 
-                 algorithm='viterbi', random_state=None, n_iter=10, tol=0.01, verbose=False, params='stmc', 
-                 init_params='stmc'):
-        super().__init__(n_components, covariance_type, min_covar, 
-                         startprob_prior, transmat_prior, means_prior, 
-                         means_weight, covars_prior, covars_weight, algorithm, 
-                         random_state, n_iter, tol, verbose, params, 
+    def __init__(self, n_components=1, covariance_type='diag', min_covar=0.001, startprob_prior=1.0,
+                 transmat_prior=1.0, means_prior=0, means_weight=0, covars_prior=0.01, covars_weight=1,
+                 algorithm='viterbi', random_state=None, n_iter=10, tol=0.01, verbose=False, params='stmc',
+                 init_params='stmc'): # pylint: disable=too-many-arguments
+        super().__init__(n_components, covariance_type, min_covar,
+                         startprob_prior, transmat_prior, means_prior,
+                         means_weight, covars_prior, covars_weight, algorithm,
+                         random_state, n_iter, tol, verbose, params,
                          init_params)
 
-    def build(self, means, covars, startprob, transmat):
-        """Build HMMAnnotation model from exhisting parameters.
-
-        Parameters
-        ----------
-        means : array, shape (n_components, n_features)
-            Mean parameters for each state.
-        covars : array
-            Covariance parameters for each state.
-        startprob : array, shape (n_components, )
-            Initial state occupation distribution.
-        transmat : array, shape (n_components, n_components)
-            Matrix of transition probabilities between states.
-
-        Returns
-        -------
-        model : HMMAnnotation
-            HMMAnnotation instance.
-        """
-        self.means_ = means
-        self.covars_ = covars
-        self.startprob_ = startprob
-        self.transmat_ = transmat
-        
-        return self
-    
     def save(self, path):
         """Save HMMAnnotation.
 
@@ -144,9 +118,9 @@ class HMMAnnotation(GaussianHMM):
             HMMAnnotation instance unchanged.
         """
         joblib.dump(self, path)
-        
+
         return self
-    
+
     def load(self, path):
         """Load HMMAnnotation model.
 
@@ -163,7 +137,7 @@ class HMMAnnotation(GaussianHMM):
         model = joblib.load(path)
         return model
 
-    def predict_on_batch(self, batch, var_name=None):
+    def predict_on_batch(self, batch):
         """Get model predictions for a single batch.
 
         Parameters

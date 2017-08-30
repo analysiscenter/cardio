@@ -4,7 +4,7 @@ import os
 import numpy as np
 
 import pywt
-from numba import njit, prange
+from numba import njit
 import numba as nb
 
 import wfdb
@@ -284,7 +284,7 @@ def gen_hmm_features(signal, cwt_scales, cwt_wavelet):
 
     return features
 
-@njit(nb.types.UniTuple(nb.int64[:],2)(nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
     """ Finds starts and ends of the intervals with values from inter_val.
 
@@ -314,7 +314,7 @@ def find_intervals_borders(hmm_annotation, inter_val):
         starts = starts[:-1]
     return starts, ends
 
-@njit(nb.float64[:](nb.float64[:,:], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nb.float64[:](nb.float64[:, :], nb.int64[:], nb.int64[:]), nogil=True)
 def find_maxes(signal, starts, ends):
     """ Find index of the maximum of the segment.
 
@@ -340,7 +340,7 @@ def find_maxes(signal, starts, ends):
 
     return maxes
 
-@njit(nb.float64(nb.float64[:,:], nb.int64[:], nb.float64), nogil=True)
+@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64), nogil=True)
 def calc_hr(signal, hmm_annotation, fs):
     """ Calculate heart rate based on HMM prediction.
 
