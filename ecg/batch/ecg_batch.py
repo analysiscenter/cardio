@@ -1029,12 +1029,28 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                 for begin, stop in zip((t_starts + start)/fs, (t_ends + start)/fs):
                     ax.axvspan(begin, stop, color='blue', alpha=0.3)
 
-    @ds.model()
-    def load_hmm_annotation():
-        """ Loads HMM that is trained to annotate signals"""
+    @ds.model(mode="static")
+    def hmm_annotation_pretrained(pipeline, config=None):
+        """Load pretrained HMM annotation model.
 
+        Parameters
+        ----------
+        pipeline : dataset.Pipeline
+            Pipeline in which model is used.
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : HMMAnnotationModel
+            Loaded model.
+        """
+
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified!")
         try:
-            model = joblib.load('/notebooks/dpodvyaznikov/clada/ecg_report/Intenship_submit/hmm_model_2.pkl')
+            model = joblib.load(config['path'])
         except FileNotFoundError:
             model = None
 
@@ -1042,9 +1058,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')
-    def generate_hmm_annotations(self, index, cwt_scales, cwt_wavelet, model_name):
-        """Annotatate signals in batch and write it to annotation component under key
-        'hmm_annotation'.
+    def generate_hmm_features(self, index, cwt_scales, cwt_wavelet):
+        """Generate features for HMM annotation and write it to annotation component under key
+        'hmm_features'.
 
         Parameters
         ----------
@@ -1056,16 +1072,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Returns
         -------
         batch : EcgBatch
-            EcgBatch with annotations of signals.
+            EcgBatch with HMM features of signals.
         """
         i = self.get_pos(None, "signal", index)
-        model = self.get_model_by_name(model_name)
         self._check_2d(self.signal[i])
 
-        self.annotation[i]["hmm_annotation"] = bt.predict_hmm_annot(self.signal[i],
+        self.annotation[i]["hmm_features"] = bt.gen_hmm_features(self.signal[i],
                                                                     cwt_scales,
-                                                                    cwt_wavelet,
-                                                                    model)
+                                                                    cwt_wavelet)
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')
@@ -1098,29 +1112,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                                           self.meta[i]['fs'])
 
     @ds.action
-    def print_report(self, index):
-        """ Takes information from batch about specific signal by index
-        and prints table with ecg report.
-
-        Parameters
-        ----------
-        index : element of self.indices
-            Index of the signal in the batch to print report about.
-
-        Returns
-        -------
-        None
-        """
-        i = self.get_pos(None, "signal", index)
-
-        print(tabulate([['ЧСС', np.round(self.meta[i]['hr'], 2), 'уд./мин.'],
-                        ['QRS', np.round(self.meta[i]['qrs'], 2), 'сек.'],
-                        ['PQ', np.round(self.meta[i]['pq'], 2), 'сек.'],
-                        ['QT', np.round(self.meta[i]['qt'], 2), 'сек.'],
-                        ['Вероятность аритмии', self.meta[i]['pred_af'], '%']],
-                       headers=['Параметр', 'Значение', 'Ед.изм.'], tablefmt='orgtbl'))
-
-    @ds.action
     def append_api_result(self, var_name=None):
         """ Writes information about ecg signals in batch to pipeline variable
         var_name as dictionaries.
@@ -1143,10 +1134,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         elif var_name == "analysis":
             for ind in self.indices:
-                res_dict = {"heart_rate": self[ind].meta['hr'],
-                            "qrs_interval": self[ind].meta['qrs'],
-                            "pq_interval": self[ind].meta['pq'],
-                            "qt_interval": self[ind].meta['qt'],
+                res_dict = {"heart_rate": np.round(self[ind].meta['hr'], 2),
+                            "qrs_interval": np.round(self[ind].meta['qrs'], 2),
+                            "pq_interval": np.round(self[ind].meta['pq'], 2),
+                            "qt_interval": np.round(self[ind].meta['qt'], 2),
                             "units": self[ind].meta['units'],
                             "frequency": self[ind].meta['fs'],
                             "signal":self[ind].signal,

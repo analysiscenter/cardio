@@ -2,7 +2,7 @@
 
 from .. import dataset as ds
 from .ecg_batch import EcgBatch
-from ..models import DirichletModel
+from ..models import DirichletModel, HMMAnnotation
 
 
 class ModelEcgBatch(EcgBatch):
@@ -119,3 +119,27 @@ class ModelEcgBatch(EcgBatch):
         """
         model = self.get_model_by_name(model_name)
         return model.predict_on_batch(self, *args, **kwargs)
+
+    # HMM Annotation
+    
+    @ds.model(mode="static")
+    def hmm_annotation_pretrained(pipeline, config=None):
+        """Load pretrained HMM annotation model.
+
+        Parameters
+        ----------
+        pipeline : dataset.Pipeline
+            Pipeline in which model is used.
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : HMMAnnotationModel
+            Loaded model.
+        """
+
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified!")
+        return HMMAnnotation.load(config["path"])
