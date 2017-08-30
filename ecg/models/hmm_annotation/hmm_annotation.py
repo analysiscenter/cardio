@@ -94,10 +94,10 @@ class HMMAnnotation(GaussianHMM):
     """
 
 
-    def __init__(self, n_components=1, covariance_type='diag', min_covar=0.001, startprob_prior=1.0,
+    def __init__(self, n_components=1, covariance_type='diag', min_covar=0.001, startprob_prior=1.0, # pylint: disable=too-many-arguments
                  transmat_prior=1.0, means_prior=0, means_weight=0, covars_prior=0.01, covars_weight=1,
                  algorithm='viterbi', random_state=None, n_iter=10, tol=0.01, verbose=False, params='stmc',
-                 init_params='stmc'): # pylint: disable=too-many-arguments
+                 init_params='stmc'):
         super().__init__(n_components, covariance_type, min_covar,
                          startprob_prior, transmat_prior, means_prior,
                          means_weight, covars_prior, covars_weight, algorithm,
