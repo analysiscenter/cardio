@@ -291,12 +291,15 @@ class TestIntervalBatchTools:
         hmm_annotation = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 0,
                                     0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
                                     1, 2, 2, 2, 2, 3, 3, 3, 3, 3,
-                                    4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2)
+                                    4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
+                                    dtype=np.int64)
 
         # Act
-        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation, np.array([3]))
+        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation, 
+                                                     np.array([3], dtype=np.int64))
 
-        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, np.array([1, 2]))
+        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, 
+                                                       np.array([1, 2], dtype=np.int64))
 
         # Assert
         assert np.all(np.equal(starts_3, np.array([6, 25, 46, 65])))
@@ -310,19 +313,24 @@ class TestIntervalBatchTools:
         hmm_annotation = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 0,
                                     0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
                                     1, 2, 2, 2, 2, 3, 3, 3, 3, 3,
-                                    4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2)
+                                    4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
+                                    dtype=np.int64)
         
         # 9 is the max for interval of 3's
         # 8 is the max for interval of 1's and 2's
         signal = np.array([1, 1, 1, 2, 2, 8, 3, 9, 3, 0,
                            0, 0, 4, 4, 4, 0, 0, 0, 1, 8,
                            1, 2, 2, 2, 2, 9, 3, 3, 3, 3,
-                           4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2).reshape(1,-1)
+                           4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
+                           dtype=np.float64).reshape(1,-1)
 
         # Act
-        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation, np.array([3]))
-        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, np.array([1, 2]))
+        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation, 
+                                                     np.array([3], dtype=np.int64))
 
+        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, 
+                                                       np.array([1, 2], dtype=np.int64))
+        
         maxes_3 = bt.find_maxes(signal, starts_3, ends_3)
         maxes_12 = bt.find_maxes(signal, starts_12, ends_12)
 

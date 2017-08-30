@@ -4,7 +4,8 @@ import os
 import numpy as np
 
 import pywt
-from numba import njit
+from numba import njit, prange
+import numba as nb
 
 import wfdb
 
@@ -283,7 +284,7 @@ def gen_hmm_features(signal, cwt_scales, cwt_wavelet):
 
     return features
 
-@njit(nogil=True)
+@njit(nb.types.UniTuple(nb.int64[:],2)(nb.int64[:], nb.int64[:]), nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
     """ Finds starts and ends of the intervals with values from inter_val.
 
@@ -313,7 +314,7 @@ def find_intervals_borders(hmm_annotation, inter_val):
         starts = starts[:-1]
     return starts, ends
 
-@njit(nogil=True)
+@njit(nb.float64[:](nb.float64[:,:], nb.int64[:], nb.int64[:]), nogil=True)
 def find_maxes(signal, starts, ends):
     """ Find index of the maximum of the segment.
 
@@ -333,13 +334,13 @@ def find_maxes(signal, starts, ends):
     maxes : numpy.array
         Indices of max values of each interval.
     """
-    maxes = np.empty(starts.shape)
+    maxes = np.empty(starts.shape, dtype=np.float64)
     for i in range(maxes.shape[0]):
         maxes[i] = starts[i] + np.argmax(signal[0][starts[i]:ends[i]])
 
     return maxes
 
-@njit(nogil=True)
+@njit(nb.float64(nb.float64[:,:], nb.int64[:], nb.float64), nogil=True)
 def calc_hr(signal, hmm_annotation, fs):
     """ Calculate heart rate based on HMM prediction.
 
@@ -361,12 +362,12 @@ def calc_hr(signal, hmm_annotation, fs):
     starts, ends = find_intervals_borders(hmm_annotation, np.array([1]))
     # NOTE: Currently works on first lead signal only
     maxes = find_maxes(signal, starts, ends)
-
-    hr_val = (np.median(np.diff(maxes) / fs) ** -1) * 60
+    diff = maxes[1:] - maxes[:-1]
+    hr_val = (np.median(diff / fs) ** -1) * 60
 
     return hr_val
 
-@njit(nogil=True)
+@njit(nb.float64(nb.int64[:], nb.float64), nogil=True)
 def calc_pq(hmm_annotation, fs):
     """ Calculate PQ based on HMM prediction.
 
@@ -415,7 +416,7 @@ def calc_pq(hmm_annotation, fs):
 
     return np.median(intervals) / fs
 
-@njit(nogil=True)
+@njit(nb.float64(nb.int64[:], nb.float64), nogil=True)
 def calc_qt(hmm_annotation, fs):
     """ Calculate QT interval based on HMM prediction.
 
@@ -464,7 +465,7 @@ def calc_qt(hmm_annotation, fs):
 
     return np.median(intervals) / fs
 
-@njit(nogil=True)
+@njit(nb.float64(nb.int64[:], nb.float64), nogil=True)
 def calc_qrs(hmm_annotation, fs):
     """ Calculate QRS interval based on HMM prediction.
 
