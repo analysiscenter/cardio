@@ -1,5 +1,4 @@
-toolz
-cloudpickle
+dill
 wfdb
 PyWavelets
 hmmlearn

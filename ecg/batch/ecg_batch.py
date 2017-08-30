@@ -13,7 +13,6 @@ from matplotlib import pyplot as plt
 from tabulate import tabulate
 import scipy
 
-from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import f1_score, log_loss
 from sklearn.externals import joblib
 
@@ -27,11 +26,11 @@ import keras.backend as K
 
 from hmmlearn import hmm
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 
 from .. import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
+from .utils import LabelBinarizer
 from .keras_extra_layers import RFFT, Crop, Inception2D
 
 
@@ -147,8 +146,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         Returns
         -------
-        batches : tuple
-            Tuple of two EcgBatch instances. Each instance contains deepcopy of input batches data.
+        new_batch : cls
+            Batch of no more than batch_size first items from concatenation of input batches.
+            Contains deepcopy of input batches data.
+        rest_batch : cls
+            Batch of the remaining items. Contains deepcopy of input batches data.
         """
         batches = [batch for batch in batches if batch is not None]
         if len(batches) == 0:
@@ -294,7 +296,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         indices = self.indices[keep_mask]
         if len(indices) == 0:
             raise ds.SkipBatchException("All batch data was dropped")
-        res_batch = EcgBatch(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
+        res_batch = self.__class__(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
         res_batch.update(self.signal[keep_mask], self.annotation[keep_mask],
                          self.meta[keep_mask], self.target[keep_mask])
         return res_batch
@@ -602,7 +604,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             np.pad padding mode.
         axis : int
             Axis along which signals are sliced.
-        **kwargs :
+        **kwargs : misc
             Any additional named argments to np.pad.
 
         Returns
@@ -1132,14 +1134,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         -------
         None
         """
-        if var_name == "api/v1/ecg/items/id":
+        if var_name == "signal":
             for ind in self.indices:
                 res_dict = {"units": self[ind].meta['units'],
                             "frequency": self[ind].meta['fs'],
                             "signal":self[ind].signal}
                 self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
-        elif var_name == "api/v1/ecg/items/id/predict":
+        elif var_name == "analysis":
             for ind in self.indices:
                 res_dict = {"heart_rate": self[ind].meta['hr'],
                             "qrs_interval": self[ind].meta['qrs'],
