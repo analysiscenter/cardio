@@ -995,7 +995,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         meta = self.meta[i]
 
         if fs is None:
-            fs = meta["fs"]
+            fs = np.float64(meta["fs"])
 
         if end is None:
             end = sig.shape[1]
@@ -1100,16 +1100,16 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
                                         self.annotation[i]['hmm_annotation'],
-                                        self.meta[i]['fs'])
+                                        np.float64(self.meta[i]['fs']))
 
         self.meta[i]["pq"] = bt.calc_pq(self.annotation[i]['hmm_annotation'],
-                                        self.meta[i]['fs'])
+                                        np.float64(self.meta[i]['fs']))
 
         self.meta[i]["qt"] = bt.calc_qt(self.annotation[i]['hmm_annotation'],
-                                        self.meta[i]['fs'])
+                                        np.float64(self.meta[i]['fs']))
 
         self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
-                                          self.meta[i]['fs'])
+                                          np.float64(self.meta[i]['fs']))
 
     @ds.action
     def append_api_result(self, var_name=None):
@@ -1128,7 +1128,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         if var_name == "signal":
             for ind in self.indices:
                 res_dict = {"units": self[ind].meta['units'],
-                            "frequency": self[ind].meta['fs'],
+                            "frequency": np.float64(self[ind].meta['fs']),
                             "signal":self[ind].signal}
                 self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
@@ -1138,9 +1138,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                             "qrs_interval": np.round(self[ind].meta['qrs'], 2),
                             "pq_interval": np.round(self[ind].meta['pq'], 2),
                             "qt_interval": np.round(self[ind].meta['qt'], 2),
-                            "units": self[ind].meta['units'],
-                            "frequency": self[ind].meta['fs'],
-                            "signal":self[ind].signal,
                             "annotation": self[ind].annotation["hmm_annotation"]}
                 self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 

@@ -10,7 +10,7 @@ import pytest
 
 sys.path.append(os.path.join("."))
 
-from ecg.batch import EcgBatch
+from ecg.batch import EcgBatch, ModelEcgBatch
 from ecg.batch import ds
 from ecg.batch import ecg_batch_tools as bt
 
@@ -273,16 +273,30 @@ class TestEcgBatchPipelineMethods:
         assert np.all([True if sig.shape[-1]==9000 else False for sig in batch.signal])
         assert batch.target.shape == (2,3)
 
-    def test_base_ppln(self, setup_class_pipeline):
-        ecg_ppln = setup_class_pipeline
-        new_fs = 300 + 50
-        ppln = (ecg_ppln.flip_signals()
-                        .segment_signals(4500, 4499)
-                        .replace_labels({"A":"A", "N":"NonA", "O":"NonA"}))
+    def test_first_api_ppln(self, setup_class_pipeline, setup_module_load):
+        # Arrange
+        ppln = (ds.Pipeline()
+                  .load(fmt='wfdb', components=["signal", "meta"])
+                  .flip_signals()
+                  .append_api_result(var_name="signal")
+                  .run(batch_size=2, shuffle=False, 
+                       drop_last=False, n_epochs=1, lazy=True)
+                )
+        index = setup_module_load[0]
+        dtst = ds.Dataset(index, batch_class=ModelEcgBatch)
 
-        batch = ppln.next_batch(2, shuffle=False)
-        assert batch.signal[0].shape == (2, 1, 4500)
-        assert batch.target[0] in ["A", "NonA"]
+        # Act
+        (dtst >> ppln).run()
+        signal_var = ppln.get_variable("signal")
+
+        # Assert
+        assert len(signal_var) == 6
+        assert len(signal_var[0]) == 3
+        assert 'signal' in signal_var[0].keys()
+        assert 'frequency' in signal_var[0].keys()
+        assert 'units' in signal_var[0].keys()
+        assert signal_var[0]["signal"].shape == (1,9000)
+        assert isinstance(signal_var[0]["frequency"], np.float64)
 
 class TestIntervalBatchTools:
 
@@ -330,7 +344,7 @@ class TestIntervalBatchTools:
 
         starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, 
                                                        np.array([1, 2], dtype=np.int64))
-        
+
         maxes_3 = bt.find_maxes(signal, starts_3, ends_3)
         maxes_12 = bt.find_maxes(signal, starts_12, ends_12)
 
