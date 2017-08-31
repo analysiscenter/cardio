@@ -1,10 +1,10 @@
 """ HMM annotation """
+from ..base_model import BaseModel
 
 from hmmlearn.hmm import GaussianHMM
-from ..base_model import BaseModel
 import dill
 
-class HMMAnnotation(GaussianHMM, BaseModel):
+class HMMAnnotation(GaussianHMM, BaseModel): # pylint: disable=abstract-method
     """ Model to generate ECG signal annotations from wavelet features.
 
     Parameters
@@ -105,7 +105,7 @@ class HMMAnnotation(GaussianHMM, BaseModel):
                          random_state, n_iter, tol, verbose, params,
                          init_params)
 
-    def save(self, path):
+    def save(self, path): # pylint: disable=arguments-differ
         """Save HMMAnnotation.
 
         Parameters
@@ -124,7 +124,7 @@ class HMMAnnotation(GaussianHMM, BaseModel):
         return self
 
     @staticmethod
-    def load(path):
+    def load(path): # pylint: disable=arguments-differ
         """Load HMMAnnotation model.
 
         Parameters
