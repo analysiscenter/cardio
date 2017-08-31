@@ -1,7 +1,8 @@
 """ HMM annotation """
 
 from hmmlearn.hmm import GaussianHMM
-from sklearn.externals import joblib
+#from sklearn.externals import joblib
+import dill
 
 class HMMAnnotation(GaussianHMM):
     """ Model to generate ECG signal annotations from wavelet features.
@@ -117,7 +118,8 @@ class HMMAnnotation(GaussianHMM):
         model : HMMAnnotation
             HMMAnnotation instance unchanged.
         """
-        joblib.dump(self, path)
+        with open(path, "wb") as file
+        dill.dump(self, file)
 
         return self
 
@@ -135,7 +137,8 @@ class HMMAnnotation(GaussianHMM):
         model : HMMAnnotation
             Loaded HMMAnnotation instance.
         """
-        model = joblib.load(path)
+        with open(path, "rb") as file:
+        model = dill.load(file)
         return model
 
     def predict_on_batch(self, batch):

@@ -30,7 +30,6 @@ from .utils import LabelBinarizer
 from .keras_extra_layers import RFFT, Crop, Inception2D
 
 
-
 class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     """Class for storing batch of ECG signals."""
 
