@@ -1,8 +1,10 @@
 """ HMM annotation """
+
+import dill
+from hmmlearn.hmm import GaussianHMM
+
 from ..base_model import BaseModel
 
-from hmmlearn.hmm import GaussianHMM
-import dill
 
 class HMMAnnotation(GaussianHMM, BaseModel): # pylint: disable=abstract-method
     """ Model to generate ECG signal annotations from wavelet features.
