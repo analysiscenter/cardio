@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import scipy
 
+from sklearn.externals import joblib
 from sklearn.metrics import f1_score, log_loss
 
 from keras.layers import Input, Conv1D, Lambda, \
@@ -1067,8 +1068,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                         "pq_interval": np.round(self[ind].meta['pq'], 2),
                         "qt_interval": np.round(self[ind].meta['qt'], 2),
                         "annotation": np.array((self[ind].meta["p_segments"],
-                                       self[ind].meta["qrs_segments"],
-                                       self[ind].meta["t_segments"]))
+                                                self[ind].meta["qrs_segments"],
+                                                self[ind].meta["t_segments"]))
                         }
             self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
