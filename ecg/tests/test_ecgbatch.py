@@ -11,7 +11,7 @@ import pytest
 sys.path.append(os.path.join("."))
 
 from ecg.batch import EcgBatch, ModelEcgBatch
-from ecg.batch import ds
+from ecg import dataset as ds
 from ecg.batch import ecg_batch_tools as bt
 
 random.seed(170720143422)

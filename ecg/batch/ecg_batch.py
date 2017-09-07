@@ -6,11 +6,9 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 import scipy
 
 from sklearn.metrics import f1_score, log_loss
-from sklearn.externals import joblib
 
 from keras.layers import Input, Conv1D, Lambda, \
                          MaxPooling1D, MaxPooling2D, \
@@ -971,7 +969,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Parameters
         ----------
         cwt_scales : array_like
-            Scales to use for Continuous Wavele Transformation.
+            Scales to use for Continuous Wavelet Transformation.
         cwt_wavelet : object or str
             Wavelet to use in CWT.
 
@@ -1053,9 +1051,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                             "qrs_interval": np.round(self[ind].meta['qrs'], 2),
                             "pq_interval": np.round(self[ind].meta['pq'], 2),
                             "qt_interval": np.round(self[ind].meta['qt'], 2),
-                            "p_segments": self[ind].meta["p_segments"],
-                            "qrs_segments": self[ind].annotation["qrs_segments"],
-                            "t_segments": self[ind].annotation["t_segments"]}
+                            "annotation": np.array((self[ind].meta["p_segments"],
+                                           self[ind].meta["qrs_segments"],
+                                           self[ind].meta["t_segments"]))
+                            }
                 self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
         return self
