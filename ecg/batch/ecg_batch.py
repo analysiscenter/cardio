@@ -970,7 +970,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         cwt_scales : array_like
             Scales to use for Continuous Wavelet Transformation.
-        cwt_wavelet : object or str
+        cwt_wavelet : Wavelet object or name
             Wavelet to use in CWT.
 
         Returns
@@ -1025,9 +1025,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                                                                          np.array([5, 6, 7, 8, 9, 10])))
 
     @ds.action
-    def append_api_result(self, var_name=None):
-        """ Writes information about ecg signals in batch to pipeline variable
-        var_name as dictionaries.
+    def get_signal_meta(self, var_name=None):
+        """ Writes ecg signal and some metadata about it to pipeline variable
+        var_name as dictionaries. Metadata include sampling rate and units of
+        the signal.
 
         Parameters
         ----------
@@ -1038,23 +1039,37 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         -------
         None
         """
-        if var_name == "signal":
-            for ind in self.indices:
-                res_dict = {"units": self[ind].meta['units'],
-                            "frequency": np.float64(self[ind].meta['fs']),
-                            "signal":self[ind].signal}
-                self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+        for ind in self.indices:
+            res_dict = {"units": self[ind].meta['units'],
+                        "frequency": np.float64(self[ind].meta['fs']),
+                        "signal":self[ind].signal}
+            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
-        elif var_name == "analysis":
-            for ind in self.indices:
-                res_dict = {"heart_rate": np.round(self[ind].meta['hr'], 2),
-                            "qrs_interval": np.round(self[ind].meta['qrs'], 2),
-                            "pq_interval": np.round(self[ind].meta['pq'], 2),
-                            "qt_interval": np.round(self[ind].meta['qt'], 2),
-                            "annotation": np.array((self[ind].meta["p_segments"],
-                                           self[ind].meta["qrs_segments"],
-                                           self[ind].meta["t_segments"]))
-                            }
-                self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+    @ds.action
+    def get_signal_annotation_results(self, var_name=None):
+        """ Writes ecg report data in batch to pipeline variable
+        var_name as dictionaries. Ecg report includes heart rate,
+        median QRS, PQ, QT intervals and array with starts and ends
+        of P, QRS, T complexes.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of pipeline variable to write results to.
+
+        Returns
+        -------
+        None
+        """
+        for ind in self.indices:
+            res_dict = {"heart_rate": np.round(self[ind].meta['hr'], 2),
+                        "qrs_interval": np.round(self[ind].meta['qrs'], 2),
+                        "pq_interval": np.round(self[ind].meta['pq'], 2),
+                        "qt_interval": np.round(self[ind].meta['qt'], 2),
+                        "annotation": np.array((self[ind].meta["p_segments"],
+                                       self[ind].meta["qrs_segments"],
+                                       self[ind].meta["t_segments"]))
+                        }
+            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
         return self

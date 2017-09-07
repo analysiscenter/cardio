@@ -267,7 +267,7 @@ def gen_hmm_features(signal, cwt_scales, cwt_wavelet):
         Ecg signal.
     cwt_scales : array_like
         Scales to use for Continuous Wavele Transformation.
-    cwt_wavelet : object or str
+    cwt_wavelet : Wavelet object or name
         Wavelet to use in CWT.
 
     Returns
@@ -300,7 +300,7 @@ def find_intervals_borders(hmm_annotation, inter_val):
     starts : numpy.array
         Indices of the starts of the intervals.
     ends : numpy.array
-        Indices of the ens of the intervals.
+        Indices of the ends of the intervals.
     """
     intervals = np.zeros(hmm_annotation.shape, dtype=np.int8)
     for val in inter_val:
@@ -308,9 +308,9 @@ def find_intervals_borders(hmm_annotation, inter_val):
     masque = np.diff(intervals)
     starts = np.where(masque == 1)[0] + 1
     ends = np.where(masque == -1)[0] + 1
-    if np.any(inter_val == hmm_annotation[:1]):
+    if hmm_annotation[0] in inter_val:
         ends = ends[1:]
-    if np.any(inter_val == hmm_annotation[-1:]):
+    if hmm_annotation[-1] in inter_val:
         starts = starts[:-1]
     return starts, ends
 
@@ -326,8 +326,6 @@ def find_maxes(signal, starts, ends):
         Indices of the starts of the intervals.
     ends : numpy.array
         Indices of the ens of the intervals.
-    maxes : numpy.array
-        Empty array for numba acceleration.
 
     Returns
     -------
