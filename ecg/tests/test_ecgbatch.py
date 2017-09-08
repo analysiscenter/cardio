@@ -4,24 +4,25 @@
 import os
 import sys
 import random
-from copy import copy
 import numpy as np
 import pytest
-
-sys.path.append(os.path.join("."))
 
 from ecg.batch import EcgBatch, ModelEcgBatch
 from ecg import dataset as ds
 from ecg.batch import ecg_batch_tools as bt
 
+sys.path.append(os.path.join("."))
+
 random.seed(170720143422)
+
+print(bt.R_STATE.flags)
 
 @pytest.fixture(scope="module")
 def setup_module_load(request):
-    '''
+    """
     Fixture to setup module. Performs check for presence of test files,
     creates initial batch object.
-    '''
+    """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
     files = ["A00001.hea", "A00001.mat", "A00002.hea", "A00002.mat",
              "A00004.hea", "A00004.mat", "A00005.hea", "A00005.mat",
@@ -35,54 +36,53 @@ def setup_module_load(request):
         raise FileNotFoundError("Test files not found in 'tests/data/'!")
 
     def teardown_module_load():
-        '''
+        """
         Teardown module
-        '''
+        """
 
     request.addfinalizer(teardown_module_load)
     return ind, path
 
 @pytest.fixture()
 def setup_class_methods(request):
-    '''
+    """
     Fixture to setup class to test EcgBatch methods separately.
-    '''
+    """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
-    target_path = os.path.join(path, "REFERENCE.csv")
     batch_loaded = (EcgBatch(ind, unique_labels=["A", "O", "N"])
                     .load(fmt="wfdb", components=["signal", "annotation", "meta"]))
 
     def teardown_class_methods():
-        '''
+        """
         Teardown class
-        '''
+        """
 
     request.addfinalizer(teardown_class_methods)
     return batch_loaded
 
 @pytest.fixture(scope="class")
 def setup_class_dataset(request):
-    '''
+    """
     Fixture to setup class to test EcgBatch methods in pipeline.
-    '''
+    """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
     ecg_dataset = ds.Dataset(ind, batch_class=EcgBatch)
-    
+
     def teardown_class_dataset():
-        '''
+        """
         Teardown class
-        '''
+        """
 
     request.addfinalizer(teardown_class_dataset)
     return ecg_dataset
 
 @pytest.fixture(scope="class")
 def setup_class_pipeline(request):
-    '''
+    """
     Fixture to setup class to test EcgBatch methods in pipeline.
-    '''
+    """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
     target_path = os.path.join(path, "REFERENCE.csv")
@@ -92,26 +92,29 @@ def setup_class_pipeline(request):
                     .load(src=target_path, fmt="csv", components=["target"]))
 
     def teardown_class_pipeline():
-        '''
+        """
         Teardown class
-        '''
+        """
 
     request.addfinalizer(teardown_class_pipeline)
     return ecg_pipeline
 
 
 class TestEcgBatchLoad():
-    '''
-    Class for test of load / dump methods
-    '''
+    """
+    Class for test of load / dump methods.
+    """
 
-    def test_load_wfdb(self, setup_module_load): #pylint: disable=no-self-use,redefined-outer-name
-        '''
-        Test of wfdb loader
-        '''
+    def test_load_wfdb(self, setup_module_load): #pylint: disable=redefined-outer-name
+        """
+        Testing wfdb loader.
+        """
+        # Arrange
         ind = setup_module_load[0]
         batch = EcgBatch(ind)
+        # Act
         batch = batch.load(fmt="wfdb", components=["signal", "annotation", "meta"])
+        # Assert
         assert isinstance(batch.signal, np.ndarray)
         assert isinstance(batch.meta, np.ndarray)
         assert isinstance(batch.annotation, np.ndarray)
@@ -125,14 +128,13 @@ class TestEcgBatchLoad():
 
 
 class TestEcgBatchSingleMethods:
-    '''
+    """
     Class for testing other single methods of EcgBatch class
-    '''
-    @pytest.mark.usefixtures("setup_class_methods")
-    def test_update(self): #pylint: disable=no-self-use,redefined-outer-name
-        '''
-        Testing of updater
-        '''
+    """
+    def test_update(self):
+        """
+        Testing update
+        """
         new_inds = ["A00001", "A00004"]
         ind = ds.DatasetIndex(index=new_inds)
         batch = EcgBatch(ind)
@@ -142,7 +144,7 @@ class TestEcgBatchSingleMethods:
         signal = np.array([seq1, seq2, []], dtype=object)[:-1]
         annotation = np.array([{}] * len(new_inds))
         meta = np.array([{"new_meta":True}, {"new_meta":True}])
-        target = np.array(["N","A"])
+        target = np.array(["N", "A"])
         batch.update(signal, annotation, meta, target)
         assert batch.signal[0].shape == (1, 3)
         assert batch.signal[1].shape == (1, 4)
@@ -152,25 +154,36 @@ class TestEcgBatchSingleMethods:
         assert batch["A00004"].target == "A"
 
     @pytest.mark.usefixtures("setup_class_methods")
-    def tets_drop_short_signal(self, setup_class_methods):
+    def tets_drop_short_signal(self, setup_class_methods): #pylint: disable=redefined-outer-name
+        """
+        Testing of drop_short_signals
+        """
+
+        # Arrange
         batch = setup_class_methods
+
+        # Act
         batch = batch.drop_short_signals(17000, axis=-1)
 
+        # Assert
         assert batch.signal.shape == (2,)
-        assert np.all([True if sig.shape[-1]>17000 else False for sig in batch.signal])
+        assert np.all([True if sig.shape[-1] > 17000 else False for sig in batch.signal])
 
     @pytest.mark.usefixtures("setup_class_methods")
-    def test_segment_signals(self, setup_class_methods): #pylint: disable=no-self-use,redefined-outer-name
-        '''
-        Testing of segmentator
-        '''
+    def test_segment_signals(self, setup_class_methods): #pylint: disable=redefined-outer-name
+        """
+        Testing segment_signals.
+        """
         batch = setup_class_methods
         batch = batch.segment_signals(4500, 4499)
         assert batch.indices.shape == (6,)
         assert batch.signal[0].shape == (2, 1, 4500)
 
     @pytest.mark.usefixtures("setup_class_methods")
-    def test_resample_signals(self, setup_class_methods):
+    def test_resample_signals(self, setup_class_methods):#pylint: disable=redefined-outer-name
+        """
+        Testing resample_signal.
+        """
         batch = setup_class_methods
         batch = batch.resample_signals(150)
 
@@ -178,7 +191,10 @@ class TestEcgBatchSingleMethods:
         assert batch.signal[0].shape == (1, 4500)
 
     @pytest.mark.usefixtures("setup_class_methods")
-    def test_band_pass_signals(self, setup_class_methods):
+    def test_band_pass_signals(self, setup_class_methods): #pylint: disable=redefined-outer-name
+        """
+        Testing band_pass_signals.
+        """
         batch = setup_class_methods
         batch = batch.band_pass_signals(0.5, 5)
 
@@ -186,10 +202,10 @@ class TestEcgBatchSingleMethods:
         assert batch.signal[0].shape == (1, 9000)
 
     @pytest.mark.usefixtures("setup_class_methods")
-    def test_flip_signals(self, setup_class_methods): #pylint:disable=no-self-use,redefined-outer-name
-        '''
-        Testing function that flips signals if R-peaks are directed downwards
-        '''
+    def test_flip_signals(self, setup_class_methods): #pylint: disable=redefined-outer-name
+        """
+        Testing flip_signals.
+        """
         batch = setup_class_methods
 
         batch = batch.flip_signals()
@@ -198,10 +214,14 @@ class TestEcgBatchSingleMethods:
 
 @pytest.mark.usefixtures("setup_class_dataset")
 class TestEcgBatchDataset:
-    ''' Class to test EcgBathc load in pipeline
-    '''
+    """
+    Class to test EcgBathc load in pipeline
+    """
     @pytest.mark.xfail
-    def test_cv_split(self, setup_class_dataset):
+    def test_cv_split(self, setup_class_dataset): #pylint: disable=redefined-outer-name
+        """
+        Testing cv_split.
+        """
         ecg_dtst = setup_class_dataset
         ecg_dtst.cv_split(shares=0.5)
         assert ecg_dtst.train.indices.shape == (3,)
@@ -209,7 +229,7 @@ class TestEcgBatchDataset:
         assert isinstance(ecg_dtst.train, ds.Dataset)
         assert isinstance(ecg_dtst.test, ds.Dataset)
 
-        ecg_dtst.cv_split(shares=[0.5,0.49])
+        ecg_dtst.cv_split(shares=[0.5, 0.49])
         assert ecg_dtst.train.indices.shape == (3,)
         assert ecg_dtst.test.indices.shape == (2,)
         assert ecg_dtst.validation.indices.shape == (1,)
@@ -217,11 +237,14 @@ class TestEcgBatchDataset:
         assert isinstance(ecg_dtst.test, ds.Dataset)
         assert isinstance(ecg_dtst.validation, ds.Dataset)
 
-    def test_pipeline_load(self, setup_class_dataset, setup_module_load):
+    def test_pipeline_load(self, setup_class_dataset, setup_module_load): #pylint: disable=redefined-outer-name
+        """
+        Testing load in pipeline.
+        """
         ecg_dtst = setup_class_dataset
         path = setup_module_load[1]
         target_path = os.path.join(path, "REFERENCE.csv")
-        
+
         ppln = (ecg_dtst.p
                 .load(fmt="wfdb", components=["signal", "annotation", "meta"])
                 .load(src=target_path, fmt="csv", components=["target"]))
@@ -231,57 +254,69 @@ class TestEcgBatchDataset:
 
         assert epochs == 3
 
-        for i in range(epochs):
+        for _ in range(epochs):
             ppln_batch = ppln.next_batch(batch_size, shuffle=False)
             assert ppln_batch.indices.shape == (batch_size,)
             assert ppln_batch.signal.shape == (batch_size,)
             assert np.unique(ppln_batch.target).shape == (1,)
-            
+
             first_indice = ppln_batch.indices[0]
-            assert isinstance(ppln_batch[first_indice], ds.components.EcgBatchComponents)
+            assert isinstance(ppln_batch[first_indice], ds.components.EcgBatchComponents) #pylint: disable=no-member
 
 
 
 @pytest.mark.usefixtures("setup_class_pipeline")
 class TestEcgBatchPipelineMethods:
-    ''' Class to test EcgBatch methods in pipeline.
-    '''
+    """
+    Class to test EcgBatch methods in pipeline.
+    """
 
-    def test_pipeline_1(self, setup_class_pipeline):
+    def test_pipeline_1(self, setup_class_pipeline): #pylint: disable=redefined-outer-name
+        """
+        Testing typical pipeline.
+        """
         ecg_ppln = setup_class_pipeline
-        ppln = (ecg_ppln.drop_labels(["A"])
-                        .flip_signals()
-                        .segment_signals(4500, 4499)
-                        .replace_labels({"A":"A", "N":"NonA", "O":"NonA"}))
+        ppln = (ecg_ppln
+                .drop_labels(["A"])
+                .flip_signals()
+                .segment_signals(4500, 4499)
+                .replace_labels({"A":"A", "N":"NonA", "O":"NonA"}))
 
         batch = ppln.next_batch(len(ppln), shuffle=False)
         assert len(batch) == 4
         assert batch.signal[0].shape == (2, 1, 4500)
         assert np.unique(batch.target)[0] == "NonA"
 
-    def test_pipeline_2(self, setup_class_pipeline):
+    def test_pipeline_2(self, setup_class_pipeline): #pylint: disable=redefined-outer-name
+        """
+        Testing typical pipeline.
+        """
         ecg_ppln = setup_class_pipeline
-        ppln = (ecg_ppln.drop_short_signals(17000, axis=-1)
-                        .band_pass_signals(0.5,50)
-                        .resample_signals(150)
-                        .binarize_labels())
+        ppln = (ecg_ppln
+                .drop_short_signals(17000, axis=-1)
+                .band_pass_signals(0.5, 50)
+                .resample_signals(150)
+                .binarize_labels())
 
         batch = ppln.next_batch(len(ppln), shuffle=False)
 
         assert len(batch) == 2
         assert batch.meta[0]["fs"] == 150
-        assert np.all([True if sig.shape[-1]==9000 else False for sig in batch.signal])
-        assert batch.target.shape == (2,3)
+        assert np.all([True if sig.shape[-1] == 9000 else False for sig in batch.signal])
+        assert batch.target.shape == (2, 3)
 
-    def test_first_api_ppln(self, setup_class_pipeline, setup_module_load):
+    def test_get_signal_meta(self, setup_module_load): #pylint: disable=redefined-outer-name
+        """
+        Testing get_signal_meta.
+        """
         # Arrange
         ppln = (ds.Pipeline()
-                  .load(fmt='wfdb', components=["signal", "meta"])
-                  .flip_signals()
-                  .append_api_result(var_name="signal")
-                  .run(batch_size=2, shuffle=False, 
-                       drop_last=False, n_epochs=1, lazy=True)
-                )
+                .load(fmt='wfdb', components=["signal", "meta"])
+                .flip_signals()
+                .get_signal_meta(var_name="signal")
+                .run(batch_size=2, shuffle=False,
+                     drop_last=False, n_epochs=1, lazy=True))
+
         index = setup_module_load[0]
         dtst = ds.Dataset(index, batch_class=ModelEcgBatch)
 
@@ -295,24 +330,29 @@ class TestEcgBatchPipelineMethods:
         assert 'signal' in signal_var[0].keys()
         assert 'frequency' in signal_var[0].keys()
         assert 'units' in signal_var[0].keys()
-        assert signal_var[0]["signal"].shape == (1,9000)
+        assert signal_var[0]["signal"].shape == (1, 9000)
         assert isinstance(signal_var[0]["frequency"], np.float64)
 
 class TestIntervalBatchTools:
-
-    def test_find_interval_borders(self):
+    """
+    Class for testing batch tools that involved in intervals calculation
+    """
+    def test_find_interval_borders(self): #pylint: disable=redefined-outer-name
+        """
+        Testing find_interval_borders.
+        """
         # Arrange
         hmm_annotation = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 0,
-                                    0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
-                                    1, 2, 2, 2, 2, 3, 3, 3, 3, 3,
-                                    4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
-                                    dtype=np.int64)
+                                   0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
+                                   1, 2, 2, 2, 2, 3, 3, 3, 3, 3,
+                                   4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
+                                  dtype=np.int64)
 
         # Act
-        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation, 
+        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation,
                                                      np.array([3], dtype=np.int64))
 
-        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, 
+        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation,
                                                        np.array([1, 2], dtype=np.int64))
 
         # Assert
@@ -322,27 +362,30 @@ class TestIntervalBatchTools:
         assert np.all(np.equal(starts_12, np.array([18, 37, 58])))
         assert np.all(np.equal(ends_12, np.array([25, 46, 65])))
 
-    def test_find_maxes(self):
+    def test_find_maxes(self): #pylint: disable=redefined-outer-name
+        """
+        Testing find_maxes.
+        """
         # Arrange
         hmm_annotation = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 0,
-                                    0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
-                                    1, 2, 2, 2, 2, 3, 3, 3, 3, 3,
-                                    4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
-                                    dtype=np.int64)
-        
+                                   0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
+                                   1, 2, 2, 2, 2, 3, 3, 3, 3, 3,
+                                   4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
+                                  dtype=np.int64)
+
         # 9 is the max for interval of 3's
         # 8 is the max for interval of 1's and 2's
         signal = np.array([1, 1, 1, 2, 2, 8, 3, 9, 3, 0,
                            0, 0, 4, 4, 4, 0, 0, 0, 1, 8,
                            1, 2, 2, 2, 2, 9, 3, 3, 3, 3,
                            4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
-                           dtype=np.float64).reshape(1,-1)
+                          dtype=np.float64).reshape(1, -1)
 
         # Act
-        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation, 
+        starts_3, ends_3 = bt.find_intervals_borders(hmm_annotation,
                                                      np.array([3], dtype=np.int64))
 
-        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation, 
+        starts_12, ends_12 = bt.find_intervals_borders(hmm_annotation,
                                                        np.array([1, 2], dtype=np.int64))
 
         maxes_3 = bt.find_maxes(signal, starts_3, ends_3)
