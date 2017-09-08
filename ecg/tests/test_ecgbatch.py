@@ -7,11 +7,11 @@ import random
 import numpy as np
 import pytest
 
+sys.path.append(os.path.join("."))
+
 from ecg.batch import EcgBatch, ModelEcgBatch
 from ecg import dataset as ds
 from ecg.batch import ecg_batch_tools as bt
-
-sys.path.append(os.path.join("."))
 
 random.seed(170720143422)
 

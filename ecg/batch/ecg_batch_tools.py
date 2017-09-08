@@ -9,6 +9,17 @@ import numba as nb
 
 import wfdb
 
+# Constants
+
+# This is the mapping from inner HMM states to human-understandable
+# cardiological terms.
+P_STATES = np.array([14, 15, 16], np.int64)
+T_STATES = np.array([5 ,6 ,7 ,8 ,9 , 10], np.int64)
+QRS_STATES = np.array([0 ,1 ,2], np.int64)
+Q_STATE = np.array([0], np.int64)
+R_STATE = np.array([1], np.int64)
+S_STATE = np.array([2], np.int64)
+
 
 def load_wfdb(path, components):
     """Load given components from wfdb file.
@@ -308,9 +319,9 @@ def find_intervals_borders(hmm_annotation, inter_val):
     masque = np.diff(intervals)
     starts = np.where(masque == 1)[0] + 1
     ends = np.where(masque == -1)[0] + 1
-    if hmm_annotation[0] in inter_val:
+    if np.any(inter_val == hmm_annotation[:1]):
         ends = ends[1:]
-    if hmm_annotation[-1] in inter_val:
+    if np.any(inter_val == hmm_annotation[-1:]):
         starts = starts[:-1]
     return starts, ends
 
@@ -338,8 +349,8 @@ def find_maxes(signal, starts, ends):
 
     return maxes
 
-@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64), nogil=True)
-def calc_hr(signal, hmm_annotation, fs):
+@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64, nb.int64[:]), nogil=True)
+def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     """ Calculate heart rate based on HMM prediction.
 
     Parameters
@@ -357,7 +368,7 @@ def calc_hr(signal, hmm_annotation, fs):
         Heart rate in beats per minute.
     """
 
-    starts, ends = find_intervals_borders(hmm_annotation, np.array([1]))
+    starts, ends = find_intervals_borders(hmm_annotation, r_state)
     # NOTE: Currently works on first lead signal only
     maxes = find_maxes(signal, starts, ends)
     diff = maxes[1:] - maxes[:-1]
@@ -365,8 +376,8 @@ def calc_hr(signal, hmm_annotation, fs):
 
     return hr_val
 
-@njit(nb.float64(nb.int64[:], nb.float64), nogil=True)
-def calc_pq(hmm_annotation, fs):
+@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate PQ based on HMM prediction.
 
     Parameters
@@ -382,9 +393,9 @@ def calc_pq(hmm_annotation, fs):
         Duration of PQ interval in seconds.
     """
 
-    p_starts, _ = find_intervals_borders(hmm_annotation, np.array([14, 15, 16]))
-    q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
-    r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
+    p_starts, _ = find_intervals_borders(hmm_annotation, p_states)
+    q_starts, _ = find_intervals_borders(hmm_annotation, q_state)
+    r_starts, _ = find_intervals_borders(hmm_annotation, r_state)
 
     p_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
@@ -414,8 +425,8 @@ def calc_pq(hmm_annotation, fs):
 
     return np.median(intervals) / fs
 
-@njit(nb.float64(nb.int64[:], nb.float64), nogil=True)
-def calc_qt(hmm_annotation, fs):
+@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QT interval based on HMM prediction.
 
     Parameters
@@ -431,9 +442,9 @@ def calc_qt(hmm_annotation, fs):
         Duration of QT interval in seconds.
     """
 
-    _, t_ends = find_intervals_borders(hmm_annotation, np.array([5, 6, 7, 8, 9, 10]))
-    q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
-    r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
+    _, t_ends = find_intervals_borders(hmm_annotation, t_states)
+    q_starts, _ = find_intervals_borders(hmm_annotation, q_state)
+    r_starts, _ = find_intervals_borders(hmm_annotation, r_state)
 
     t_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
@@ -463,8 +474,8 @@ def calc_qt(hmm_annotation, fs):
 
     return np.median(intervals) / fs
 
-@njit(nb.float64(nb.int64[:], nb.float64), nogil=True)
-def calc_qrs(hmm_annotation, fs):
+@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QRS interval based on HMM prediction.
 
     Parameters
@@ -479,9 +490,9 @@ def calc_qrs(hmm_annotation, fs):
     qrs_val : float
         Duration of QRS interval in seconds.
     """
-    _, s_ends = find_intervals_borders(hmm_annotation, np.array([2]))
-    q_starts, _ = find_intervals_borders(hmm_annotation, np.array([0]))
-    r_starts, _ = find_intervals_borders(hmm_annotation, np.array([1]))
+    _, s_ends = find_intervals_borders(hmm_annotation, s_state)
+    q_starts, _ = find_intervals_borders(hmm_annotation, q_state)
+    r_starts, _ = find_intervals_borders(hmm_annotation, r_state)
 
     s_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)

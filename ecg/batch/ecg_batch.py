@@ -1016,17 +1016,17 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
                                           np.float64(self.meta[i]['fs']))
 
-        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(annotation['hmm_annotation'],
-                                                                           np.array([0, 1, 2])))
+        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(self.annotation['hmm_annotation'],
+                                                                           np.array(bt.QRS_STATES)))
 
-        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(annotation['hmm_annotation'],
-                                                                         np.array([14, 15, 16])))
+        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(self.annotation['hmm_annotation'],
+                                                                         np.array(bt.P_STATES)))
 
-        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(annotation['hmm_annotation'],
-                                                                         np.array([5, 6, 7, 8, 9, 10])))
+        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation['hmm_annotation'],
+                                                                         np.array(bt.T_STATES)))
 
     @ds.action
-    def get_signal_meta(self, var_name=None):
+    def get_signal_meta(self, var_name):
         """ Writes ecg signal and some metadata about it to pipeline variable
         var_name as dictionaries. Metadata include sampling rate and units of
         the signal.
@@ -1045,9 +1045,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                         "frequency": np.float64(self[ind].meta['fs']),
                         "signal":self[ind].signal}
             self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+        return self
 
     @ds.action
-    def get_signal_annotation_results(self, var_name=None):
+    def get_signal_annotation_results(self, var_name):
         """ Writes ecg report data in batch to pipeline variable
         var_name as dictionaries. Ecg report includes heart rate,
         median QRS, PQ, QT intervals and array with starts and ends
