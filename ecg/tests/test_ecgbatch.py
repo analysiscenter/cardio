@@ -9,9 +9,9 @@ import pytest
 
 sys.path.append(os.path.join("."))
 
-from ecg.batch import EcgBatch, ModelEcgBatch
-from ecg import dataset as ds
-from ecg.batch import ecg_batch_tools as bt
+from ecg.batch import EcgBatch, ModelEcgBatch #pylint: disable=no-name-in-module,import-error
+from ecg import dataset as ds #pylint: disable=no-name-in-module
+from ecg.batch import ecg_batch_tools as bt #pylint: disable=no-name-in-module,import-error
 
 random.seed(170720143422)
 

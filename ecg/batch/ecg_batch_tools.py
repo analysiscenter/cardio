@@ -14,8 +14,8 @@ import wfdb
 # This is the mapping from inner HMM states to human-understandable
 # cardiological terms.
 P_STATES = np.array([14, 15, 16], np.int64)
-T_STATES = np.array([5 ,6 ,7 ,8 ,9 , 10], np.int64)
-QRS_STATES = np.array([0 ,1 ,2], np.int64)
+T_STATES = np.array([5, 6, 7, 8, 9, 10], np.int64)
+QRS_STATES = np.array([0, 1, 2], np.int64)
 Q_STATE = np.array([0], np.int64)
 R_STATE = np.array([1], np.int64)
 S_STATE = np.array([2], np.int64)
