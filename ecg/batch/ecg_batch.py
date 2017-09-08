@@ -1070,7 +1070,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                         "annotation": np.array((self[ind].meta["p_segments"],
                                                 self[ind].meta["qrs_segments"],
                                                 self[ind].meta["t_segments"]))
-                        }
+                       }
             self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
         return self
