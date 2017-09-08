@@ -15,8 +15,6 @@ from ecg.batch import ecg_batch_tools as bt
 
 random.seed(170720143422)
 
-print(bt.R_STATE.flags)
-
 @pytest.fixture(scope="module")
 def setup_module_load(request):
     """
