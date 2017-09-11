@@ -295,7 +295,8 @@ def gen_hmm_features(signal, cwt_scales, cwt_wavelet):
 
     return features
 
-@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
     """ Finds starts and ends of the intervals with values from inter_val.
 
@@ -325,7 +326,8 @@ def find_intervals_borders(hmm_annotation, inter_val):
         starts = starts[:-1]
     return starts, ends
 
-@njit(nb.float64[:](nb.float64[:, :], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64[:](nb.float64[:, :], nb.int64[:], nb.int64[:]), nogil=True)
 def find_maxes(signal, starts, ends):
     """ Find index of the maximum of the segment.
 
@@ -349,7 +351,8 @@ def find_maxes(signal, starts, ends):
 
     return maxes
 
-@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64, nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64, nb.int64[:]), nogil=True)
 def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     """ Calculate heart rate based on HMM prediction.
 
@@ -375,8 +378,8 @@ def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     hr_val = (np.median(diff / fs) ** -1) * 60
 
     return hr_val
-
-@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate PQ based on HMM prediction.
 
@@ -425,7 +428,8 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
 
     return np.median(intervals) / fs
 
-@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QT interval based on HMM prediction.
 
@@ -474,7 +478,8 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
 
     return np.median(intervals) / fs
 
-@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QRS interval based on HMM prediction.
 

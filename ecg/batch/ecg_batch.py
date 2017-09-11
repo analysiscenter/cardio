@@ -1016,14 +1016,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
                                           np.float64(self.meta[i]['fs']))
 
-        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(self.annotation['hmm_annotation'],
-                                                                           np.array(bt.QRS_STATES)))
+        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                           bt.QRS_STATES))
 
-        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(self.annotation['hmm_annotation'],
-                                                                         np.array(bt.P_STATES)))
+        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                         bt.P_STATES))
 
-        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation['hmm_annotation'],
-                                                                         np.array(bt.T_STATES)))
+        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                         bt.T_STATES))
 
     @ds.action
     def get_signal_meta(self, var_name):
