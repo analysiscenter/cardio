@@ -400,7 +400,7 @@ class TestIntervalBatchTools:
         # Arrange
         fs = 18.0
 
-        R_STATE = np.array([3], dtype=np.int64)
+        R_STATE = np.array([3], dtype=np.int64) # pylint: disable=invalid-name
 
         hmm_annotation = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 0,
                                    0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
@@ -417,7 +417,7 @@ class TestIntervalBatchTools:
                           dtype=np.float64).reshape(1, -1)
 
         # Act
-        hr = bt.calc_hr(signal, hmm_annotation, fs, R_STATE)
+        hr = bt.calc_hr(signal, hmm_annotation, fs, R_STATE) # pylint: disable=invalid-name
 
         # Arrange
         assert hr == 60

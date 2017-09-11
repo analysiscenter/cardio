@@ -46,7 +46,7 @@ def load_wfdb(path, components):
     return [data[comp] for comp in components]
 
 
-@njit(nb.float64[:,:,:](nb.float64[:,:], nb.int64, nb.int64), nogil=True)
+@njit(nb.float64[:, :, :](nb.float64[:, :], nb.int64, nb.int64), nogil=True)
 def segment_signals(signals, length, step):
     """Segment signals along axis 1 with given length and step.
 
@@ -70,7 +70,7 @@ def segment_signals(signals, length, step):
     return res
 
 
-@njit(nb.float64[:,:,:](nb.float64[:,:], nb.int64, nb.int64), nogil=True)
+@njit(nb.float64[:, :, :](nb.float64[:, :], nb.int64, nb.int64), nogil=True)
 def random_segment_signals(signals, length, n_segments):
     """Segment signals along axis 1 n_segments times with random start position and given length.
 
@@ -95,7 +95,7 @@ def random_segment_signals(signals, length, n_segments):
     return res
 
 
-@njit(nb.float64[:,:](nb.float64[:,:], nb.int64), nogil=True)
+@njit(nb.float64[:, :](nb.float64[:, :], nb.int64), nogil=True)
 def resample_signals(signals, new_length):
     """Resample signals to new length along axis 1 using linear interpolation.
 
