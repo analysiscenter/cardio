@@ -1064,13 +1064,13 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         None
         """
         for ind in self.indices:
-            res_dict = {"heart_rate": np.round(self[ind].meta['hr'], 2),
-                        "qrs_interval": np.round(self[ind].meta['qrs'], 2),
-                        "pq_interval": np.round(self[ind].meta['pq'], 2),
-                        "qt_interval": np.round(self[ind].meta['qt'], 2),
-                        "annotation": np.array((self[ind].meta["p_segments"],
-                                                self[ind].meta["qrs_segments"],
-                                                self[ind].meta["t_segments"]))
+            res_dict = {"heart_rate": self[ind].meta['hr'],
+                        "qrs_interval": self[ind].meta['qrs'],
+                        "pq_interval": self[ind].meta['pq'],
+                        "qt_interval": self[ind].meta['qt'],
+                        "p_segments": self[ind].meta["p_segments"],
+                        "qrs_segments": self[ind].meta["qrs_segments"],
+                        "t_segments": self[ind].meta["t_segments"]
                        }
             self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
 
