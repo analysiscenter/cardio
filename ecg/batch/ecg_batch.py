@@ -650,6 +650,133 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         sig = bt.convolve_signals(sig, kernels.gaussian(11, 3))
         self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
 
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target='threads')
+    def generate_hmm_features(self, index, cwt_scales, cwt_wavelet):
+        """Generate features for HMM annotation and write it to annotation component under key
+        'hmm_features'.
+
+        Parameters
+        ----------
+        cwt_scales : array_like
+            Scales to use for Continuous Wavelet Transformation.
+        cwt_wavelet : Wavelet object or name
+            Wavelet to use in CWT.
+
+        Returns
+        -------
+        batch : EcgBatch
+            EcgBatch with HMM features of signals.
+        """
+        i = self.get_pos(None, "signal", index)
+        self._check_2d(self.signal[i])
+
+        self.annotation[i]["hmm_features"] = bt.gen_hmm_features(self.signal[i],
+                                                                 cwt_scales,
+                                                                 cwt_wavelet)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target='threads')
+    def calc_ecg_parameters(self, index):
+        """ Calculates PQ interval based on annotation and writes it in meta under key 'pq'.
+        Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with report parameters stored in meta component.
+        """
+        i = self.get_pos(None, "signal", index)
+
+        self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
+                                        self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.R_STATE)
+
+        self.meta[i]["pq"] = bt.calc_pq(self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.P_STATES,
+                                        bt.Q_STATE,
+                                        bt.R_STATE)
+
+        self.meta[i]["qt"] = bt.calc_qt(self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.T_STATES,
+                                        bt.Q_STATE,
+                                        bt.R_STATE)
+
+        self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
+                                          np.float64(self.meta[i]['fs']),
+                                          bt.S_STATE,
+                                          bt.Q_STATE,
+                                          bt.R_STATE)
+
+        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                           bt.QRS_STATES))
+
+        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                         bt.P_STATES))
+
+        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                         bt.T_STATES))
+
+    @ds.action
+    def get_signal_meta(self, var_name):
+        """ Writes ecg signal and some metadata about it to pipeline variable
+        var_name as dictionaries. Metadata include sampling rate and units of
+        the signal.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of pipeline variable to write results to.
+
+        Returns
+        -------
+        None
+        """
+        for ind in self.indices:
+            res_dict = {"units": self[ind].meta['units'],
+                        "frequency": np.float64(self[ind].meta['fs']),
+                        "signal":self[ind].signal}
+            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+        return self
+
+    @ds.action
+    def get_signal_annotation_results(self, var_name):
+        """ Writes ecg report data in batch to pipeline variable
+        var_name as dictionaries. Ecg report includes heart rate,
+        median QRS, PQ, QT intervals and array with starts and ends
+        of P, QRS, T complexes.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of pipeline variable to write results to.
+
+        Returns
+        -------
+        None
+        """
+        for ind in self.indices:
+            res_dict = {"heart_rate": self[ind].meta['hr'],
+                        "qrs_interval": self[ind].meta['qrs'],
+                        "pq_interval": self[ind].meta['pq'],
+                        "qt_interval": self[ind].meta['qt'],
+                        "p_segments": self[ind].meta["p_segments"],
+                        "qrs_segments": self[ind].meta["qrs_segments"],
+                        "t_segments": self[ind].meta["t_segments"]
+                       }
+            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+
+        return self
+
+
     # The following action methods are not guaranteed to work properly
 
     def init_parallel(self, *args, **kwargs):
@@ -960,118 +1087,3 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         """
         _ = list_of_layers
         return bt.merge_list_of_layers
-
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target='threads')
-    def generate_hmm_features(self, index, cwt_scales, cwt_wavelet):
-        """Generate features for HMM annotation and write it to annotation component under key
-        'hmm_features'.
-
-        Parameters
-        ----------
-        cwt_scales : array_like
-            Scales to use for Continuous Wavelet Transformation.
-        cwt_wavelet : Wavelet object or name
-            Wavelet to use in CWT.
-
-        Returns
-        -------
-        batch : EcgBatch
-            EcgBatch with HMM features of signals.
-        """
-        i = self.get_pos(None, "signal", index)
-        self._check_2d(self.signal[i])
-
-        self.annotation[i]["hmm_features"] = bt.gen_hmm_features(self.signal[i],
-                                                                 cwt_scales,
-                                                                 cwt_wavelet)
-
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target='threads')
-    def calc_ecg_parameters(self, index):
-        """ Calculates PQ interval based on annotation and writes it in meta under key 'pq'.
-        Annotation can be obtained using hmm_annotation model with method predict_hmm_annotation.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        batch : EcgBatch
-            Batch with report parameters stored in meta component.
-        """
-        i = self.get_pos(None, "signal", index)
-
-        self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
-                                        self.annotation[i]['hmm_annotation'],
-                                        np.float64(self.meta[i]['fs']))
-
-        self.meta[i]["pq"] = bt.calc_pq(self.annotation[i]['hmm_annotation'],
-                                        np.float64(self.meta[i]['fs']))
-
-        self.meta[i]["qt"] = bt.calc_qt(self.annotation[i]['hmm_annotation'],
-                                        np.float64(self.meta[i]['fs']))
-
-        self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
-                                          np.float64(self.meta[i]['fs']))
-
-        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
-                                                                           bt.QRS_STATES))
-
-        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
-                                                                         bt.P_STATES))
-
-        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
-                                                                         bt.T_STATES))
-
-    @ds.action
-    def get_signal_meta(self, var_name):
-        """ Writes ecg signal and some metadata about it to pipeline variable
-        var_name as dictionaries. Metadata include sampling rate and units of
-        the signal.
-
-        Parameters
-        ----------
-        var_name : str
-            Name of pipeline variable to write results to.
-
-        Returns
-        -------
-        None
-        """
-        for ind in self.indices:
-            res_dict = {"units": self[ind].meta['units'],
-                        "frequency": np.float64(self[ind].meta['fs']),
-                        "signal":self[ind].signal}
-            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
-        return self
-
-    @ds.action
-    def get_signal_annotation_results(self, var_name):
-        """ Writes ecg report data in batch to pipeline variable
-        var_name as dictionaries. Ecg report includes heart rate,
-        median QRS, PQ, QT intervals and array with starts and ends
-        of P, QRS, T complexes.
-
-        Parameters
-        ----------
-        var_name : str
-            Name of pipeline variable to write results to.
-
-        Returns
-        -------
-        None
-        """
-        for ind in self.indices:
-            res_dict = {"heart_rate": self[ind].meta['hr'],
-                        "qrs_interval": self[ind].meta['qrs'],
-                        "pq_interval": self[ind].meta['pq'],
-                        "qt_interval": self[ind].meta['qt'],
-                        "p_segments": self[ind].meta["p_segments"],
-                        "qrs_segments": self[ind].meta["qrs_segments"],
-                        "t_segments": self[ind].meta["t_segments"]
-                       }
-            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
-
-        return self

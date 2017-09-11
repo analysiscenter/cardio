@@ -392,3 +392,32 @@ class TestIntervalBatchTools:
         # Assert
         assert np.all(np.equal(maxes_3, np.array([7, 25, 47, 65])))
         assert np.all(np.equal(maxes_12, np.array([19, 45, 59])))
+
+    def test_calc_hr(self):
+        """
+        Testing calc_hr.
+        """
+        # Arrange
+        fs = 18.0
+
+        R_STATE = np.array([3], dtype=np.int64)
+
+        hmm_annotation = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 0,
+                                   0, 0, 4, 4, 4, 0, 0, 0, 1, 1,
+                                   1, 2, 2, 2, 2, 3, 3, 3, 3, 3,
+                                   4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
+                                  dtype=np.int64)
+
+        # 9 is the max for interval of 3's
+        # 8 is the max for interval of 1's and 2's
+        signal = np.array([1, 1, 1, 2, 2, 8, 3, 9, 3, 0,
+                           0, 0, 4, 4, 4, 0, 0, 0, 1, 8,
+                           1, 2, 2, 2, 2, 9, 3, 3, 3, 3,
+                           4, 4, 4, 4, 0, 0, 0, 1, 1, 1]*2,
+                          dtype=np.float64).reshape(1, -1)
+
+        # Act
+        hr = bt.calc_hr(signal, hmm_annotation, fs, R_STATE)
+
+        # Arrange
+        assert hr == 60

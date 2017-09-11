@@ -46,7 +46,7 @@ def load_wfdb(path, components):
     return [data[comp] for comp in components]
 
 
-@njit(nogil=True)
+@njit(nb.float64[:,:,:](nb.float64[:,:], nb.int64, nb.int64), nogil=True)
 def segment_signals(signals, length, step):
     """Segment signals along axis 1 with given length and step.
 
@@ -70,7 +70,7 @@ def segment_signals(signals, length, step):
     return res
 
 
-@njit(nogil=True)
+@njit(nb.float64[:,:,:](nb.float64[:,:], nb.int64, nb.int64), nogil=True)
 def random_segment_signals(signals, length, n_segments):
     """Segment signals along axis 1 n_segments times with random start position and given length.
 
@@ -95,7 +95,7 @@ def random_segment_signals(signals, length, n_segments):
     return res
 
 
-@njit(nogil=True)
+@njit(nb.float64[:,:](nb.float64[:,:], nb.int64), nogil=True)
 def resample_signals(signals, new_length):
     """Resample signals to new length along axis 1 using linear interpolation.
 
@@ -212,6 +212,7 @@ def get_pos_of_max(pred):
         labels[i, pred[i].argmax()] = 1
     return labels
 
+
 def predict_hmm_classes(signal, annot, meta, index, model):
     '''
     Get hmm predicted classes
@@ -219,6 +220,7 @@ def predict_hmm_classes(signal, annot, meta, index, model):
     res = np.array(model.predict(signal.T)).reshape((1, -1))
     annot.update({'hmm_predict': res})
     return [signal, annot, meta, index]
+
 
 def get_gradient(signal, annot, meta, index, order):
     '''
@@ -233,6 +235,7 @@ def get_gradient(signal, annot, meta, index, order):
         grad = np.gradient(grad, axis=1)
     annot.update({'grad_{0}'.format(order): grad})
     return [signal, annot, meta, index]
+
 
 def convolve_layer(signal, annot, meta, index, layer, kernel):
     '''
@@ -251,6 +254,7 @@ def convolve_layer(signal, annot, meta, index, layer, kernel):
     annot.update({layer + '_conv': res})
     return [signal, annot, meta, index]
 
+
 def merge_list_of_layers(signal, annot, meta, index, list_of_layers):
     '''
     Merge layers from list of layers to signal
@@ -268,6 +272,7 @@ def merge_list_of_layers(signal, annot, meta, index, list_of_layers):
         res.append(data)
     res = np.concatenate(res, axis=0)[np.newaxis, :, :]
     return [res, annot, meta, index]
+
 
 def gen_hmm_features(signal, cwt_scales, cwt_wavelet):
     """ Generate features from the signal for HMM annotation.
@@ -295,8 +300,8 @@ def gen_hmm_features(signal, cwt_scales, cwt_wavelet):
 
     return features
 
-@njit(nogil=True)
-#@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
+
+@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
     """ Finds starts and ends of the intervals with values from inter_val.
 
@@ -326,8 +331,8 @@ def find_intervals_borders(hmm_annotation, inter_val):
         starts = starts[:-1]
     return starts, ends
 
-@njit(nogil=True)
-#@njit(nb.float64[:](nb.float64[:, :], nb.int64[:], nb.int64[:]), nogil=True)
+
+@njit(nb.float64[:](nb.float64[:, :], nb.int64[:], nb.int64[:]), nogil=True)
 def find_maxes(signal, starts, ends):
     """ Find index of the maximum of the segment.
 
@@ -351,8 +356,8 @@ def find_maxes(signal, starts, ends):
 
     return maxes
 
-@njit(nogil=True)
-#@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64, nb.int64[:]), nogil=True)
+
+@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64, nb.int64[:]), nogil=True)
 def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     """ Calculate heart rate based on HMM prediction.
 
@@ -378,8 +383,9 @@ def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     hr_val = (np.median(diff / fs) ** -1) * 60
 
     return hr_val
-@njit(nogil=True)
-#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+
+
+@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate PQ based on HMM prediction.
 
@@ -428,8 +434,8 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
 
     return np.median(intervals) / fs
 
-@njit(nogil=True)
-#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+
+@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QT interval based on HMM prediction.
 
@@ -478,8 +484,8 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
 
     return np.median(intervals) / fs
 
-@njit(nogil=True)
-#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+
+@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QRS interval based on HMM prediction.
 
