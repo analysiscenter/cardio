@@ -5,7 +5,8 @@ import numpy as np
 
 import pywt
 from numba import njit
-import numba as nb
+# In this version numba import is unneccessary 
+# import numba as nb
 
 import wfdb
 
@@ -516,7 +517,7 @@ def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STA
     s_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = hmm_annotation.shape[0]
+    maxlen = hmm_annotation.shape[0]    
 
     temp_s = np.zeros(maxlen)
     temp_s[s_ends] = 1
