@@ -415,7 +415,7 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
     p_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = hmm_annotation.shape[0] # np.array((p_starts.max(), q_starts.max(), r_starts.max())).max()
+    maxlen = hmm_annotation.shape[0]
 
     temp_p = np.zeros(maxlen)
     temp_p[p_starts] = 1
@@ -466,7 +466,7 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
     t_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = hmm_annotation.shape[0] # np.array((t_ends.max(), q_starts.max(), r_starts.max())).max()
+    maxlen = hmm_annotation.shape[0]
 
     temp_t = np.zeros(maxlen)
     temp_t[t_ends] = 1
@@ -516,7 +516,7 @@ def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STA
     s_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = hmm_annotation.shape[0] # np.array((s_ends.max(), q_starts.max(), r_starts.max())).max()
+    maxlen = hmm_annotation.shape[0]
 
     temp_s = np.zeros(maxlen)
     temp_s[s_ends] = 1
