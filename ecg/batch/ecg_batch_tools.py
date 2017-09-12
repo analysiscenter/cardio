@@ -45,8 +45,8 @@ def load_wfdb(path, components):
             "meta": meta}
     return [data[comp] for comp in components]
 
-
-@njit(nb.float64[:, :, :](nb.float64[:, :], nb.int64, nb.int64), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64[:, :, :](nb.float64[:, :], nb.int64, nb.int64), nogil=True)
 def segment_signals(signals, length, step):
     """Segment signals along axis 1 with given length and step.
 
@@ -70,7 +70,8 @@ def segment_signals(signals, length, step):
     return res
 
 
-@njit(nb.float64[:, :, :](nb.float64[:, :], nb.int64, nb.int64), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64[:, :, :](nb.float64[:, :], nb.int64, nb.int64), nogil=True)
 def random_segment_signals(signals, length, n_segments):
     """Segment signals along axis 1 n_segments times with random start position and given length.
 
@@ -95,7 +96,8 @@ def random_segment_signals(signals, length, n_segments):
     return res
 
 
-@njit(nb.float64[:, :](nb.float64[:, :], nb.int64), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64[:, :](nb.float64[:, :], nb.int64), nogil=True)
 def resample_signals(signals, new_length):
     """Resample signals to new length along axis 1 using linear interpolation.
 
@@ -301,7 +303,8 @@ def gen_hmm_features(signal, cwt_scales, cwt_wavelet):
     return features
 
 
-@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
     """ Finds starts and ends of the intervals with values from inter_val.
 
@@ -332,7 +335,8 @@ def find_intervals_borders(hmm_annotation, inter_val):
     return starts, ends
 
 
-@njit(nb.float64[:](nb.float64[:, :], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64[:](nb.float64[:, :], nb.int64[:], nb.int64[:]), nogil=True)
 def find_maxes(signal, starts, ends):
     """ Find index of the maximum of the segment.
 
@@ -357,7 +361,8 @@ def find_maxes(signal, starts, ends):
     return maxes
 
 
-@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64, nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64, nb.int64[:]), nogil=True)
 def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     """ Calculate heart rate based on HMM prediction.
 
@@ -385,7 +390,8 @@ def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     return hr_val
 
 
-@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate PQ based on HMM prediction.
 
@@ -409,7 +415,7 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
     p_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = np.array((p_starts.max(), q_starts.max(), r_starts.max())).max()
+    maxlen = hmm_annotation.shape[0] # np.array((p_starts.max(), q_starts.max(), r_starts.max())).max()
 
     temp_p = np.zeros(maxlen)
     temp_p[p_starts] = 1
@@ -435,7 +441,8 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
     return np.median(intervals) / fs
 
 
-@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QT interval based on HMM prediction.
 
@@ -459,7 +466,7 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
     t_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = np.array((t_ends.max(), q_starts.max(), r_starts.max())).max()
+    maxlen = hmm_annotation.shape[0] # np.array((t_ends.max(), q_starts.max(), r_starts.max())).max()
 
     temp_t = np.zeros(maxlen)
     temp_t[t_ends] = 1
@@ -485,7 +492,8 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
     return np.median(intervals) / fs
 
 
-@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
+@njit(nogil=True)
+#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QRS interval based on HMM prediction.
 
@@ -508,7 +516,7 @@ def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STA
     s_final = - np.ones(r_starts.shape[0] - 1)
     q_final = - np.ones(r_starts.shape[0] - 1)
 
-    maxlen = np.array((s_ends.max(), q_starts.max(), r_starts.max())).max()
+    maxlen = hmm_annotation.shape[0] # np.array((s_ends.max(), q_starts.max(), r_starts.max())).max()
 
     temp_s = np.zeros(maxlen)
     temp_s[s_ends] = 1
