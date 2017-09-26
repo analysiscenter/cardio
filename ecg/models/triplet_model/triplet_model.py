@@ -2,7 +2,7 @@
 
 from keras import regularizers
 from keras.layers import Input, Conv1D, Lambda, \
-                         MaxPooling1D,  Dense, \
+                         MaxPooling1D, Dense, \
                          TimeDistributed, BatchNormalization, \
                          Activation, Flatten
 from keras.layers.core import Dropout
