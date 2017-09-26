@@ -1,21 +1,16 @@
 """Model and model tools for ECG"""
 
-import numpy as np
-
-from keras import regularizers
 from keras.layers import Input, Conv1D, Lambda, \
                          MaxPooling1D, MaxPooling2D, \
-                         Dense, GlobalMaxPooling2D, \
-                         TimeDistributed, BatchNormalization, \
-                         Activation, Flatten, GlobalMaxPooling1D
+                         Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
-from keras.models import Model, model_from_yaml
+from keras.models import Model
 from keras.optimizers import Adam
 import keras.backend as K
 import tensorflow as tf
 
 from ..ecg_base_model import EcgBaseModel
-from .keras_extra_layers import RFFT, Crop, Inception2D 
+from .keras_extra_layers import RFFT, Crop, Inception2D
 
 class FFTModel(EcgBaseModel):#pylint: disable=too-many-locals
     '''
@@ -25,13 +20,9 @@ class FFTModel(EcgBaseModel):#pylint: disable=too-many-locals
     def __init__(self):
         super().__init__()
 
-    def build(self):
+    def build(self):#pylint: disable=too-many-locals
         '''
         Build and compile model
-        '''
-        '''
-        FFT inception model. Includes initial convolution layers, then FFT transform, then
-        a series of inception blocks.
         '''
         with tf.variable_scope('fft_model'):#pylint: disable=not-context-manager
             x = Input((None, 1))

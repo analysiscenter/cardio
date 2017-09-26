@@ -2,7 +2,7 @@
 
 import numpy as np
 from .base_model import BaseModel
-
+from keras.models import model_from_yaml
 
 class EcgBaseModel(BaseModel):
     '''
@@ -12,11 +12,11 @@ class EcgBaseModel(BaseModel):
         super().__init__()
         self.model = None
         self.hist = {'train_loss': [], 'train_metric': [],
-                     'val_loss': [], 'val_metric': []}     
+                     'val_loss': [], 'val_metric': []}
 
     def train_on_batch(self, batch, metrics=None, **kwagrs):
         '''
-        Train model 
+        Train model
         '''
         train_x = np.array(list(batch.signal))
 
@@ -63,4 +63,29 @@ class EcgBaseModel(BaseModel):
         Print model layers
         '''
         print(self.model.summary())
+        return self
+
+    @ds.action
+    def save(self, fname):
+        '''
+        Save model layers and weights
+        '''
+        self.model.save_weights(fname)
+        yaml_string = self.model.to_yaml()
+        fout = open(fname + ".layers", "w")
+        fout.write(yaml_string)
+        fout.close()
+        return self
+
+    @ds.action
+    def load(self, model_name, weights_only=True):
+        '''
+        Load model layers and weights
+        '''
+        if not weights_only:
+            fin = open(fname + ".layers", "r")
+            yaml_string = fin.read()
+            fin.close()
+            self.model = model_from_yaml(yaml_string)
+        self.model.load_weights(fname)
         return self

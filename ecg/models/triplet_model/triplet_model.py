@@ -1,17 +1,12 @@
 """Model and model tools for ECG"""
 
-import time
-import numpy as np
-
 from keras import regularizers
 from keras.layers import Input, Conv1D, Lambda, \
                          MaxPooling1D, MaxPooling2D, \
-                         Dense, GlobalMaxPooling2D, \
-                         TimeDistributed, BatchNormalization, \
-                         Activation, Flatten, GlobalMaxPooling1D
+                         Dense, TimeDistributed, BatchNormalization, \
+                         Activation, Flatten
 from keras.layers.core import Dropout
-from keras.models import Model, model_from_yaml
-from keras.optimizers import Adam
+from keras.models import Model
 import keras.backend as K
 import tensorflow as tf
 

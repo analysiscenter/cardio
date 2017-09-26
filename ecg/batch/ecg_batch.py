@@ -1,8 +1,6 @@
 """Contains ECG Batch class."""
 
 import copy
-import itertools
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -628,7 +626,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         sig = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low=5, high=50)
         sig = bt.convolve_signals(sig, kernels.gaussian(11, 3))
         self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
-        
+
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def repeat_signal(self, index, reps):
