@@ -1,8 +1,10 @@
 """Contains ECG Batch class with models' actions."""
 
-from .. import dataset as ds
 from .ecg_batch import EcgBatch
+from ..import dataset as ds
 from ..models import DirichletModel
+from ..models import TripletModel
+from ..models import FFTModel
 
 
 class ModelEcgBatch(EcgBatch):
@@ -10,6 +12,21 @@ class ModelEcgBatch(EcgBatch):
 
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded, unique_labels)
+        
+    @ds.model(mode="dynamic")
+    def triplet_learn(batch, config=None):#pylint: disable=no-self-argument
+        '''
+        Define triplet model
+        ''' 
+        signal_shape = batch.signal[0].shape
+        return TripletModel(signal_shape).build()
+
+    @ds.model(mode="static")
+    def fft_inception(batch, config=None):#pylint: disable=no-self-argument
+        '''
+        Define fft model
+        ''' 
+        return FFTModel().build()
 
     @ds.model(mode="dynamic")
     def dirichlet(batch, config=None):  # pylint: disable=no-self-argument
