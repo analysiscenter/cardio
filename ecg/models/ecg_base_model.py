@@ -65,7 +65,7 @@ class EcgBaseModel(BaseModel):
         print(self.model.summary())
         return self
 
-    def save(self, fname):
+    def save(self, fname):#pylint: disable=arguments-differ
         '''
         Save model layers and weights
         '''
@@ -76,7 +76,7 @@ class EcgBaseModel(BaseModel):
         fout.close()
         return self
 
-    def load(self, fname, weights_only=True):
+    def load(self, fname, weights_only=True):#pylint: disable=arguments-differ
         '''
         Load model layers and weights
         '''
