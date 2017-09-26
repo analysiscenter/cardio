@@ -1,8 +1,8 @@
 """Model and model tools for ECG"""
 
 import numpy as np
-from .base_model import BaseModel
 from keras.models import model_from_yaml
+from .base_model import BaseModel
 
 class EcgBaseModel(BaseModel):
     '''
@@ -65,7 +65,6 @@ class EcgBaseModel(BaseModel):
         print(self.model.summary())
         return self
 
-    @ds.action
     def save(self, fname):
         '''
         Save model layers and weights
@@ -77,8 +76,7 @@ class EcgBaseModel(BaseModel):
         fout.close()
         return self
 
-    @ds.action
-    def load(self, model_name, weights_only=True):
+    def load(self, fname, weights_only=True):
         '''
         Load model layers and weights
         '''
