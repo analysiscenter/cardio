@@ -13,7 +13,7 @@ from ..keras_custom_objects import conv_block
 class ConvModel(EcgBaseModel):#pylint: disable=too-many-locals
     '''
     Convolution model.
-    '''
+    '''#pylint: disable=duplicate-code
     def __init__(self):
         super().__init__()
         self._input_shape = None

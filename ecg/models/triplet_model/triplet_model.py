@@ -17,7 +17,7 @@ class TripletModel(EcgBaseModel):#pylint: disable=too-many-locals
     Model for triplet learn. Triplet consists of anchor, positive and negative ecg segments.
     Distance between embedding of ecg segments is cosine distance. Model learns to make distanse between
     anchor and positive embeddings smaller as compared to negative embedding.
-    '''
+    '''#pylint: disable=duplicate-code
     def __init__(self):
         super().__init__()
         self._input_shape = None
