@@ -3,9 +3,8 @@
 import tensorflow as tf
 from keras.engine.topology import Layer
 from keras.layers import Input, Conv1D, Conv2D, Lambda, \
-                         MaxPooling1D, MaxPooling2D, Dense, \
-                         TimeDistributed, BatchNormalization, \
-                         Activation, Flatten
+                         MaxPooling1D, MaxPooling2D, \
+                         TimeDistributed, BatchNormalization, Activation
 from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
 import keras.backend as K

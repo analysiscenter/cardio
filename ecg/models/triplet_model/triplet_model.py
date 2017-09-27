@@ -1,13 +1,10 @@
 """Model and model tools for ECG"""
 
 from keras import regularizers
-from keras.layers import Input, Conv1D, Lambda, \
-                         MaxPooling1D, Dense, \
+from keras.layers import Input, Lambda, Dense, \
                          TimeDistributed, BatchNormalization, \
                          Activation, Flatten
-from keras.layers.core import Dropout
 from keras.models import Model, load_model
-import keras.backend as K
 import tensorflow as tf
 
 from ..ecg_base_model import EcgBaseModel
@@ -23,6 +20,7 @@ class TripletModel(EcgBaseModel):#pylint: disable=too-many-locals
     '''
     def __init__(self):
         super().__init__()
+        self._input_shape = None
 
     def build(self, input_shape):
         '''
@@ -53,7 +51,7 @@ class TripletModel(EcgBaseModel):#pylint: disable=too-many-locals
             self.model.compile(loss=total_loss, optimizer="adam")
 
             return self
-    
+
     def load(self, fname):#pylint: disable=arguments-differ
         '''
         Load keras model
@@ -64,5 +62,5 @@ class TripletModel(EcgBaseModel):#pylint: disable=too-many-locals
                           'conv_block': conv_block,
                           'distributed_conv': distributed_conv
                          }
-        self.model = load_model(fname, custom_objects = custom_objects)
+        self.model = load_model(fname, custom_objects=custom_objects)
         return self

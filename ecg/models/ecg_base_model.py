@@ -1,7 +1,6 @@
 """Model and model tools for ECG"""
 
 import numpy as np
-from keras.models import model_from_yaml
 from .base_model import BaseModel
 
 class EcgBaseModel(BaseModel):

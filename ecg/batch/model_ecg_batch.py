@@ -28,7 +28,7 @@ class ModelEcgBatch(EcgBatch):
 
         Parameters
         ----------
-        pipeline : 
+        pipeline :
         config : dict
             Model config.
 
@@ -58,7 +58,7 @@ class ModelEcgBatch(EcgBatch):
 
         Parameters
         ----------
-        pipeline : 
+        pipeline :
         config : dict
             Model config.
 

@@ -66,5 +66,5 @@ class FFTModel(EcgBaseModel):#pylint: disable=too-many-locals
         Load keras model
         '''
         custom_objects = {'RFFT': RFFT, 'Crop': Crop, 'Inception2D': Inception2D}
-        self.model = load_model(fname, custom_objects = custom_objects)
+        self.model = load_model(fname, custom_objects=custom_objects)
         return self
