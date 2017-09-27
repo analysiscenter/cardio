@@ -650,7 +650,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     def ravel(self):
         '''
-        Ravel batch
+        Join a sequence of arrays along axis 0.
         '''
         x = np.concatenate(self.signal)
         x = list(x)
@@ -666,6 +666,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     def signal_transpose(self, index, axes):
         '''
         Transpose axes
+
+        Arguments
+        axes: list of new axis orders
         '''
         i = self.get_pos(None, "signal", index)
         self.signal[i] = np.transpose(self.signal[i], axes)
@@ -677,9 +680,13 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         1) anchor and positive segments are drawn at random from the same ecg
         2) negative segments is drawn from diffetent ecg
         3) exactly one ecg is drawn from arrythmia class.
+
         Arguments
         size: number of triplets to sample from batch.
         signel: length of signal to sample from ecg.
+
+        Returns
+        Batch of triplets [anchor, positive_sement, negative_segmant]
         '''
         ind = ds.DatasetIndex(index=np.arange(size, dtype=int))
         out_batch = self.__class__(ind)

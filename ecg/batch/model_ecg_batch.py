@@ -20,7 +20,29 @@ class ModelEcgBatch(EcgBatch):
         '''
         _ = config
         signal_shape = batch.signal[0].shape
-        return TripletModel(signal_shape).build()
+        return TripletModel().build(signal_shape)
+
+    @ds.model(mode="static")
+    def triplet_pretrained(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained Triplet model.
+
+        Parameters
+        ----------
+        pipeline : 
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : TripletModel
+            Loaded model.
+        """
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified")
+        if 'path' not in config.keys():
+            raise KeyError("Model config does not contain path")
+        return TripletModel().load(fname=config['path'])
 
     @ds.model(mode="static")
     def fft_inception(batch, config=None):#pylint: disable=no-self-argument
@@ -29,6 +51,28 @@ class ModelEcgBatch(EcgBatch):
         '''
         _ = config
         return FFTModel().build()
+
+    @ds.model(mode="static")
+    def fft_pretrained(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained FFT model.
+
+        Parameters
+        ----------
+        pipeline : 
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : FFTModel
+            Loaded model.
+        """
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified")
+        if 'path' not in config.keys():
+            raise KeyError("Model config does not contain path")
+        return FFTModel().load(config['path'])
 
     @ds.model(mode="dynamic")
     def dirichlet(batch, config=None):  # pylint: disable=no-self-argument
@@ -62,8 +106,7 @@ class ModelEcgBatch(EcgBatch):
 
         Parameters
         ----------
-        batch : ModelEcgBatch
-            First batch to request a model.
+        pipeline :
         config : dict
             Model config.
 
@@ -138,3 +181,41 @@ class ModelEcgBatch(EcgBatch):
         """
         model = self.get_model_by_name(model_name)
         return model.predict_on_batch(self, *args, **kwargs)
+
+    @ds.action
+    def save_model(self, model_name, *args, **kwargs):
+        """Save model weights.
+
+        Parameters
+        ----------
+        model_name : str
+            Model name.
+        *args, **kwargs : misc
+            Any additional model.save.
+
+        Returns
+        -------
+        result : misc
+            model.save output.
+        """
+        model = self.get_model_by_name(model_name)
+        return model.save(self, *args, **kwargs)
+
+    @ds.action
+    def load_model(self, model_name, *args, **kwargs):
+        """Load model weights.
+
+        Parameters
+        ----------
+        model_name : str
+            Model name.
+        *args, **kwargs : misc
+            Any additional model.load argments.
+
+        Returns
+        -------
+        result : misc
+            model.load output.
+        """
+        model = self.get_model_by_name(model_name)
+        return model.load(self, *args, **kwargs)

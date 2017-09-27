@@ -1,10 +1,82 @@
-""" contain keras custom layers """
+""" contain keras custom objects """
 
 import tensorflow as tf
 from keras.engine.topology import Layer
-from keras.layers import Input, Conv2D, MaxPooling2D, Lambda
+from keras.layers import Input, Conv1D, Conv2D, Lambda, \
+                         MaxPooling1D, MaxPooling2D, Dense, \
+                         TimeDistributed, BatchNormalization, \
+                         Activation, Flatten
+from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
 import keras.backend as K
+
+def distributed_conv(x, filters, kernel_size, activation):
+    '''
+    Apply successively timedistributed 1D convolution, then batchnorm, then activation.
+    Arguments
+    x: input of shape (nb_series, siglen, nb_channels).
+    filters: number of filters in Conv1D.
+    kernel_size: kernel_size for Conv1D.
+    activation: neuron activation function.
+    '''
+    conv = TimeDistributed((Conv1D(filters, kernel_size, padding='same')))(x)
+    b_norm = BatchNormalization()(conv)
+    return Activation(activation)(b_norm)
+
+def conv_block(x, filters, kernel_size, activation, repeat, max_pool, dropout):
+    '''
+    Block of several distributed_conv followed by maxpooling and dropout.
+    Arguments
+    x: input of shape (nb_series, siglen, nb_channels).
+    filters: number of filters in Conv1D.
+    kernel_size: kernel_size for Conv1D.
+    activation: neuron activation function.
+    repeat: if true, distributed_conv is applied twice, else once.
+    max_pool: if true, maxpooling is applied.
+    dropout: parameter for dropout layer.
+    '''
+    conv = distributed_conv(x, filters, kernel_size, activation)
+    if repeat:
+        conv = distributed_conv(conv, filters, kernel_size, activation)
+    if max_pool:
+        conv = TimeDistributed(MaxPooling1D())(conv)
+    return Dropout(dropout)(conv)
+
+def cos_metr(a, b):
+    '''
+    Cosine distance between slices along last axis of tensors a and b. Distance is scaled to [0, 1].
+    Arguments
+    a: tensor of shape (batch_size, emb_length).
+    b: tensor of shape (batch_size, emb_length).
+    '''
+    a = a / K.tf.norm(a, ord=2, axis=-1, keep_dims=True)
+    b = b / K.tf.norm(b, ord=2, axis=-1, keep_dims=True)
+    return (K.tf.reduce_sum(a * b, axis=1, keep_dims=True) + 1.) / 2
+
+def triplet_distance(x):
+    '''
+    Triplet distance between anchor, positive and negative ecg segments in triplet.
+    Arguments
+    x: tensor of shape (batch_size, component, emb_length).
+    '''
+    a = x[:, 0] #anchor item
+    pos = x[:, 1] #positive item
+    neg = x[:, 2] #negative item
+    d_pos = cos_metr(a, pos)
+    d_neg = cos_metr(a, neg)
+    return K.tf.concat([d_pos, d_neg], axis=-1)
+
+def total_loss(y_true, y_pred):
+    '''
+    Loss function for triplets.
+    Arguments
+    y_true: any tensor of shape (batch_size, 1), not used.
+    y_pred: tensor of shape (batch_size, 2) with predicted anchor to positive
+    and anchor to negative embedding distances.
+    '''
+    _ = y_true
+    return K.mean(-(y_pred[:, 0] - y_pred[:, 1]))
+
 
 class RFFT(Layer):
     '''

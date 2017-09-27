@@ -4,13 +4,13 @@ from keras.layers import Input, Conv1D, Lambda, \
                          MaxPooling1D, MaxPooling2D, \
                          Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.optimizers import Adam
 import keras.backend as K
 import tensorflow as tf
 
 from ..ecg_base_model import EcgBaseModel
-from .keras_extra_layers import RFFT, Crop, Inception2D
+from ..keras_custom_objects import RFFT, Crop, Inception2D
 
 class FFTModel(EcgBaseModel):#pylint: disable=too-many-locals
     '''
@@ -60,3 +60,11 @@ class FFTModel(EcgBaseModel):#pylint: disable=too-many-locals
             self.model.compile(optimizer=opt, loss="binary_crossentropy")
 
             return self
+
+    def load(self, fname):#pylint: disable=arguments-differ
+        '''
+        Load keras model
+        '''
+        custom_objects = {'RFFT': RFFT, 'Crop': Crop, 'Inception2D': Inception2D}
+        self.model = load_model(fname, custom_objects = custom_objects)
+        return self
