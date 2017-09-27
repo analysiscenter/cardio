@@ -8,8 +8,8 @@ from keras.models import Model, load_model
 import tensorflow as tf
 
 from ..ecg_base_model import EcgBaseModel
-from ..keras_custom_objects import distributed_conv, conv_block, \
-                                  cos_metr, triplet_distance, total_loss
+from ..keras_custom_objects import distributed_conv, distributed_conv_block, \
+                                   cos_metr, triplet_distance, total_loss
 
 
 class TripletModel(EcgBaseModel):#pylint: disable=too-many-locals
@@ -30,15 +30,15 @@ class TripletModel(EcgBaseModel):#pylint: disable=too-many-locals
         with tf.variable_scope('triplet_model'):#pylint: disable=not-context-manager
             x = Input(self._input_shape)
 
-            conv_block_1 = conv_block(x, 4, 4, 'elu', True, True, 0)
-            conv_block_2 = conv_block(conv_block_1, 8, 4, 'elu', True, True, 0)
-            conv_block_3 = conv_block(conv_block_2, 8, 4, 'elu', True, True, 0)
-            conv_block_4 = conv_block(conv_block_3, 16, 4, 'elu', True, True, 0.2)
-            conv_block_5 = conv_block(conv_block_4, 16, 4, 'elu', True, True, 0.2)
-            conv_block_6 = conv_block(conv_block_5, 24, 4, 'elu', True, True, 0.2)
-            conv_block_7 = conv_block(conv_block_6, 24, 4, 'elu', True, True, 0.2)
-            conv_block_8 = conv_block(conv_block_7, 32, 4, 'elu', False, True, 0.2)
-            conv_block_9 = conv_block(conv_block_8, 48, 4, 'elu', False, False, 0.2)
+            conv_block_1 = distributed_conv_block(x, 4, 4, 'elu', True, True, 0)
+            conv_block_2 = distributed_conv_block(conv_block_1, 8, 4, 'elu', True, True, 0)
+            conv_block_3 = distributed_conv_block(conv_block_2, 8, 4, 'elu', True, True, 0)
+            conv_block_4 = distributed_conv_block(conv_block_3, 16, 4, 'elu', True, True, 0.2)
+            conv_block_5 = distributed_conv_block(conv_block_4, 16, 4, 'elu', True, True, 0.2)
+            conv_block_6 = distributed_conv_block(conv_block_5, 24, 4, 'elu', True, True, 0.2)
+            conv_block_7 = distributed_conv_block(conv_block_6, 24, 4, 'elu', True, True, 0.2)
+            conv_block_8 = distributed_conv_block(conv_block_7, 32, 4, 'elu', False, True, 0.2)
+            conv_block_9 = distributed_conv_block(conv_block_8, 48, 4, 'elu', False, False, 0.2)
 
             flat = TimeDistributed(Flatten())(conv_block_9)
 
@@ -59,7 +59,7 @@ class TripletModel(EcgBaseModel):#pylint: disable=too-many-locals
         custom_objects = {'cos_metr': cos_metr,
                           'triplet_distance': triplet_distance,
                           'total_loss': total_loss,
-                          'conv_block': conv_block,
+                          'distributed_conv_block': distributed_conv_block,
                           'distributed_conv': distributed_conv
                          }
         self.model = load_model(fname, custom_objects=custom_objects)

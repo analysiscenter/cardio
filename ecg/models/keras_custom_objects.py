@@ -22,7 +22,7 @@ def distributed_conv(x, filters, kernel_size, activation):
     b_norm = BatchNormalization()(conv)
     return Activation(activation)(b_norm)
 
-def conv_block(x, filters, kernel_size, activation, repeat, max_pool, dropout):
+def distributed_conv_block(x, filters, kernel_size, activation, repeat, max_pool, dropout):
     '''
     Block of several distributed_conv followed by maxpooling and dropout.
     Arguments
@@ -40,6 +40,27 @@ def conv_block(x, filters, kernel_size, activation, repeat, max_pool, dropout):
     if max_pool:
         conv = TimeDistributed(MaxPooling1D())(conv)
     return Dropout(dropout)(conv)
+
+def conv_block(x, filters, kernel_size, activation, max_pool, dropout=None):
+    '''
+    Block of several 1D convolutions followed by maxpooling and dropout.
+    Arguments
+    x: input of shape (nb_series, siglen, nb_channels).
+    filters: number of filters in Conv1D.
+    kernel_size: kernel_size for Conv1D.
+    activation: neuron activation function.
+    max_pool: if true, maxpooling is applied.
+    dropout: parameter for dropout layer.
+    '''
+    conv = Conv1D(filters, kernel_size, padding='same')(x)
+    batch_norm = BatchNormalization()(conv)
+    act = Activation(activation)(batch_norm)
+    if max_pool:
+        act = MaxPooling1D()(act)
+    if dropout is not None:
+        return Dropout(dropout)(act)
+    else:
+        return act
 
 def cos_metr(a, b):
     '''

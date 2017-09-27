@@ -1,10 +1,13 @@
 """Contains ECG Batch class with models' actions."""
 
+from keras.models import Model
 from .ecg_batch import EcgBatch
 from ..import dataset as ds
 from ..models import DirichletModel
 from ..models import TripletModel
+from ..models import ConvModel
 from ..models import FFTModel
+from ..models import EcgBaseModel
 
 
 class ModelEcgBatch(EcgBatch):
@@ -43,6 +46,61 @@ class ModelEcgBatch(EcgBatch):
         if 'path' not in config.keys():
             raise KeyError("Model config does not contain path")
         return TripletModel().load(fname=config['path'])
+
+    @ds.model(mode="static")
+    def triplet_embedding(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained Triplet model.
+
+        Parameters
+        ----------
+        pipeline :
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : TripletModel
+            Loaded model.
+        """
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified")
+        if 'path' not in config.keys():
+            raise KeyError("Model config does not contain path")
+        triplet_model = TripletModel().load(fname=config['path'])
+        emb_model = Model(triplet_model.model.layers[0].input, triplet_model.model.layers[config['out_layer']].output)
+        return EcgBaseModel(model = emb_model)
+
+    @ds.model(mode="dynamic")
+    def conv_model(batch, config=None):#pylint: disable=no-self-argument
+        '''
+        Define conv model
+        '''
+        _ = config
+        signal_shape = batch.signal[0].shape
+        return ConvModel().build(signal_shape)
+
+    @ds.model(mode="static")
+    def conv_pretrained(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained conv model.
+
+        Parameters
+        ----------
+        pipeline :
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : TripletModel
+            Loaded model.
+        """
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified")
+        if 'path' not in config.keys():
+            raise KeyError("Model config does not contain path")
+        return ConvModel().load(fname=config['path'])
 
     @ds.model(mode="static")
     def fft_inception(batch, config=None):#pylint: disable=no-self-argument

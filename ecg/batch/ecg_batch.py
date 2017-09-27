@@ -672,6 +672,43 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         '''
         i = self.get_pos(None, "signal", index)
         self.signal[i] = np.transpose(self.signal[i], axes)
+  
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def tile(self, index, reps):
+        '''
+        Repeat signal reps times
+
+        Arguments
+        reps: the number of repetitions
+        '''
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = np.tile(self.signal[i], reps).reshape((*self.signal[i].shape, reps))
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def squeeze(self, index, axis=None):
+        '''
+        Remove single-dimensional entries from the shape of a signal
+
+        Arguments
+        axis: selects a subset of the single-dimensional entries in the shape.
+            If an axis is selected with shape entry greater than one, an error is raised.
+        '''
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = np.squeeze(self.signal[i], axis)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def slice_signal(self, index, slice_index):
+        '''
+        Repeat signal reps times
+
+        Arguments
+        reps: the number of repetitions
+        '''
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = self.signal[i][slice_index]
 
     @ds.action
     def get_triplets(self, size, siglen):#pylint: disable=too-many-locals

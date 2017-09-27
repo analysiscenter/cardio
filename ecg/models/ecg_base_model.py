@@ -7,9 +7,9 @@ class EcgBaseModel(BaseModel):
     '''
     Contains model, history and additional pretrained_model.
     '''
-    def __init__(self):
+    def __init__(self, model=None):
         super().__init__()
-        self.model = None
+        self.model = model
         self.hist = {'train_loss': [], 'train_metric': [],
                      'val_loss': [], 'val_metric': []}
 
@@ -45,13 +45,18 @@ class EcgBaseModel(BaseModel):
             self.hist['val_metric'].append(0.)
         return batch
 
-    def predict_on_batch(self, batch):
+    def predict_on_batch(self, batch, inplace=False):
         '''
         Predict data
         '''
         test_x = np.array(list(batch.signal))
-        predict = batch.pipeline.get_variable("prediction")
-        predict.append(self.model.predict_on_batch(test_x))
+        if inplace:
+            batch.signal = list(self.model.predict_on_batch(test_x))
+            batch.signal.append([])
+            batch.signal = np.array(batch.signal)[:-1]
+        else:
+            predict = batch.pipeline.get_variable("prediction")
+            predict.append(self.model.predict_on_batch(test_x))
         return batch
 
     def model_summary(self):
