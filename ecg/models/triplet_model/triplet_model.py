@@ -24,7 +24,7 @@ class TripletModel(EcgBaseModel):#pylint: disable=too-many-locals
 
     def build(self, input_shape):
         '''
-        Build and compile model
+        Build and compile triplet model
         '''
         self._input_shape = input_shape
         with tf.variable_scope('triplet_model'):#pylint: disable=not-context-manager

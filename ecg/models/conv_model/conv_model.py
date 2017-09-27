@@ -20,10 +20,9 @@ class ConvModel(EcgBaseModel):#pylint: disable=too-many-locals
 
     def build(self, input_shape):
         '''
-        Build and compile model
+        Build and compile conv model
         '''
-        self._input_shape = input_shape        
-        
+        self._input_shape = input_shape
         with tf.variable_scope('conv_model'):#pylint: disable=not-context-manager
             x = Input(self._input_shape)
 

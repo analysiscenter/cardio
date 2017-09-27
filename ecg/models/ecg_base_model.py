@@ -45,7 +45,7 @@ class EcgBaseModel(BaseModel):
             self.hist['val_metric'].append(0.)
         return batch
 
-    def predict_on_batch(self, batch, inplace=False):
+    def predict_on_batch(self, batch, inplace=False):#pylint: disable=arguments-differ
         '''
         Predict data
         '''

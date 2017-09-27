@@ -69,7 +69,7 @@ class ModelEcgBatch(EcgBatch):
             raise KeyError("Model config does not contain path")
         triplet_model = TripletModel().load(fname=config['path'])
         emb_model = Model(triplet_model.model.layers[0].input, triplet_model.model.layers[config['out_layer']].output)
-        return EcgBaseModel(model = emb_model)
+        return EcgBaseModel(model=emb_model)
 
     @ds.model(mode="dynamic")
     def conv_model(batch, config=None):#pylint: disable=no-self-argument

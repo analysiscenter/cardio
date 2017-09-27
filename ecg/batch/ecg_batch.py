@@ -672,7 +672,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         '''
         i = self.get_pos(None, "signal", index)
         self.signal[i] = np.transpose(self.signal[i], axes)
-  
+
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def tile(self, index, reps):
