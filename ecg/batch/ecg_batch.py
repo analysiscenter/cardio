@@ -672,24 +672,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def signal_transpose(self, index, axes):
-        '''Transpose axes in signal.
-
-        Parameters
-        ----------
-        axes : list of int
-            List of new axis orders.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Batch with each signal transposed according to new axes order. Changes self.signal inplace.
-        '''
-        i = self.get_pos(None, "signal", index)
-        self.signal[i] = np.transpose(self.signal[i], axes)
-
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
     def tile(self, index, reps):
         '''Repeat each signal reps times.
 
@@ -708,19 +690,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def squeeze(self, index, axis=None):
-        '''
-        Remove single-dimensional entries from the shape of a signal
-
-        Arguments
-        axis: selects a subset of the single-dimensional entries in the shape.
-            If an axis is selected with shape entry greater than one, an error is raised.
-        '''
-        i = self.get_pos(None, "signal", index)
-        self.signal[i] = np.squeeze(self.signal[i], axis)
-
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
     def slice_signal(self, index, slice_index):
         '''Slice signal
 
@@ -736,6 +705,28 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         '''
         i = self.get_pos(None, "signal", index)
         self.signal[i] = self.signal[i][slice_index]
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def apply(self, index, function, *args, **kwargs):
+        '''Apply given function to each signal in batch
+
+        Parameters
+        ----------
+        function : function
+            Function that is applied to signal.
+        *args : arguments
+            Function args.
+        **kwags : keyword arguments
+            Function kwargs.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with each signal transformed. Changes self.signal inplace.
+        '''
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = function(self.signal[i], *args, **kwargs)
 
     @ds.action
     def get_triplets(self, size, siglen, opp_classes=None):#pylint: disable=too-many-locals
