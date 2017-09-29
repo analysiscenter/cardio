@@ -131,7 +131,7 @@ class RFFT(Layer):
     def rfft(self, x, fft_fn):
         '''
         Computes one-dimensional discrete Fourier Transform on each slice along last dim.
-        Returns amplitude spectrum. 
+        Returns amplitude spectrum.
 
         Parameters
         ----------

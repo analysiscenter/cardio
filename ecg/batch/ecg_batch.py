@@ -722,12 +722,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def slice_signal(self, index, slice_index):
-        '''Slice signal 
+        '''Slice signal
 
         Parameters
         ----------
         slice_index : slice obj
-            Starting index, stopping index and the step 
+            Starting index, stopping index and the step
 
         Returns
         -------
@@ -745,7 +745,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         2) negative segments is drawn from other ecg
         3) if opp_classes is not None then opp_classes is a list of two targets and
         ecg are sampled from these classes.
-        
+
         Parameters
         ----------
         size : positive int
@@ -766,7 +766,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         batch_data = []
         batch_meta = []
-        
+
         if opp_classes is not None:
             a_indices = np.array([ind for ind in self.indices
                                   if self[ind].target == opp_classes[0]])
@@ -781,7 +781,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             a_choice = a_indices[np.random.randint(low=0, high=len(a_indices), size=size)]
             b_choice = b_indices[np.random.randint(low=0, high=len(b_indices), size=size)]
             pair_choice = np.array([a_choice, b_choice]).T
-            
+
             first_choice = np.random.randint(low=0, high=2, size=size)
             pos_indices = pair_choice[range(size), first_choice]
             neg_indices = pair_choice[range(size), 1 - first_choice]
