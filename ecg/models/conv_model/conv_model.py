@@ -7,10 +7,10 @@ from keras.layers.core import Dropout
 from keras.models import Model, load_model
 import tensorflow as tf
 
-from ..ecg_base_model import EcgBaseModel
-from ..keras_custom_objects import conv_block
+from ..keras_base_model import KerasBaseModel
+from ..keras_custom_objects import conv_block, conv_block_series
 
-class ConvModel(EcgBaseModel):#pylint: disable=too-many-locals
+class ConvModel(KerasBaseModel):#pylint: disable=too-many-locals
     '''
     Convolution model.
     '''#pylint: disable=duplicate-code
@@ -26,12 +26,12 @@ class ConvModel(EcgBaseModel):#pylint: disable=too-many-locals
         with tf.variable_scope('conv_model'):#pylint: disable=not-context-manager
             x = Input(self._input_shape)
 
-            conv_1 = conv_block(x, 20, 4, activation='elu', max_pool=True)
-            conv_2 = conv_block(conv_1, 24, 4, activation='elu', max_pool=True, dropout=0.2)
-            conv_3 = conv_block(conv_2, 24, 4, activation='elu', max_pool=True, dropout=0.2)
-            conv_4 = conv_block(conv_3, 24, 4, activation='elu', max_pool=True, dropout=0.2)
-            conv_5 = conv_block(conv_4, 28, 4, activation='elu', max_pool=True, dropout=0.2)
-            conv_6 = conv_block(conv_5, 32, 4, activation='elu', max_pool=False)
+            conv_1 = conv_block_series(x, 20, 4, 'elu', False, 1, True, 0)
+            conv_2 = conv_block_series(conv_1, 24, 4, 'elu', False, 1, True, 0.2)
+            conv_3 = conv_block_series(conv_2, 24, 4, 'elu', False, 1, True, 0.2)
+            conv_4 = conv_block_series(conv_3, 24, 4, 'elu', False, 1, True, 0.2)
+            conv_5 = conv_block_series(conv_4, 28, 4, 'elu', False, 1, True, 0.2)
+            conv_6 = conv_block_series(conv_5, 32, 4, 'elu', False, 1, False, 0)
 
             res = GlobalMaxPooling1D()(conv_6)
             drop = Dropout(0.2)(res)
@@ -48,6 +48,7 @@ class ConvModel(EcgBaseModel):#pylint: disable=too-many-locals
         '''
         Load keras model
         '''
-        custom_objects = {'conv_block': conv_block}
+        custom_objects = {'conv_block': conv_block,
+                          'conv_block_series': conv_block_series}
         self.model = load_model(fname, custom_objects=custom_objects)
         return self

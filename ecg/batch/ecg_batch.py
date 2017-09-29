@@ -572,6 +572,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     def convolve_signals(self, kernel, padding_mode="edge", axis=-1, **kwargs):
         """Convolve signals with given kernel.
+
         Parameters
         ----------
         kernel : array_like
@@ -582,6 +583,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Axis along which signals are sliced.
         **kwargs : misc
             Any additional named argments to np.pad.
+
         Returns
         -------
         batch : EcgBatch
@@ -595,6 +597,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.inbatch_parallel(init="indices", target="threads")
     def band_pass_signals(self, index, low=None, high=None, axis=-1):
         """Reject frequencies outside given range.
+
         Parameters
         ----------
         low : positive float
@@ -603,6 +606,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Low-pass filter cutoff frequency (Hz).
         axis : int
             Axis along which signals are sliced.
+
         Returns
         -------
         batch : EcgBatch
@@ -616,6 +620,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     def flip_signals(self, index):
         """Flip signals whose R-peaks are directed downwards.
         Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
+
         Returns
         -------
         batch : EcgBatch
@@ -649,9 +654,13 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     def ravel(self):
-        '''
-        Join a sequence of arrays along axis 0.
-        '''
+        """Join a sequence of arrays along axis 0.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with signals joined along signal axis 0.
+        """
         x = np.concatenate(self.signal)
         x = list(x)
         x.append([])
@@ -664,11 +673,17 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def signal_transpose(self, index, axes):
-        '''
-        Transpose axes
+        '''Transpose axes in signal.
 
-        Arguments
-        axes: list of new axis orders
+        Parameters
+        ----------
+        axes : list of int
+            List of new axis orders.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with each signal transposed according to new axes order. Changes self.signal inplace.
         '''
         i = self.get_pos(None, "signal", index)
         self.signal[i] = np.transpose(self.signal[i], axes)
@@ -676,11 +691,17 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def tile(self, index, reps):
-        '''
-        Repeat signal reps times
+        '''Repeat each signal reps times.
 
-        Arguments
-        reps: the number of repetitions
+        Parameters
+        ----------
+        reps : positive int
+            The number of repetitions.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with each signal repeated reps times. Changes self.signal inplace.
         '''
         i = self.get_pos(None, "signal", index)
         self.signal[i] = np.tile(self.signal[i], reps).reshape((*self.signal[i].shape, reps))
@@ -701,54 +722,76 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def slice_signal(self, index, slice_index):
-        '''
-        Repeat signal reps times
+        '''Slice signal 
 
-        Arguments
-        reps: the number of repetitions
+        Parameters
+        ----------
+        slice_index : slice obj
+            Starting index, stopping index and the step 
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with each sliced signal. Changes self.signal inplace.
         '''
         i = self.get_pos(None, "signal", index)
         self.signal[i] = self.signal[i][slice_index]
 
     @ds.action
-    def get_triplets(self, size, siglen):#pylint: disable=too-many-locals
+    def get_triplets(self, size, siglen, opp_classes=None):#pylint: disable=too-many-locals
         '''
-        Samples triplets so that
+        Samples triplets [anchor, positive_sement, negative_segmant] so that
         1) anchor and positive segments are drawn at random from the same ecg
-        2) negative segments is drawn from diffetent ecg
-        3) exactly one ecg is drawn from arrythmia class.
-
-        Arguments
-        size: number of triplets to sample from batch.
-        signel: length of signal to sample from ecg.
+        2) negative segments is drawn from other ecg
+        3) if opp_classes is not None then opp_classes is a list of two targets and
+        ecg are sampled from these classes.
+        
+        Parameters
+        ----------
+        size : positive int
+            Number of triplets to be sampled from batch.
+        siglen : positive int
+            Length of signal to be sampled from ecg.
+        opp_classes : None or list of two targets
+            List of targets from which ecg are sampled. If None ecg are sampled
+            from the whole batch.
 
         Returns
-        Batch of triplets [anchor, positive_sement, negative_segmant]
+        -------
+        batch : EcgBatch
+            Batch of triplets [anchor, positive_sement, negative_segmant]
         '''
         ind = ds.DatasetIndex(index=np.arange(size, dtype=int))
         out_batch = self.__class__(ind)
 
         batch_data = []
         batch_meta = []
+        
+        if opp_classes is not None:
+            a_indices = np.array([ind for ind in self.indices
+                                  if self[ind].target == opp_classes[0]])
+            b_indices = np.array([ind for ind in self.indices
+                                  if self[ind].target != opp_classes[1]])
 
-        ar_indices = np.array([ind for ind in self.indices if self[ind].target == 'A'])
-        sin_indices = np.array([ind for ind in self.indices if self[ind].target != 'A'])
+            if len(a_indices) == 0:
+                raise ValueError('There are no {0} signals in batch'.format(opp_classes[0]))
+            if len(b_indices) == 0:
+                raise ValueError('There are no {0} signals in batch'.format(opp_classes[1]))
 
-        if len(ar_indices) == 0:
-            raise ValueError('There are no arrythmia signals in batch')
-        if len(sin_indices) == 0:
-            raise ValueError('There are no non-arrythmia signals in batch')
+            a_choice = a_indices[np.random.randint(low=0, high=len(a_indices), size=size)]
+            b_choice = b_indices[np.random.randint(low=0, high=len(b_indices), size=size)]
+            pair_choice = np.array([a_choice, b_choice]).T
+            
+            first_choice = np.random.randint(low=0, high=2, size=size)
+            pos_indices = pair_choice[range(size), first_choice]
+            neg_indices = pair_choice[range(size), 1 - first_choice]
+        else:
+            pair_choice = np.array([np.random.choice(self.indices, 2, replace=False) for _ in range(size)])
+            pos_indices, neg_indices = pair_choice.T
 
-        ar_choice = ar_indices[np.random.randint(low=0, high=len(ar_indices), size=size)]
-        sin_choice = sin_indices[np.random.randint(low=0, high=len(sin_indices), size=size)]
-        pair_choice = [ar_choice, sin_choice]
-
-        first_choice = np.random.randint(low=0, high=2, size=size)
-        for i in ind.indices:
-            label = first_choice[i]
-
-            pos_index = pair_choice[label][i]
-            neg_index = pair_choice[1 - label][i]
+        for i in range(size):
+            pos_index = pos_indices[i]
+            neg_index = neg_indices[i]
 
             pos_signal = self[pos_index].signal
             if pos_signal.shape[1] < siglen:
@@ -763,7 +806,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             batch_data.append([pos_signal[:, seg_1: seg_1 + siglen],
                                pos_signal[:, seg_2: seg_2 + siglen],
                                neg_signal[:, seg_3: seg_3 + siglen]])
-            batch_meta.append([label, pos_index, seg_1, seg_2, neg_index, seg_3])
+            batch_meta.append([pos_index, seg_1, seg_2, neg_index, seg_3])
 
         batch_data.append(None)
         batch_data = np.array(batch_data)[:-1]

@@ -1,11 +1,11 @@
-"""Model and model tools for ECG"""
+"""Model and model tools for ECG with Keras backend"""
 
 import numpy as np
 from .base_model import BaseModel
 
-class EcgBaseModel(BaseModel):
+class KerasBaseModel(BaseModel):
     '''
-    Contains model, history and additional pretrained_model.
+    Contains model and history.
     '''
     def __init__(self, model=None):
         super().__init__()
@@ -16,6 +16,13 @@ class EcgBaseModel(BaseModel):
     def train_on_batch(self, batch, metrics=None, **kwagrs):
         '''
         Train model
+
+        Parameters
+        ----------
+        metrics : string
+            Metrics from list of Keras metrics to be evaluated by the model during training.
+        **kwargs : keyword arguments
+            Any kwargs that should be passed to metrics
         '''
         train_x = np.array(list(batch.signal))
 
@@ -32,7 +39,14 @@ class EcgBaseModel(BaseModel):
 
     def test_on_batch(self, batch, metrics=None, **kwagrs):
         '''
-        Validate model
+        Test model
+
+        Parameters
+        ----------
+        metrics : string or None
+            Metrics from list of Keras metrics to be evaluated by the model during testing. Default None.
+        **kwargs : keyword arguments
+            Any kwargs that should be passed to metrics
         '''
         test_x = np.array(list(batch.signal))
         res = self.model.test_on_batch(test_x, batch.target)
@@ -48,6 +62,11 @@ class EcgBaseModel(BaseModel):
     def predict_on_batch(self, batch, inplace=False):#pylint: disable=arguments-differ
         '''
         Predict data
+
+        Parameters
+        ----------
+        inplace : bool
+            If True predictions replace signal, otherwise are saved to pipeline component.
         '''
         test_x = np.array(list(batch.signal))
         if inplace:
@@ -69,6 +88,11 @@ class EcgBaseModel(BaseModel):
     def save(self, fname):#pylint: disable=arguments-differ
         '''
         Save keras model
+
+        Parameters
+        ----------
+        fname : string
+            Filename to which model is saved
         '''
         self.model.save(fname)
         return self
@@ -76,6 +100,11 @@ class EcgBaseModel(BaseModel):
     def load(self, fname):#pylint: disable=arguments-differ
         '''
         Load keras model
+
+        Parameters
+        ----------
+        fname : string
+            Filename from which model is loaded
         '''
         self.model.load(fname)
         return self

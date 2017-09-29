@@ -7,7 +7,7 @@ from ..models import DirichletModel
 from ..models import TripletModel
 from ..models import ConvModel
 from ..models import FFTModel
-from ..models import EcgBaseModel
+from ..models import KerasBaseModel
 
 
 class ModelEcgBatch(EcgBatch):
@@ -69,7 +69,7 @@ class ModelEcgBatch(EcgBatch):
             raise KeyError("Model config does not contain path")
         triplet_model = TripletModel().load(fname=config['path'])
         emb_model = Model(triplet_model.model.layers[0].input, triplet_model.model.layers[config['out_layer']].output)
-        return EcgBaseModel(model=emb_model)
+        return KerasBaseModel(model=emb_model)
 
     @ds.model(mode="dynamic")
     def conv_model(batch, config=None):#pylint: disable=no-self-argument

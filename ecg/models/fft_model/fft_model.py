@@ -9,10 +9,10 @@ from keras.optimizers import Adam
 import keras.backend as K
 import tensorflow as tf
 
-from ..ecg_base_model import EcgBaseModel
+from ..keras_base_model import KerasBaseModel
 from ..keras_custom_objects import RFFT, Crop, Inception2D
 
-class FFTModel(EcgBaseModel):#pylint: disable=too-many-locals
+class FFTModel(KerasBaseModel):#pylint: disable=too-many-locals
     '''
     FFT inception model. Includes initial convolution layers, then FFT transform, then
     a series of inception blocks.
