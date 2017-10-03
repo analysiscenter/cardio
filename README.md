@@ -1,6 +1,6 @@
 # ecg
 
-```ecg``` is a library that works with electrocardiogram signal. It allows easily load and process ecg signal and learn any model. The library is based on [Dataset]() and supports its whole functionality. So you can define your oun pipeline, write custon preprocess functions or use built-in ones and handle with datasets even if it does not fit into memory.
+```ecg``` is a library that works with electrocardiogram signal. It allows easily load and process ecg signal and learn any model. The library is based on [Dataset](https://github.com/analysiscenter/dataset/blob/master/README.md) and supports its whole functionality. So you can define your oun pipeline, write custon preprocess functions or use built-in ones and handle with datasets even if it does not fit into memory.
 
 ```ecg``` has two modules: [```batch```](doc/batch.md) and [```models```](doc/models.md). 
 

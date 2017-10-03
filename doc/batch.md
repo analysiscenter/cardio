@@ -44,13 +44,13 @@ Contains kernel generation functions.
 
 Initialize models to make them available in pipeline. We have a number of built-in models:
 
-* [```fft_inception```
+* [```fft_inception```](fft_model.md)
 
-* [```triplet_learn```]()
+* [```triplet_learn```](triplet_model.md)
 
-* [```dirichlet```]()
+* [```dirichlet```](dirichlet_model.md)
 
-* [```conv_model```]()
+* [```conv_model```](conv_model.md)
 
 
 ## utils
