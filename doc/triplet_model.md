@@ -7,7 +7,7 @@ The model is trained on triplets, where each triplet is a list [anchor_segment, 
 Loss of the model is a difference *d*(anchor_segment, positive_segment) - *d*(anchor_segment, negative_segment), where *d* is some metric in embedding space. At the moment *d* is a cosine similarity metric.
 
 ## How to use
-We applied this model to generate features that would increase accuracy of the following arrhythmia prediction. We generate triplets that include segments from both arrhythmia and non-arrhythmia signals. Training pipeline we used for the triplet model looks as follows:
+We applied this model to generate features that would increase accuracy of the following arrhythmia prediction. We generate triplets that include segments from both arrhythmia and non-arrhythmia signals. Train pipeline we used for the triplet model looks as follows:
 ```python
 triplet_train_pipeline = (ds.Pipeline()
                           .load(fmt="wfdb", components=["signal", "meta"])

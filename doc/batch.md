@@ -30,6 +30,8 @@ This is a base class that defines how to store ecg data and lists all the action
 
 * ```band_pass_signals```
 
+* ```apply```
+
 
 ## ecg_batch_tools
 

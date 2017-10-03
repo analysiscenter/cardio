@@ -1,19 +1,22 @@
 # ecg
 
-```ecg``` is a library that works with electrocardiogram signal. It allows easily load and process ecg signal and learn any model. The library is based on [Dataset](https://github.com/analysiscenter/dataset/blob/master/README.md) and supports its whole functionality. So you can define your oun pipeline, write custon preprocess functions or use built-in ones and handle with datasets even if it does not fit into memory.
+```ecg``` is a library that works with electrocardiogram signal. It allows easily load and process ecg signal and learn any model. 
+The library is based on [Dataset](https://github.com/analysiscenter/dataset/blob/master/README.md) and supports its whole functionality. 
+So you can define your own pipeline, write custom preprocess functions or use built-in ones and handle with datasets even if it does not fit into memory.
 
 ```ecg``` has two modules: [```batch```](doc/batch.md) and [```models```](doc/models.md). 
 
 In ```batch``` we gather everything you may need to process ecg signal:
 * load and save signal in a number of formats
-* resample, crop or flip signal
+* resample, crop and flip signal
 * filter signal
 * apply complex transformations like fft or wavelets
 * apply custom functions.
 
-In ```models``` we provide several models that should inspire you to start you own research. Provided models are created to learn the most important problems in ecg:
+In ```models``` we provide a template model and several real models that should inspire you to start you own research.
+Provided models are created to learn the most important problems in ecg:
 * how to recognize specific features of ecg like R-peaks, P-wave, T-wave
-* how to recignize dengerous deseases from ecg, for example - atrial fibrillation.
+* how to recignize dangerous deseases from ecg, for example - atrial fibrillation.
 
 # Basic usage
 
@@ -31,3 +34,4 @@ model_train_pipeline = (ds.Pipeline()
                         .train_on_batch('my_ecg_model', metrics=f1_score, average='macro')
                         .run(batch_size=300, shuffle=True, n_epochs=50, prefetch=0))
 ```
+As a result of this pipeline one obtains trained model.
