@@ -35,3 +35,7 @@ model_train_pipeline = (ds.Pipeline()
                         .run(batch_size=300, shuffle=True, n_epochs=50, prefetch=0))
 ```
 As a result of this pipeline one obtains trained model.
+
+# How to start
+
+See [tutorial](https://github.com/analysiscenter/ecg/blob/unify_models/doc/tutorial.md) to start working with ecg.
