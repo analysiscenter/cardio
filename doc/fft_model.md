@@ -3,7 +3,9 @@
 FFT model learns to classify ecg signals using signal spectrum. At first step it convolves signal with a number of 1D kernels.
 Then for each channel it applies fast fouriet transform. 
 The result is considered as 2D image and is processed with a number of [Inception2d]() blocks
-to resulting output, which is a predicted class.
+to resulting output, which is a predicted class. See below the model architecture:
+
+![image](fft_model.png)
 
 ## How to use
 We applied this model to arrhythmia prediction from single-lead ecg. Train pipeline we used for the fft model looks as follows:
