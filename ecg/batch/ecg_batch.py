@@ -640,7 +640,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
         For each subarray of length window_size skewness is calculated and compared with
         threshold to decide whether this subarray should be flipped. Then the mode of those
-        results is calculated to mae final decision. 
+        results is calculated to mae final decision.
 
         Parameters
         ----------
@@ -665,11 +665,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         if window_size is None:
             window_size = sig.shape[1]
 
-        number_of_splits = sig.shape[1] // window_size        
+        number_of_splits = sig.shape[1] // window_size
         sig = sig[:, :window_size*number_of_splits]
 
         splits = np.split(sig, number_of_splits, axis=-1)
-        votes = [np.where(scipy.stats.skew(subseq, axis=-1) < 0, -1, 1).reshape(-1, 1) for subseq in splits]
+        votes = [np.where(scipy.stats.skew(subseq, axis=-1) < threshold, -1, 1).reshape(-1, 1) for subseq in splits]
         mode_of_votes = scipy.stats.mode(votes)[0].reshape(-1, 1)
         self.signal[i] *= mode_of_votes
 
