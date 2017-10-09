@@ -650,7 +650,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         threshold: float
             If skewness of the fragment with size window size less than threshold, this
             fragment "votes" for flipping signal. Default value is 0.
-        
+
         Returns
         -------
         batch : EcgBatch
@@ -660,7 +660,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self._check_2d(self.signal[i])
         sig = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low=5, high=50)
         sig = bt.convolve_signals(sig, kernels.gaussian(11, 3))
-        
+
 
         if window_size is None:
             window_size = sig.shape[1]
