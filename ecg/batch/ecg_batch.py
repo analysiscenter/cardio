@@ -634,10 +634,13 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def flip_signals(self, index):
+    def flip_signals(self, index, window_size=None, threshold=0):
         """Flip signals whose R-peaks are directed downwards.
 
         Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
+        If both window size and step are specified, window mode will be used - skewness is
+        calculated for each window taken with specified step, and then decision about
+        flipping is taken by calculating mode of decisions for each window.
 
         Returns
         -------
@@ -648,8 +651,13 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self._check_2d(self.signal[i])
         sig = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low=5, high=50)
         sig = bt.convolve_signals(sig, kernels.gaussian(11, 3))
-        self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
-
+        if window_size is None:
+            window_size = sig.shape[1]
+        
+        split_indices = np.arange(window_size, sig.shape[1], window_size)
+        splits = np.split(sig, split_inds, axis=-1)
+        votes = [np.where(scipy.stats.skew(subseq, axis=-1) < 0, -1, 1).reshape(-1, 1) for subseq in splits]
+        self.signal[i] *= mode_of_votes
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')

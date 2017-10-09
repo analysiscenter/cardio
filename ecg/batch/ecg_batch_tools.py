@@ -419,7 +419,7 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
 
     maxlen = hmm_annotation.shape[0]
 
-    if np.all([p_starts.shape[0], q_starts.shape[0], r_starts.shape[0]]):
+    if not (p_starts.shape[0] * q_starts.shape[0] * r_starts.shape[0]):
         return 0.00
 
     temp_p = np.zeros(maxlen)
@@ -473,7 +473,7 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
 
     maxlen = hmm_annotation.shape[0]
 
-    if np.all([t_ends.shape[0], q_starts.shape[0], r_starts.shape[0]]):
+    if not (t_ends.shape[0] * q_starts.shape[0] * r_starts.shape[0]):
         return 0.00
 
     temp_t = np.zeros(maxlen)
@@ -526,7 +526,7 @@ def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STA
 
     maxlen = hmm_annotation.shape[0]
 
-    if np.all([s_ends.shape[0], q_starts.shape[0], r_starts.shape[0]]):
+    if not (s_ends.shape[0] * q_starts.shape[0] * r_starts.shape[0]):
         return 0.00
 
     temp_s = np.zeros(maxlen)
