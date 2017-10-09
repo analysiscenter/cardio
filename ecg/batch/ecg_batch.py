@@ -666,11 +666,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             window_size = sig.shape[1]
 
         number_of_splits = sig.shape[1] // window_size        
-        sig = sig[:, :window_size * number_of_splits]
+        sig = sig[:, :window_size*number_of_splits]
 
         splits = np.split(sig, number_of_splits, axis=-1)
         votes = [np.where(scipy.stats.skew(subseq, axis=-1) < 0, -1, 1).reshape(-1, 1) for subseq in splits]
-        mode_of_votes = scipy.stats.mode(votes)[0].reshape(-1,1)
+        mode_of_votes = scipy.stats.mode(votes)[0].reshape(-1, 1)
         self.signal[i] *= mode_of_votes
 
     @ds.action
