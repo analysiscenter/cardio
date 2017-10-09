@@ -1,6 +1,6 @@
 # Models
 
-This is a place where ecg models live. You can write your own model or exploit provided models, however, any model should extend [base_model]() class. 
+This is a place where ECG models live. You can write your own model or exploit provided models, however, any model should extend [base_model]() class. 
 
 ## Base model
 All what you may need from model are the following methods:

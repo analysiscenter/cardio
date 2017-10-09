@@ -1,11 +1,11 @@
 # Batch
 
 ## ecg_batch
-This is a base class that defines how to store ecg data and lists all the actions that can be applied to ecg regardless of models. Class ```ecg_base``` has the following attributes:
-* ```signal``` stores ecg signal as numpy array
-* ```annotation```, this can be any array that annotate specific points of ecg signal, e.g. R peaks
-* ```meta``` contains any parameters of ecg signal, e.g. signal frequency
-* ```target``` contains label assigned to ecg
+This is a base class that defines how to store ECG data and lists all the actions that can be applied to ECG regardless of models. Class ```ecg_base``` has the following attributes:
+* ```signal``` stores ECG signal in numpy array
+* ```annotation```, this can be any array that annotate specific points of ECG signal, e.g. R peaks
+* ```meta``` contains any parameters of ECG signal, e.g. signal frequency
+* ```target``` contains label assigned to ECG
 * ```unique_labels``` is just a list of all possible target labels.
 
 ### Actions of ecg_batch
