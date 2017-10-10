@@ -203,8 +203,8 @@ def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
     return np.fft.irfft(sig_rfft, n=signals.shape[axis], axis=axis)
 
 
-def gen_hmm_features(signal, cwt_scales, cwt_wavelet):
-    """ Generate features from the signal for HMM annotation.
+def wavelet_transform(signal, cwt_scales, cwt_wavelet):
+    """ Generate wavelet transformation from the signal.
 
     Parameters
     ----------
