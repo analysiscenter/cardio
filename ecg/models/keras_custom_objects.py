@@ -1,18 +1,123 @@
-""" contain keras custom layers """
+""" Contains keras custom objects """
 
 import tensorflow as tf
 from keras.engine.topology import Layer
-from keras.layers import Input, Conv2D, MaxPooling2D, Lambda
+from keras.layers import Input, Conv1D, Conv2D, Lambda, \
+                         MaxPooling1D, MaxPooling2D, \
+                         TimeDistributed, BatchNormalization, Activation
+from keras.layers.core import Dropout
 from keras.layers.merge import Concatenate
 import keras.backend as K
+
+def conv_block(x, filters, kernel_size, activation, timedist):
+    '''
+    Apply Conv1D, then BatchNormalization, then Activation.
+
+    Parameters
+    ----------
+    x : tensor
+        Input tensor with shape (nb_series, siglen, nb_channels).
+    filters : int
+        Number of filters in Conv1D.
+    kernel_size : int
+        Kernel_size for Conv1D.
+    activation : string
+        Neuron activation function.
+    timedist : bool
+        True if input has temporal dimension.
+    '''
+    if timedist:
+        conv = TimeDistributed(Conv1D(filters, kernel_size, padding='same'))(x)
+    else:
+        conv = Conv1D(filters, kernel_size, padding='same')(x)
+    b_norm = BatchNormalization()(conv)
+    return Activation(activation)(b_norm)
+
+def conv_block_series(x, filters, kernel_size, activation, timedist,
+                      repeat=1, max_pool=True, dropout=0):
+    '''
+    Series of conv_block repeated and followed by maxpooling and dropout.
+
+    Parameters
+    ----------
+    x : tensor
+        Input tensor with shape (nb_series, siglen, nb_channels).
+    filters : int
+        Number of filters in Conv1D.
+    kernel_size : int
+        Kernel_size for Conv1D.
+    activation : string
+        Neuron activation function.
+    timedist : bool
+        True if input has temporal dimension.
+    repeat : positive int
+        Number or times to repeat distributed_conv. Default 1.
+    max_pool : bool
+        If True, maxpooling is applied. Default True.
+    dropout : float in [0, 1]
+        Parameter for dropout layer. Default 0.
+    '''
+    conv = conv_block(x, filters, kernel_size, activation, timedist)
+    for _ in range(repeat - 1):
+        conv = conv_block(conv, filters, kernel_size, activation, timedist)
+    if max_pool:
+        if timedist:
+            conv = TimeDistributed(MaxPooling1D())(conv)
+        else:
+            conv = MaxPooling1D()(conv)
+    return Dropout(dropout)(conv)
+
+def cos_metr(a, b):
+    '''
+    Cosine distance between slices along last axis of tensors a and b. Distance is scaled to [0, 1].
+
+    Parameters
+    ----------
+    a : tensor
+        Tensor of shape (batch_size, emb_length).
+    b : tensor
+        Tensor of shape (batch_size, emb_length).
+    '''
+    a = a / K.tf.norm(a, ord=2, axis=-1, keep_dims=True)
+    b = b / K.tf.norm(b, ord=2, axis=-1, keep_dims=True)
+    return (K.tf.reduce_sum(a * b, axis=1, keep_dims=True) + 1.) / 2
+
+def triplet_distance(x):
+    '''
+    Triplet distance between anchor, positive and negative ecg segments in triplet.
+
+    Parameters
+    ----------
+    x : tensor
+        Tensor of shape (batch_size, component, emb_length).
+    '''
+    a = x[:, 0] #anchor item
+    pos = x[:, 1] #positive item
+    neg = x[:, 2] #negative item
+    d_pos = cos_metr(a, pos)
+    d_neg = cos_metr(a, neg)
+    return K.tf.concat([d_pos, d_neg], axis=-1)
+
+def total_loss(y_true, y_pred):
+    '''
+    Loss function for triplets.
+
+    Parameters
+    ----------
+    y_true : tensor
+        Any tensor of shape (batch_size, 1), not used for computation.
+    y_pred : tensor
+        Tensor of shape (batch_size, 2) with predicted anchor to positive
+        and anchor to negative embedding distances.
+    '''
+    _ = y_true
+    return K.mean(-(y_pred[:, 0] - y_pred[:, 1]))
+
 
 class RFFT(Layer):
     '''
     Keras layer for one-dimensional discrete Fourier Transform for real input.
     Computes rfft transforn on each slice along last dim.
-
-    Arguments
-    None
 
     Input shape
     3D tensor (batch_size, signal_length, nb_channels)
@@ -28,12 +133,12 @@ class RFFT(Layer):
         Computes one-dimensional discrete Fourier Transform on each slice along last dim.
         Returns amplitude spectrum.
 
-        Arguments
-        x: 3D tensor (batch_size, signal_length, nb_channels)
-        fft_fn: function that performs fft
-
-        Retrun
-        out: 3D tensor (batch_size, signal_length, nb_channels) of type tf.float32
+        Parameters
+        ----------
+        x : tensot
+            3D tensor (batch_size, signal_length, nb_channels)
+        fft_fn : function
+            Function that performs fft
         '''
         resh = K.cast(K.map_fn(K.transpose, x), dtype='complex64')
         spec = K.abs(K.map_fn(fft_fn, resh))
@@ -60,9 +165,12 @@ class Crop(Layer):
     '''
     Keras layer returns cropped signal.
 
-    Arguments
-    begin: begin of the cropped segment
-    size: size of the cropped segment
+    Parameters
+    ----------
+    begin : int
+        Begin of the cropped segment
+    size : int
+        Size of the cropped segment
 
     Input shape
     3D tensor (batch_size, signal_length, nb_channels)
@@ -89,12 +197,18 @@ class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
     '''
     Keras layer implements inception block.
 
-    Arguments
-    base_dim: nb_filters for the first convolution layers.
-    nb_filters: nb_filters for the second convolution layers.
-    kernel_size_1: kernel_size for the second convolution layer.
-    kernel_size_2: kernel_size for the second convolution layer.
-    activation: activation function for each convolution, default is 'linear'.
+    Parameters
+    ----------
+    base_dim : int
+        nb_filters for the first convolution layers.
+    nb_filters : int
+        nb_filters for the second convolution layers.
+    kernel_size_1 : int
+        Kernel_size for the second convolution layer.
+    kernel_size_2 : int
+        Kernel_size for the second convolution layer.
+    activation : string
+        Activation function for each convolution, default is 'linear'.
 
     Input shape
     4D tensor (batch_size, width, height, nb_channels)
