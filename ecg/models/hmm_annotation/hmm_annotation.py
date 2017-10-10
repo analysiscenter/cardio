@@ -160,6 +160,6 @@ class HMMAnnotation(GaussianHMM, BaseModel): # pylint: disable=abstract-method
         """
         for ind in batch.indices:
             batch[ind].annotation["hmm_annotation"] = \
-            self.predict(batch[ind].annotation["hmm_features"]).reshape((1, -1)).flatten()
+            self.predict(batch[ind].annotation["wavelets"]).reshape((1, -1)).flatten()
 
         return batch

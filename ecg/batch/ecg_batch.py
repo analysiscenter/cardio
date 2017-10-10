@@ -15,7 +15,7 @@ from .utils import LabelBinarizer
 class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     """Class for storing batch of ECG signals.
 
-    Alongside with data this class contains various methods of ECG 
+    Alongside with data this class contains various methods of ECG
     data processing, used to create pipelines for model training.
 
     Parameters
@@ -39,7 +39,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Array of dicts with metadata about signals.
     target : 1-D ndarray
         Array with labels of the signals.
-    unique_labels : 
+    unique_labels : 1-D ndarray
         Array with unique labels in dataset.
     """
 
@@ -61,7 +61,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         results : list
             Post function computation results.
-        
+
         Raises
         ------
         RuntimeError
@@ -721,8 +721,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self._check_2d(self.signal[i])
 
         self.annotation[i]["wavelets"] = bt.wavelet_transform(self.signal[i],
-                                                                 cwt_scales,
-                                                                 cwt_wavelet)
+                                                              cwt_scales,
+                                                              cwt_wavelet)
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')
