@@ -12,7 +12,32 @@ from ..models import HMMAnnotation
 
 
 class ModelEcgBatch(EcgBatch):
-    """ECG Batch class with models' actions."""
+    """ECG Batch class with models' actions.
+    
+    Parameters
+    ----------
+    index : DatasetIndex
+        Instance of DatasetIndex class.
+    preloaded : tuple, optional
+        Data to put in the batch if.
+        Defaul value is None.
+    unique_labels : 1-D ndarray
+        Array with unique labels in dataset.
+
+    Attributes
+    ----------
+    signal : 1-D ndarray
+        1-D ndarray of objects - 2-D arrays with ECG
+        signals.
+    annotation : 1-D ndarray
+        Array of dicts with different types of annotations.
+    meta : 1-D ndarray
+        Array of dicts with metadata about signals.
+    target : 1-D ndarray
+        Array with labels of the signals.
+    unique_labels : 1-D ndarray
+        Array with unique labels in dataset.
+    """
 
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded, unique_labels)
