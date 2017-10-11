@@ -35,8 +35,8 @@ def load_wfdb(path, components):
 
     Returns
     -------
-    signal_data : list
-        List of signal components.
+    ecg_data : list
+        List of ecg data components.
     """
     path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
@@ -64,7 +64,7 @@ def segment_signals(signals, length, step):
     Returns
     -------
     signals : 3-D ndarray
-        Segmented signals.
+        Segmented signals stacked along axis 2.
     """
     res = np.empty(((signals.shape[1] - length) // step + 1, signals.shape[0], length), dtype=signals.dtype)
     for i in range(res.shape[0]):
@@ -89,7 +89,7 @@ def random_segment_signals(signals, length, n_segments):
     Returns
     -------
     signals : 3-D ndarray
-        Segmented signals.
+        Segmented signals stacked along axis 2.
     """
     res = np.empty((n_segments, signals.shape[0], length), dtype=signals.dtype)
     for i in range(res.shape[0]):
@@ -134,10 +134,10 @@ def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
         Signals to convolve.
     kernel : array_like
         Convolution kernel.
-    axis : int
-        Axis along which signals are sliced.
     padding_mode : str or function
         np.pad padding mode.
+    axis : int
+        Axis along which signals are sliced.
     kwargs : misc
         Any additional named argments to np.pad.
 
@@ -204,7 +204,7 @@ def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
 
 
 def wavelet_transform(signal, cwt_scales, cwt_wavelet):
-    """ Generate wavelet transformation from the signal.
+    """Generate wavelet transformation from the signal.
 
     Parameters
     ----------
@@ -224,16 +224,19 @@ def wavelet_transform(signal, cwt_scales, cwt_wavelet):
     sig = signal[0, :]
 
     cwtmatr = pywt.cwt(sig, np.array(cwt_scales), cwt_wavelet)[0]
-    features = ((cwtmatr - np.mean(cwtmatr, axis=1).reshape(-1, 1))/
+    wavelets = ((cwtmatr - np.mean(cwtmatr, axis=1).reshape(-1, 1))/
                 np.std(cwtmatr, axis=1).reshape(-1, 1)).T
 
-    return features
+    return wavelets
 
 
 @njit(nogil=True)
 #@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
-    """ Finds starts and ends of the intervals with values from inter_val.
+    """Find starts and ends of the intervals.
+
+    This function finds starts and ends of continuous intervals of values
+    from inter_val in hmm_annotation.
 
     Parameters
     ----------
@@ -244,9 +247,9 @@ def find_intervals_borders(hmm_annotation, inter_val):
 
     Returns
     -------
-    starts : numpy.array
+    starts : 1-D ndarray
         Indices of the starts of the intervals.
-    ends : numpy.array
+    ends : 1-D ndarray
         Indices of the ends of the intervals.
     """
     intervals = np.zeros(hmm_annotation.shape, dtype=np.int8)
@@ -269,18 +272,23 @@ def find_maxes(signal, starts, ends):
 
     Parameters
     ----------
-    signal : numpy.array
-        Ecg signal.
-    starts : numpy.array
+    signal : 2-D ndarray
+        ECG signal.
+    starts : 1-D ndarray
         Indices of the starts of the intervals.
-    ends : numpy.array
+    ends : 1-D ndarray
         Indices of the ens of the intervals.
 
     Returns
     -------
-    maxes : numpy.array
+    maxes : 1-D ndarray
         Indices of max values of each interval.
+    
+    Notes
+    -----
+    Currently works with first lead only.
     """
+
     maxes = np.empty(starts.shape, dtype=np.float64)
     for i in range(maxes.shape[0]):
         maxes[i] = starts[i] + np.argmax(signal[0][starts[i]:ends[i]])
@@ -295,12 +303,15 @@ def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
 
     Parameters
     ----------
-    signal : numpy.array
-        Ecg signal.
-    hmm_annotation : numpy.array
+    signal : 2-D ndarray
+        ECG signal.
+    hmm_annotation : 1-D ndarray
         Annotation for the signal from hmm_annotation model.
     fs : float
         Sampling rate of the signal.
+    r_state : 1-D ndarray
+        Array with values that represent R peak.
+        Default value is R_STATE, which is a constant of this module. 
 
     Returns
     -------
@@ -328,6 +339,15 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
         Annotation for the signal from hmm_annotation model.
     fs : float
         Sampling rate of the signal.
+    p_states : 1-D ndarray
+        Array with values that represent P peak.
+        Default value is P_STATES, which is a constant of this module.
+    q_state : 1-D ndarray
+        Array with values that represent Q peak.
+        Default value is Q_STATE, which is a constant of this module.
+    r_state : 1-D ndarray
+        Array with values that represent R peak.
+        Default value is R_STATE, which is a constant of this module.
 
     Returns
     -------
@@ -382,6 +402,15 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
         Annotation for the signal from hmm_annotation model.
     fs : float
         Sampling rate of the signal.
+    t_states : 1-D ndarray
+        Array with values that represent T peak.
+        Default value is T_STATES, which is a constant of this module.
+    q_state : 1-D ndarray
+        Array with values that represent Q peak.
+        Default value is Q_STATE, which is a constant of this module.
+    r_state : 1-D ndarray
+        Array with values that represent R peak.
+        Default value is R_STATE, which is a constant of this module.
 
     Returns
     -------
@@ -436,11 +465,20 @@ def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STA
         Annotation for the signal from hmm_annotation model.
     fs : float
         Sampling rate of the signal.
+    s_state : 1-D ndarray
+        Array with values that represent S peak.
+        Default value is S_STATE, which is a constant of this module.
+    q_state : 1-D ndarray
+        Array with values that represent Q peak.
+        Default value is Q_STATE, which is a constant of this module.
+    r_state : 1-D ndarray
+        Array with values that represent R peak.
+        Default value is R_STATE, which is a constant of this module.
 
     Returns
     -------
     qrs_val : float
-        Duration of QRS interval in seconds.
+        Duration of QRS complex in seconds.
     """
     _, s_ends = find_intervals_borders(hmm_annotation, s_state)
     q_starts, _ = find_intervals_borders(hmm_annotation, q_state)
