@@ -6,12 +6,6 @@ import sklearn
 
 __all__ = ["f1_score", "auc", "classification_report", "calculate_metrics"]
 
-METRICS_DICT = {
-    "f1_score": f1_score,
-    "auc": auc,
-    "classification_report": classification_report,
-}
-
 
 def get_class_prob(predictions_dict):
     """Get true and predicted targets from predictions_dict.
@@ -147,6 +141,13 @@ def classification_report(predictions_list, **kwargs):
         Text summary of the precision, recall and F1 score for each class.
     """
     return sklearn.metrics.classification_report(*get_labels(predictions_list), **kwargs)
+
+
+METRICS_DICT = {
+    "f1_score": f1_score,
+    "auc": auc,
+    "classification_report": classification_report,
+}
 
 
 def calculate_metrics(metrics_list, predictions_list):
