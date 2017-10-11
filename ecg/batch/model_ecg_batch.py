@@ -13,7 +13,7 @@ from ..models import HMMAnnotation
 
 class ModelEcgBatch(EcgBatch):
     """ECG Batch class with models' actions.
-    
+
     Parameters
     ----------
     index : DatasetIndex
