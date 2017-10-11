@@ -117,7 +117,7 @@ def triplet_distance(x):
     return K.tf.concat([d_pos, d_neg], axis=-1)
 
 def total_loss(y_true, y_pred):
-    '''
+    """
     Loss function for triplets.
 
     Parameters
@@ -127,7 +127,13 @@ def total_loss(y_true, y_pred):
     y_pred : tensor
         Tensor of shape (batch_size, 2) with predicted anchor to positive
         and anchor to negative embedding distances.
-    '''
+
+    Returns
+    -------
+    output : tensor
+        Tensor with negative mean of differences between anchor to positive
+        and anchor to negative distances.
+    """
     _ = y_true
     return K.mean(-(y_pred[:, 0] - y_pred[:, 1]))
 
