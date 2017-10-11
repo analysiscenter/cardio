@@ -283,7 +283,7 @@ def find_maxes(signal, starts, ends):
     -------
     maxes : 1-D ndarray
         Indices of max values of each interval.
-    
+
     Notes
     -----
     Currently works with first lead only.
@@ -311,7 +311,7 @@ def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
         Sampling rate of the signal.
     r_state : 1-D ndarray
         Array with values that represent R peak.
-        Default value is R_STATE, which is a constant of this module. 
+        Default value is R_STATE, which is a constant of this module.
 
     Returns
     -------

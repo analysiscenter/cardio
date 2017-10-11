@@ -59,7 +59,7 @@ def conv_block_series(x, filters, kernel_size, activation, timedist,
         If True, maxpooling is applied. Default True.
     dropout : float in [0, 1]
         Parameter for dropout layer. Default 0.
-    
+
     Returns
     -------
     output : tensor
