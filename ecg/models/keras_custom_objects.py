@@ -25,6 +25,10 @@ def conv_block(x, filters, kernel_size, activation, timedist):
         Neuron activation function.
     timedist : bool
         True if input has temporal dimension.
+
+    Returns
+    -------
+    layer : Keras Layer
     '''
     if timedist:
         conv = TimeDistributed(Conv1D(filters, kernel_size, padding='same'))(x)
@@ -56,6 +60,10 @@ def conv_block_series(x, filters, kernel_size, activation, timedist,
         If True, maxpooling is applied. Default True.
     dropout : float in [0, 1]
         Parameter for dropout layer. Default 0.
+
+    Returns
+    -------
+    layer : Keras Layer
     '''
     conv = conv_block(x, filters, kernel_size, activation, timedist)
     for _ in range(repeat - 1):
@@ -77,6 +85,11 @@ def cos_metr(a, b):
         Tensor of shape (batch_size, emb_length).
     b : tensor
         Tensor of shape (batch_size, emb_length).
+
+    Returns
+    -------
+    dist : float
+        Cosine distance
     '''
     a = a / K.tf.norm(a, ord=2, axis=-1, keep_dims=True)
     b = b / K.tf.norm(b, ord=2, axis=-1, keep_dims=True)
@@ -90,6 +103,11 @@ def triplet_distance(x):
     ----------
     x : tensor
         Tensor of shape (batch_size, component, emb_length).
+
+    Returns
+    -------
+    dist : tensor
+        2D tensor with computed distances: d(anchor, positive) and d(anchor, negative)
     '''
     a = x[:, 0] #anchor item
     pos = x[:, 1] #positive item
@@ -109,6 +127,11 @@ def total_loss(y_true, y_pred):
     y_pred : tensor
         Tensor of shape (batch_size, 2) with predicted anchor to positive
         and anchor to negative embedding distances.
+
+    Returns
+    -------
+    loss : float
+        Computed loss
     '''
     _ = y_true
     return K.mean(-(y_pred[:, 0] - y_pred[:, 1]))
@@ -135,10 +158,15 @@ class RFFT(Layer):
 
         Parameters
         ----------
-        x : tensot
+        x : tensor
             3D tensor (batch_size, signal_length, nb_channels)
         fft_fn : function
             Function that performs fft
+
+        Returns
+        -------
+        out : 3D tensor
+            Computed fft(x). 3D tensor (batch_size, signal_length // 2, nb_channels)
         '''
         resh = K.cast(K.map_fn(K.transpose, x), dtype='complex64')
         spec = K.abs(K.map_fn(fft_fn, resh))
@@ -149,11 +177,14 @@ class RFFT(Layer):
         return out_real
 
     def call(self, x):
+        '''
+        Implements Keras call method.
+        '''
         return Lambda(self.rfft, arguments={'fft_fn': K.tf.fft})(x)
 
     def compute_output_shape(self, input_shape):
-        '''
-        Get output shape
+        ''''
+        Implements Keras compute_output_shape method.
         '''
         if input_shape[1] is None:
             return input_shape
@@ -165,6 +196,12 @@ class Crop(Layer):
     '''
     Keras layer returns cropped signal.
 
+    Input shape
+    3D tensor (batch_size, signal_length, nb_channels)
+
+    Output shape
+    3D tensor (batch_size, size, nb_channels)
+
     Parameters
     ----------
     begin : int
@@ -172,11 +209,12 @@ class Crop(Layer):
     size : int
         Size of the cropped segment
 
-    Input shape
-    3D tensor (batch_size, signal_length, nb_channels)
-
-    Output shape
-    3D tensor (batch_size, size, nb_channels)
+    Attributes
+    ----------
+    begin : int
+        Begin of the cropped segment
+    size : int
+        Size of the cropped segment
     '''
     def __init__(self, begin, size, *agrs, **kwargs):
         self.begin = begin
@@ -184,11 +222,14 @@ class Crop(Layer):
         super(Crop, self).__init__(*agrs, **kwargs)
 
     def call(self, x):
+        '''
+        Implements Keras call method.
+        '''
         return x[:, self.begin: self.begin + self.size, :]
 
     def compute_output_shape(self, input_shape):
         '''
-        Get output shape
+        Implements Keras compute_output_shape method.
         '''
         return (input_shape[0], self.size, input_shape[2])
 
@@ -196,6 +237,12 @@ class Crop(Layer):
 class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
     '''
     Keras layer implements inception block.
+
+    Input shape
+    4D tensor (batch_size, width, height, nb_channels)
+
+    Output shape
+    4D tensor (batch_size, width, height, 3 * nb_filters + base_dim)
 
     Parameters
     ----------
@@ -208,13 +255,20 @@ class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
     kernel_size_2 : int
         Kernel_size for the second convolution layer.
     activation : string
-        Activation function for each convolution, default is 'linear'.
+        Activation function for each convolution. Default is 'linear'.
 
-    Input shape
-    4D tensor (batch_size, width, height, nb_channels)
-
-    Output shape
-    4D tensor (batch_size, width, height, 3 * nb_filters + base_dim)
+    Attributes
+    ----------
+    base_dim : int
+        nb_filters for the first convolution layers.
+    nb_filters : int
+        nb_filters for the second convolution layers.
+    kernel_size_1 : int
+        Kernel_size for the second convolution layer.
+    kernel_size_2 : int
+        Kernel_size for the second convolution layer.
+    activation : string
+        Activation function for each convolution. Default is 'linear'.
     '''
     def __init__(self, base_dim, nb_filters,#pylint: disable=too-many-arguments
                  kernel_size_1, kernel_size_2,
@@ -228,6 +282,9 @@ class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
         super(Inception2D, self).__init__(*agrs, **kwargs)
 
     def build(self, input_shape):
+        '''
+        Implements Keras build method
+        '''
         x = Input(input_shape[1:])
         self.layers.update({'conv_1': Conv2D(self.base_dim, (1, 1), activation=self.activation, padding='same')})
         _ = self.layers['conv_1'](x)
@@ -253,6 +310,9 @@ class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
         return super(Inception2D, self).build(input_shape)
 
     def call(self, x):
+        '''
+        Implements Keras call method
+        '''
         conv_1 = self.layers['conv_1'](x)
 
         conv_2 = self.layers['conv_2'](x)
@@ -268,6 +328,6 @@ class Inception2D(Layer):#pylint: disable=too-many-instance-attributes
 
     def compute_output_shape(self, input_shape):
         '''
-        Get output shape
+        Implements Keras compute_output_shape method
         '''
         return (*input_shape[:-1], self.base_dim + 3 * self.nb_filters)
