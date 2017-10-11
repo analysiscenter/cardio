@@ -10,8 +10,7 @@ from keras.layers.merge import Concatenate
 import keras.backend as K
 
 def conv_block(x, filters, kernel_size, activation, timedist):
-    '''
-    Apply Conv1D, then BatchNormalization, then Activation.
+    """Apply Conv1D, then BatchNormalization, then Activation.
 
     Parameters
     ----------
@@ -25,7 +24,12 @@ def conv_block(x, filters, kernel_size, activation, timedist):
         Neuron activation function.
     timedist : bool
         True if input has temporal dimension.
-    '''
+
+    Returns
+    -------
+    output : tensor
+        Resulting tensor
+    """
     if timedist:
         conv = TimeDistributed(Conv1D(filters, kernel_size, padding='same'))(x)
     else:
@@ -35,8 +39,7 @@ def conv_block(x, filters, kernel_size, activation, timedist):
 
 def conv_block_series(x, filters, kernel_size, activation, timedist,
                       repeat=1, max_pool=True, dropout=0):
-    '''
-    Series of conv_block repeated and followed by maxpooling and dropout.
+    """Series of conv_block repeated and followed by maxpooling and dropout.
 
     Parameters
     ----------
@@ -56,7 +59,11 @@ def conv_block_series(x, filters, kernel_size, activation, timedist,
         If True, maxpooling is applied. Default True.
     dropout : float in [0, 1]
         Parameter for dropout layer. Default 0.
-    '''
+    
+    Returns
+    -------
+    output : tensor
+    """
     conv = conv_block(x, filters, kernel_size, activation, timedist)
     for _ in range(repeat - 1):
         conv = conv_block(conv, filters, kernel_size, activation, timedist)
@@ -68,7 +75,7 @@ def conv_block_series(x, filters, kernel_size, activation, timedist,
     return Dropout(dropout)(conv)
 
 def cos_metr(a, b):
-    '''
+    """
     Cosine distance between slices along last axis of tensors a and b. Distance is scaled to [0, 1].
 
     Parameters
@@ -77,20 +84,31 @@ def cos_metr(a, b):
         Tensor of shape (batch_size, emb_length).
     b : tensor
         Tensor of shape (batch_size, emb_length).
-    '''
+
+    Returns
+    -------
+    output : tensor
+        Reduced tensor
+    """
     a = a / K.tf.norm(a, ord=2, axis=-1, keep_dims=True)
     b = b / K.tf.norm(b, ord=2, axis=-1, keep_dims=True)
     return (K.tf.reduce_sum(a * b, axis=1, keep_dims=True) + 1.) / 2
 
 def triplet_distance(x):
-    '''
+    """
     Triplet distance between anchor, positive and negative ecg segments in triplet.
 
     Parameters
     ----------
     x : tensor
         Tensor of shape (batch_size, component, emb_length).
-    '''
+
+    Returns
+    -------
+    output : tensor
+        Concatenated tensor of cosine distances between positive
+        and negative items.
+    """
     a = x[:, 0] #anchor item
     pos = x[:, 1] #positive item
     neg = x[:, 2] #negative item

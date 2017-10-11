@@ -108,7 +108,7 @@ class HMMAnnotation(GaussianHMM, BaseModel): # pylint: disable=abstract-method
                          init_params)
 
     def save(self, path): # pylint: disable=arguments-differ
-        """Save HMMAnnotation.
+        """Save HMMAnnotation with dill.
 
         Parameters
         ----------
