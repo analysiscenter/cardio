@@ -89,7 +89,6 @@ def cos_metr(a, b):
     dist : float
         Cosine distance
     """
->>>>>>> segmentator
     a = a / K.tf.norm(a, ord=2, axis=-1, keep_dims=True)
     b = b / K.tf.norm(b, ord=2, axis=-1, keep_dims=True)
     return (K.tf.reduce_sum(a * b, axis=1, keep_dims=True) + 1.) / 2
