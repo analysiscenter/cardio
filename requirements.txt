@@ -1,5 +1,6 @@
 dill
 wfdb
+pytest
 PyWavelets
 hmmlearn
 tf

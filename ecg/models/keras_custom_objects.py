@@ -10,8 +10,7 @@ from keras.layers.merge import Concatenate
 import keras.backend as K
 
 def conv_block(x, filters, kernel_size, activation, timedist):
-    '''
-    Apply Conv1D, then BatchNormalization, then Activation.
+    """Apply Conv1D, then BatchNormalization, then Activation.
 
     Parameters
     ----------
@@ -29,7 +28,7 @@ def conv_block(x, filters, kernel_size, activation, timedist):
     Returns
     -------
     layer : Keras Layer
-    '''
+    """
     if timedist:
         conv = TimeDistributed(Conv1D(filters, kernel_size, padding='same'))(x)
     else:
@@ -39,8 +38,7 @@ def conv_block(x, filters, kernel_size, activation, timedist):
 
 def conv_block_series(x, filters, kernel_size, activation, timedist,
                       repeat=1, max_pool=True, dropout=0):
-    '''
-    Series of conv_block repeated and followed by maxpooling and dropout.
+    """Series of conv_block repeated and followed by maxpooling and dropout.
 
     Parameters
     ----------
@@ -64,7 +62,7 @@ def conv_block_series(x, filters, kernel_size, activation, timedist,
     Returns
     -------
     layer : Keras Layer
-    '''
+    """
     conv = conv_block(x, filters, kernel_size, activation, timedist)
     for _ in range(repeat - 1):
         conv = conv_block(conv, filters, kernel_size, activation, timedist)
@@ -76,7 +74,7 @@ def conv_block_series(x, filters, kernel_size, activation, timedist,
     return Dropout(dropout)(conv)
 
 def cos_metr(a, b):
-    '''
+    """
     Cosine distance between slices along last axis of tensors a and b. Distance is scaled to [0, 1].
 
     Parameters
@@ -90,13 +88,14 @@ def cos_metr(a, b):
     -------
     dist : float
         Cosine distance
-    '''
+    """
+>>>>>>> segmentator
     a = a / K.tf.norm(a, ord=2, axis=-1, keep_dims=True)
     b = b / K.tf.norm(b, ord=2, axis=-1, keep_dims=True)
     return (K.tf.reduce_sum(a * b, axis=1, keep_dims=True) + 1.) / 2
 
 def triplet_distance(x):
-    '''
+    """
     Triplet distance between anchor, positive and negative ecg segments in triplet.
 
     Parameters
@@ -108,7 +107,7 @@ def triplet_distance(x):
     -------
     dist : tensor
         2D tensor with computed distances: d(anchor, positive) and d(anchor, negative)
-    '''
+    """
     a = x[:, 0] #anchor item
     pos = x[:, 1] #positive item
     neg = x[:, 2] #negative item
@@ -117,7 +116,7 @@ def triplet_distance(x):
     return K.tf.concat([d_pos, d_neg], axis=-1)
 
 def total_loss(y_true, y_pred):
-    '''
+    """
     Loss function for triplets.
 
     Parameters
@@ -132,7 +131,7 @@ def total_loss(y_true, y_pred):
     -------
     loss : float
         Computed loss
-    '''
+    """
     _ = y_true
     return K.mean(-(y_pred[:, 0] - y_pred[:, 1]))
 

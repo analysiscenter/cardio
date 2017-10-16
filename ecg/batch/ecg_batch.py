@@ -1,4 +1,4 @@
-"""Contains ECG Batch class."""
+"""Contains ECG Batch class.""" #pylint: disable=too-many-lines
 
 import copy
 
@@ -13,7 +13,35 @@ from .utils import LabelBinarizer
 
 
 class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
-    """Class for storing batch of ECG signals."""
+    """Class for storing batch of ECG signals.
+
+    Alongside with data this class contains various methods of ECG
+    data processing, used to create pipelines for model training.
+
+    Parameters
+    ----------
+    index : DatasetIndex
+        Instance of DatasetIndex class.
+    preloaded : tuple, optional
+        Data to put in the batch if.
+        Defaul value is None.
+    unique_labels : 1-D ndarray
+        Array with unique labels in dataset.
+
+    Attributes
+    ----------
+    signal : 1-D ndarray
+        1-D ndarray of objects - 2-D arrays with ECG
+        signals.
+    annotation : 1-D ndarray
+        Array of dicts with different types of annotations.
+    meta : 1-D ndarray
+        Array of dicts with metadata about signals.
+    target : 1-D ndarray
+        Array with labels of the signals.
+    unique_labels : 1-D ndarray
+        Array with unique labels in dataset.
+    """
 
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
@@ -33,6 +61,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         results : list
             Post function computation results.
+
+        Raises
+        ------
+        RuntimeError
+            If any paralleled action failed and
+            returned error.
         """
         if ds.any_action_failed(results):
             all_errors = self.get_errors(results)
@@ -46,18 +80,23 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         signal : ndarray
             Signal to check.
+
+        Raises
+        ------
+        ValueError
+            If any signal is not two-dimensional.
         """
         if signal.ndim != 2:
             raise ValueError("Each signal in batch must be 2-D ndarray")
 
     @property
     def components(self):
-        """Return data components names."""
+        """tuple of str: Data components names."""
         return "signal", "annotation", "meta", "target"
 
     @property
     def unique_labels(self):
-        """Return unique labels in dataset."""
+        """ndarray: Unique labels in dataset."""
         return self._unique_labels
 
     @unique_labels.setter
@@ -77,7 +116,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @property
     def label_binarizer(self):
-        """Return LabelBinarizer instance for unique labels in dataset."""
+        """LabelBinarizer object: LabelBinarizer instance for unique labels in dataset."""
         return self._label_binarizer
 
     def update(self, signal=None, annotation=None, meta=None, target=None):
@@ -111,7 +150,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @classmethod
     def merge(cls, batches, batch_size=None):
-        """Concatenate list of EcgBatch instances and split the result into two batches of sizes
+        """Merge number of batches in one and return it splitted into two batches of defined shape.
+
+        Concatenate list of EcgBatch instances and split the result into two batches of sizes
         (batch_size, sum(lens of batches) - batch_size).
 
         Parameters
@@ -189,8 +230,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         Parameters
         ----------
-        src : dict
-            Path to wfdb file for every batch index. If None, path from FilesIndex is used.
+        src : misc
+            Source to load components from. If None, path from FilesIndex is used.
         components : iterable
             Components to load.
 
@@ -352,8 +393,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         min_length : positive int
             Minimal signal length.
-        axis : int
+        axis : int, optional
             Axis along which length is calculated.
+            Default value is -1.
 
         Returns
         -------
@@ -579,8 +621,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Convolution kernel.
         padding_mode : str or function
             np.pad padding mode.
-        axis : int
+        axis : int, optional
             Axis along which signals are sliced.
+            Default value is -1.
         **kwargs : misc
             Any additional named argments to np.pad.
 
@@ -604,8 +647,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             High-pass filter cutoff frequency (Hz).
         high : positive float
             Low-pass filter cutoff frequency (Hz).
-        axis : int
+        axis : int, optional
             Axis along which signals are sliced.
+            Default value is -1.
 
         Returns
         -------
@@ -617,9 +661,22 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def flip_signals(self, index):
+    def flip_signals(self, index, window_size=None, threshold=0):
         """Flip signals whose R-peaks are directed downwards.
+
         Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
+        For each subarray of length window_size skewness is calculated and compared with
+        threshold to decide whether this subarray should be flipped. Then the mode of those
+        results is calculated to mae final decision.
+
+        Parameters
+        ----------
+        window_size : int
+            Signal is splitted into K subarrays with length window_size. If it is
+            not possible, data in the end of the signal is removed.
+        threshold: float
+            If skewness of the fragment with size window size less than threshold, this
+            fragment "votes" for flipping signal. Default value is 0.
 
         Returns
         -------
@@ -630,7 +687,142 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self._check_2d(self.signal[i])
         sig = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low=5, high=50)
         sig = bt.convolve_signals(sig, kernels.gaussian(11, 3))
-        self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
+
+
+        if window_size is None:
+            window_size = sig.shape[1]
+
+        number_of_splits = sig.shape[1] // window_size
+        sig = sig[:, :window_size*number_of_splits]
+
+        splits = np.split(sig, number_of_splits, axis=-1)
+        votes = [np.where(scipy.stats.skew(subseq, axis=-1) < threshold, -1, 1).reshape(-1, 1) for subseq in splits]
+        mode_of_votes = scipy.stats.mode(votes)[0].reshape(-1, 1)
+        self.signal[i] *= mode_of_votes
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target='threads')
+    def wavelet_transform_signal(self, index, cwt_scales, cwt_wavelet):
+        """Generate wavelet transformation of signal and write to annotation.
+
+        Parameters
+        ----------
+        cwt_scales : array_like
+            Scales to use for Continuous Wavelet Transformation.
+        cwt_wavelet : Wavelet object or name
+            Wavelet to use in CWT.
+
+        Returns
+        -------
+        batch : EcgBatch
+            EcgBatch with wavelet transform of signals.
+        """
+        i = self.get_pos(None, "signal", index)
+        self._check_2d(self.signal[i])
+
+        self.annotation[i]["wavelets"] = bt.wavelet_transform(self.signal[i],
+                                                              cwt_scales,
+                                                              cwt_wavelet)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target='threads')
+    def calc_ecg_parameters(self, index):
+        """ Calculate ECG report parameters and write it ti meta component.
+
+        Calculates PQ, QT, QRS intervals and heart rate value based on annotation
+        and writes it in meta.
+        Also writes to meta locations of the starts and ends of those intervals.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with report parameters stored in meta component.
+        """
+        i = self.get_pos(None, "signal", index)
+
+        self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
+                                        self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.R_STATE)
+
+        self.meta[i]["pq"] = bt.calc_pq(self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.P_STATES,
+                                        bt.Q_STATE,
+                                        bt.R_STATE)
+
+        self.meta[i]["qt"] = bt.calc_qt(self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.T_STATES,
+                                        bt.Q_STATE,
+                                        bt.R_STATE)
+
+        self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
+                                          np.float64(self.meta[i]['fs']),
+                                          bt.S_STATE,
+                                          bt.Q_STATE,
+                                          bt.R_STATE)
+
+        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                           bt.QRS_STATES))
+
+        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                         bt.P_STATES))
+
+        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                         bt.T_STATES))
+
+    @ds.action
+    def get_signal_meta(self, var_name):
+        """ Writes ecg signal and some metadata about it to pipeline variable
+        var_name as dictionaries. Metadata include sampling rate and units of
+        the signal.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of pipeline variable to write results to.
+
+        Returns
+        -------
+        batch : EcgBatch
+        """
+        for ind in self.indices:
+            res_dict = {"units": self[ind].meta['units'],
+                        "frequency": np.float64(self[ind].meta['fs']),
+                        "signal":self[ind].signal}
+            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+        return self
+
+    @ds.action
+    def get_signal_annotation_results(self, var_name):
+        """ Writes ecg report data in batch to pipeline variable
+        var_name as dictionaries. Ecg report includes heart rate,
+        median QRS, PQ, QT intervals and array with starts and ends
+        of P, QRS, T complexes.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of pipeline variable to write results to.
+
+        Returns
+        -------
+        batch : EcgBatch
+        """
+        for ind in self.indices:
+            res_dict = {"heart_rate": self[ind].meta['hr'],
+                        "qrs_interval": self[ind].meta['qrs'],
+                        "pq_interval": self[ind].meta['pq'],
+                        "qt_interval": self[ind].meta['qt'],
+                        "p_segments": self[ind].meta["p_segments"],
+                        "qrs_segments": self[ind].meta["qrs_segments"],
+                        "t_segments": self[ind].meta["t_segments"]
+                       }
+            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+
+        return self
+
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
@@ -673,7 +865,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def tile(self, index, reps):
-        '''Repeat each signal reps times.
+        """Repeat each signal reps times.
 
         Parameters
         ----------
@@ -684,14 +876,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         -------
         batch : EcgBatch
             Batch with each signal repeated reps times. Changes self.signal inplace.
-        '''
+        """
         i = self.get_pos(None, "signal", index)
         self.signal[i] = np.tile(self.signal[i], reps).reshape((*self.signal[i].shape, reps))
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def slice_signal(self, index, slice_index):
-        '''Slice signal
+        """Slice signal
 
         Parameters
         ----------
@@ -702,14 +894,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         -------
         batch : EcgBatch
             Batch with each sliced signal. Changes self.signal inplace.
-        '''
+        """
         i = self.get_pos(None, "signal", index)
         self.signal[i] = self.signal[i][slice_index]
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def apply(self, index, function, *args, **kwargs):
-        '''Apply given function to each signal in batch
+        """Apply given function to each signal in batch
 
         Parameters
         ----------
@@ -724,13 +916,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         -------
         batch : EcgBatch
             Batch with each signal transformed. Changes self.signal inplace.
-        '''
+        """
         i = self.get_pos(None, "signal", index)
         self.signal[i] = function(self.signal[i], *args, **kwargs)
 
     @ds.action
     def get_triplets(self, size, siglen, opp_classes=None):#pylint: disable=too-many-locals
-        '''
+        """Generate triplets for triplet model.
+
         Samples triplets [anchor, positive_sement, negative_segmant] so that
         1) anchor and positive segments are drawn at random from the same ecg
         2) negative segments is drawn from other ecg
@@ -751,7 +944,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         -------
         batch : EcgBatch
             Batch of triplets [anchor, positive_sement, negative_segmant]
-        '''
+        """
         ind = ds.DatasetIndex(index=np.arange(size, dtype=int))
         out_batch = self.__class__(ind)
 
