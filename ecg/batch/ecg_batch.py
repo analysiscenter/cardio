@@ -308,7 +308,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         Returns
         -------
-        batch : EcgBatch
+        batch : same class as self
             Filtered batch. Creates a new EcgBatch instance.
         """
         indices = self.indices[keep_mask]
@@ -850,8 +850,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         Returns
         -------
-        batch : EcgBatch
+        batch : same class as self
             Batch with signals joined along signal axis 0.
+
+        Notes
+        -----
+        This method creates new EcgBatch instance with empty meta and annotation components.
         """
         x = np.concatenate(self.signal)
         x = list(x)
@@ -942,8 +946,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         Returns
         -------
-        batch : EcgBatch
+        batch : same class as self
             Batch of triplets [anchor, positive_sement, negative_segmant]
+
+        Notes
+        -----
+        This method creates new EcgBatch instance with empty meta and annotation components.
         """
         ind = ds.DatasetIndex(index=np.arange(size, dtype=int))
         out_batch = self.__class__(ind)
