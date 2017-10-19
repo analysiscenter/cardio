@@ -46,12 +46,12 @@ def load_wfdb(path, components):
 
 @njit(nogil=True)
 def split_signals(signals, length, step):
-    """Segment signals along axis 1 with given length and step.
+    """Split signals along axis 1 with given length and step.
 
     Parameters
     ----------
     signals : 2-D ndarray
-        Signals to segment.
+        Signals to split.
     length : positive int
         Length of each segment along axis 1.
     step : positive int
@@ -60,7 +60,7 @@ def split_signals(signals, length, step):
     Returns
     -------
     signals : 3-D ndarray
-        Segmented signals stacked along axis 2.
+        Splitted signals stacked along axis 2.
     """
     res = np.empty(((signals.shape[1] - length) // step + 1, signals.shape[0], length), dtype=signals.dtype)
     for i in range(res.shape[0]):
@@ -70,12 +70,12 @@ def split_signals(signals, length, step):
 
 @njit(nogil=True)
 def random_split_signals(signals, length, n_segments):
-    """Segment signals along axis 1 n_segments times with random start position and given length.
+    """Split signals along axis 1 n_segments times with random start position and given length.
 
     Parameters
     ----------
     signals : 2-D ndarray
-        Signals to segment.
+        Signals to split.
     length : positive int
         Length of each segment along axis 1.
     n_segments : positive int
@@ -84,7 +84,7 @@ def random_split_signals(signals, length, n_segments):
     Returns
     -------
     signals : 3-D ndarray
-        Segmented signals stacked along axis 2.
+        Splitted signals stacked along axis 2.
     """
     res = np.empty((n_segments, signals.shape[0], length), dtype=signals.dtype)
     for i in range(res.shape[0]):

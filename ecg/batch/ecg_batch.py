@@ -489,7 +489,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def split_signals(self, index, length, step, pad_value=0):
-        """Segment signals along axis 1 with given length and step.
+        """Split signals along axis 1 with given length and step.
 
         If signal length along axis 1 is less than length, it is padded to the left with pad value.
 
@@ -505,7 +505,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Returns
         -------
         batch : EcgBatch
-            Segmented batch. Changes self.signal and self.meta inplace.
+            Batch of splitted signals. Changes self.signal and self.meta inplace.
         """
         i = self.get_pos(None, "signal", index)
         step = self._check_segmentation_args(self.signal[i], self.target[i], length, step, "step size")
@@ -519,7 +519,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def random_split_signals(self, index, length, n_segments, pad_value=0):
-        """Segment signals along axis 1 n_segments times with random start position and given length.
+        """Split signals along axis 1 n_segments times with random start position and given length.
 
         If signal length along axis 1 is less than length, it is padded to the left with pad value.
 
@@ -535,7 +535,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Returns
         -------
         batch : EcgBatch
-            Segmented batch. Changes self.signal and self.meta inplace.
+            Batch of splitted signals. Changes self.signal and self.meta inplace.
         """
         i = self.get_pos(None, "signal", index)
         n_segments = self._check_segmentation_args(self.signal[i], self.target[i], length,
