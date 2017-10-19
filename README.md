@@ -18,7 +18,7 @@ In ```batch``` we gather everything you may need to process ECG record:
 In ```models``` we provide a template model and several real models that should inspire you to start you own research.
 Provided models are created to learn the most important problems in ECG:
 * how to recognize specific features of ECG like R-peaks, P-wave, T-wave
-* how to recignize dangerous deseases from ECG, for example - atrial fibrillation.
+* how to recognize dangerous diseases from ECG, for example - atrial fibrillation.
 
 # Basic usage
 

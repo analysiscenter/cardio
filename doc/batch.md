@@ -1,6 +1,6 @@
 # Batch
 
-
+This module stores batch class for ECG and various actions on ECG batch.
 
 ## ecg_batch
 
@@ -26,7 +26,7 @@ More detailed API see [here]().
 
 ## ecg_batch_tools
 
-Contains general medods for signal processing that are exploited in EcgBatch actions.
+Contains general methods for signal processing that are exploited in EcgBatch actions.
 
 
 ## kernels
