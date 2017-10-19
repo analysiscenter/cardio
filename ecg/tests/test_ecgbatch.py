@@ -168,12 +168,12 @@ class TestEcgBatchSingleMethods:
         assert np.all([True if sig.shape[-1] > 17000 else False for sig in batch.signal])
 
     @pytest.mark.usefixtures("setup_class_methods")
-    def test_segment_signals(self, setup_class_methods): #pylint: disable=redefined-outer-name
+    def test_split_signals(self, setup_class_methods): #pylint: disable=redefined-outer-name
         """
-        Testing segment_signals.
+        Testing split_signals.
         """
         batch = setup_class_methods
-        batch = batch.segment_signals(4500, 4499)
+        batch = batch.split_signals(4500, 4499)
         assert batch.indices.shape == (6,)
         assert batch.signal[0].shape == (2, 1, 4500)
 
@@ -277,7 +277,7 @@ class TestEcgBatchPipelineMethods:
         ppln = (ecg_ppln
                 .drop_labels(["A"])
                 .flip_signals()
-                .segment_signals(4500, 4499)
+                .split_signals(4500, 4499)
                 .replace_labels({"A":"A", "N":"NonA", "O":"NonA"}))
 
         batch = ppln.next_batch(len(ppln), shuffle=False)

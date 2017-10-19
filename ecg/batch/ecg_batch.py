@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import scipy
 
-from ..import dataset as ds
-from .import kernels
-from .import ecg_batch_tools as bt
+from .. import dataset as ds
+from . import kernels
+from . import ecg_batch_tools as bt
 from .utils import LabelBinarizer
 
 
@@ -488,7 +488,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def segment_signals(self, index, length, step, pad_value=0):
+    def split_signals(self, index, length, step, pad_value=0):
         """Segment signals along axis 1 with given length and step.
 
         If signal length along axis 1 is less than length, it is padded to the left with pad value.
@@ -513,12 +513,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             tmp_sig = self._pad_signal(self.signal[i], length, pad_value)
             self.signal[i] = tmp_sig[np.newaxis, ...]
         else:
-            self.signal[i] = bt.segment_signals(self.signal[i], length, step)
+            self.signal[i] = bt.split_signals(self.signal[i], length, step)
         self.meta[i]["siglen"] = length
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def random_segment_signals(self, index, length, n_segments, pad_value=0):
+    def random_split_signals(self, index, length, n_segments, pad_value=0):
         """Segment signals along axis 1 n_segments times with random start position and given length.
 
         If signal length along axis 1 is less than length, it is padded to the left with pad value.
@@ -544,7 +544,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             tmp_sig = self._pad_signal(self.signal[i], length, pad_value)
             self.signal[i] = np.tile(tmp_sig, (n_segments, 1, 1))
         else:
-            self.signal[i] = bt.random_segment_signals(self.signal[i], length, n_segments)
+            self.signal[i] = bt.random_split_signals(self.signal[i], length, n_segments)
         self.meta[i]["siglen"] = length
 
     def _safe_fs_resample(self, index, fs):

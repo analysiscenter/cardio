@@ -6,9 +6,6 @@ import numpy as np
 import pywt
 from numba import njit
 
-# In this version numba import is unneccessary
-# import numba as nb
-
 import wfdb
 
 # Constants
@@ -48,8 +45,7 @@ def load_wfdb(path, components):
     return [data[comp] for comp in components]
 
 @njit(nogil=True)
-#@njit(nb.float64[:, :, :](nb.float64[:, :], nb.int64, nb.int64), nogil=True)
-def segment_signals(signals, length, step):
+def split_signals(signals, length, step):
     """Segment signals along axis 1 with given length and step.
 
     Parameters
@@ -73,8 +69,7 @@ def segment_signals(signals, length, step):
 
 
 @njit(nogil=True)
-#@njit(nb.float64[:, :, :](nb.float64[:, :], nb.int64, nb.int64), nogil=True)
-def random_segment_signals(signals, length, n_segments):
+def random_split_signals(signals, length, n_segments):
     """Segment signals along axis 1 n_segments times with random start position and given length.
 
     Parameters
@@ -99,7 +94,6 @@ def random_segment_signals(signals, length, n_segments):
 
 
 @njit(nogil=True)
-#@njit(nb.float64[:, :](nb.float64[:, :], nb.int64), nogil=True)
 def resample_signals(signals, new_length):
     """Resample signals to new length along axis 1 using linear interpolation.
 
@@ -231,7 +225,6 @@ def wavelet_transform(signal, cwt_scales, cwt_wavelet):
 
 
 @njit(nogil=True)
-#@njit(nb.types.UniTuple(nb.int64[:], 2)(nb.int64[:], nb.int64[:]), nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
     """Find starts and ends of the intervals.
 
@@ -266,7 +259,6 @@ def find_intervals_borders(hmm_annotation, inter_val):
 
 
 @njit(nogil=True)
-#@njit(nb.float64[:](nb.float64[:, :], nb.int64[:], nb.int64[:]), nogil=True)
 def find_maxes(signal, starts, ends):
     """ Find index of the maximum of the segment.
 
@@ -297,7 +289,6 @@ def find_maxes(signal, starts, ends):
 
 
 @njit(nogil=True)
-#@njit(nb.float64(nb.float64[:, :], nb.int64[:], nb.float64, nb.int64[:]), nogil=True)
 def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     """ Calculate heart rate based on HMM prediction.
 
@@ -329,7 +320,6 @@ def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
 
 
 @njit(nogil=True)
-#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate PQ based on HMM prediction.
 
@@ -392,7 +382,6 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
 
 
 @njit(nogil=True)
-#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QT interval based on HMM prediction.
 
@@ -455,7 +444,6 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
 
 
 @njit(nogil=True)
-#@njit(nb.float64(nb.int64[:], nb.float64, nb.int64[:], nb.int64[:], nb.int64[:]), nogil=True)
 def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STATE):
     """ Calculate QRS interval based on HMM prediction.
 
