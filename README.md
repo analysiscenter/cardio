@@ -10,6 +10,8 @@ In ```batch``` we gather everything you may need to process ECG record:
 * load and save signal in a number of formats
 * resample, crop and flip signal
 * filter signal
+* allocate PQ, QT, QRS segments
+* calculate heart rate
 * apply complex transformations like fft or wavelets
 * apply custom functions.
 
@@ -39,3 +41,7 @@ As a result of this pipeline one obtains a trained model.
 # How to start
 
 See [tutorial](https://github.com/analysiscenter/ecg/blob/unify_models/doc/tutorial.md) to start working with ECG.
+
+# Further reading
+
+Detailed documentation on ```ecg``` is available [here](https://github.com/analysiscenter/ecg/blob/unify_models/doc/README.md).

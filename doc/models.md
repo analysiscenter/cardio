@@ -1,21 +1,18 @@
 # Models
 
-This is a place where ECG models live. You can write your own model or exploit provided models, however, any model should extend [base_model]() class. 
+This is a place where ECG models live. You can write your own model or exploit provided models, however,
+models should extend [base_model]() class. 
 
 ## Base model
 All what you may need from model are the following methods:
 
-* ```load```: load model
+* ```load```, load model
+* ```save```, save model
+* ```train_on_batch```, run a single gradient update on a single batch
+* ```test_on_batch```, get model loss for a single batch
+* ```predict_on_batch```, get model predictions for a single batch.
 
-* ```save```: save model
-
-* ```train_on_batch```: run a single gradient update on a single batch
-        
-* ```test_on_batch```: get model loss for a single batch
-
-* ```predict_on_batch```: get model predictions for a single batch.
-
-Once these methods are defined one can add them to pipeline.
+Once these methods are defined in the model, one can add them to pipeline.
 For example, train pipline looks like
 
 ```python
@@ -26,22 +23,28 @@ model_train_pipeline = (ds.Pipeline()
                         .train_on_batch('fft_inception', metrics=f1_score, average='macro'))
 ```
 
-Note that until now everything was independent on model backend.
-Below you can find a guide how to build a model with [Keras]() and [Tensorflow]()
+## Built-in models
+We have a number of built-in models for ECG classification:
+* [```fft_inception```](fft_model.md)
+* [```triplet_learn```](triplet_model.md)
+* [```dirichlet```](dirichlet_model.md)
+* [```conv_model```](conv_model.md)
+
+Below you can find a guide how to build a your own model with [Keras]() and [Tensorflow]()
 
 ## KerasBaseModel
-Defines model and implements methods of BaseModel for Keras backend. 
+Defines model and implements methods of ```BaseModel``` for Keras framework. 
 Class KerasBaseModel has two attributes:
-* ```model```:this is where Keras [Model]() is stored
-* ```hist```: keeps loss and metrics on every batch during trainig and testing of the model.
+* ```model```, compiled Keras model
+* ```hist```, dict of loss and metrics on every batch during trainig and testing of the model.
 
-Available methods are:
-* ```train_on_batch```: train model on batch and write loss and metrics to pipeline variable
-* ```test_on_batch```: test model on batch and write loss and metrics to pipeline variable
-* ```predict_on_batch```: predict batch and write prediction to batch or pipeline variable
-* ```model_summary```: print model summary
-* ```load```: load model
-* ```save```: save model.
+Methods of ```KerasBaseModel```:
+* ```train_on_batch```, train model on batch and write loss and metrics to pipeline variable
+* ```test_on_batch```, test model on batch and write loss and metrics to pipeline variable
+* ```predict_on_batch```, predict batch and write prediction to batch or pipeline variable
+* ```model_summary```, print model summary
+* ```load```, load model
+* ```save```, save model.
 
 See details of methods [here]()
 

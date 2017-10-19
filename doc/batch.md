@@ -1,60 +1,51 @@
 # Batch
 
+
+
 ## ecg_batch
-This is a base class that defines how to store ECG data and lists all the actions that can be applied to ECG regardless of models. Class ```ecg_base``` has the following attributes:
-* ```signal``` stores ECG signal in numpy array
-* ```annotation```, this can be any array that annotate specific points of ECG signal, e.g. R peaks
-* ```meta``` contains any parameters of ECG signal, e.g. signal frequency
-* ```target``` contains label assigned to ECG
-* ```unique_labels``` is just a list of all possible target labels.
 
-### Actions of ecg_batch
+Contains base class EcgBatch that defines how to store ECG data and lists actions
+that can be applied to ECG in preprocessing stage. 
 
-* ```load```
+Attributes of EcgBatch:
+* ```signal```, stores ECG signals in numpy array
+* ```annotation```, array of dicts with different types of annotations, e.g. array of R-peaks
+* ```meta```, array of dicts with metadata about ECG records, e.g. signal frequency
+* ```target```, array of labels assigned to ECG records
+* ```unique_labels```, array of all possible target labels in dataset.
 
-* ```drop_labels```
+Methods of EcgBatch allows:
+* load ECG records from wfdb or blosc format
+* segment, flip and resample signals
+* filter signals 
+* allocate PQ, QT, QRS segments
+* dump results in blosc.
 
-* ```keep_labels```
-
-* ```replace_labels```
-
-* ```binarize_labels```
-
-* ```drop_short_signals```
-
-* ```segment_signals```
-
-* ```random_segment_signals```
-
-* ```convolve_signals```
-
-* ```band_pass_signals```
-
-* ```apply```
+More detailed API see [here]().
 
 
 ## ecg_batch_tools
 
-Contains helpful functions that typically are called from some action of the ecg_batch for each signal separately. 
+Contains general medods for signal processing that are exploited in EcgBatch actions.
 
 
 ## kernels
 
-Contains kernel generation functions.
+Contains kernel generation functions for signal convolution.
 
 ## model_ecg_batch
 
-Initialize models to make them available in pipeline. We have a number of built-in models:
+Here we define class ```ModelEcgBatch``` that extends ```EcgBatch``` and binds it with models. 
+```ModelEcgBatch``` initializes models to make them available in pipeline and adds actions for
+model training and prediction. 
 
+We have a number of built-in models that are ready to use:
 * [```fft_inception```](fft_model.md)
-
 * [```triplet_learn```](triplet_model.md)
-
 * [```dirichlet```](dirichlet_model.md)
-
 * [```conv_model```](conv_model.md)
 
 
 ## utils
 
-Miscellaneous ECG Batch utils
+Miscellaneous ECG Batch utils.
