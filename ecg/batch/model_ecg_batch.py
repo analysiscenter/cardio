@@ -1,15 +1,162 @@
 """Contains ECG Batch class with models' actions."""
 
-from .. import dataset as ds
+from keras.models import Model
 from .ecg_batch import EcgBatch
+from .. import dataset as ds
 from ..models import DirichletModel
+from ..models import TripletModel
+from ..models import ConvModel
+from ..models import FFTModel
+from ..models import KerasBaseModel
+from ..models import HMMAnnotation
 
 
 class ModelEcgBatch(EcgBatch):
-    """ECG Batch class with models' actions."""
+    """ECG Batch class with models' actions.
+
+    Parameters
+    ----------
+    index : DatasetIndex
+        Instance of DatasetIndex class.
+    preloaded : tuple, optional
+        Data to put in the batch if.
+        Defaul value is None.
+    unique_labels : 1-D ndarray
+        Array with unique labels in dataset.
+
+    Attributes
+    ----------
+    signal : 1-D ndarray
+        1-D ndarray of objects - 2-D arrays with ECG
+        signals.
+    annotation : 1-D ndarray
+        Array of dicts with different types of annotations.
+    meta : 1-D ndarray
+        Array of dicts with metadata about signals.
+    target : 1-D ndarray
+        Array with labels of the signals.
+    unique_labels : 1-D ndarray
+        Array with unique labels in dataset.
+    """
 
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded, unique_labels)
+
+    @ds.model(mode="dynamic")
+    def triplet_learn(batch, config=None):#pylint: disable=no-self-argument
+        '''
+        Define triplet model
+        '''
+        _ = config
+        signal_shape = batch.signal[0].shape
+        return TripletModel().build(signal_shape)
+
+    @ds.model(mode="static")
+    def triplet_pretrained(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained Triplet model.
+
+        Parameters
+        ----------
+        pipeline :
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : TripletModel
+            Loaded model.
+        """
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified")
+        if 'path' not in config.keys():
+            raise KeyError("Model config does not contain path")
+        return TripletModel().load(fname=config['path'])
+
+    @ds.model(mode="static")
+    def triplet_embedding(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained Triplet model.
+
+        Parameters
+        ----------
+        pipeline :
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : TripletModel
+            Loaded model.
+        """
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified")
+        if 'path' not in config.keys():
+            raise KeyError("Model config does not contain path")
+        triplet_model = TripletModel().load(fname=config['path'])
+        emb_model = Model(triplet_model.model.layers[0].input, triplet_model.model.layers[config['out_layer']].output)
+        return KerasBaseModel(model=emb_model)
+
+    @ds.model(mode="dynamic")
+    def conv_model(batch, config=None):#pylint: disable=no-self-argument
+        '''
+        Define conv model
+        '''
+        _ = config
+        signal_shape = batch.signal[0].shape
+        return ConvModel().build(signal_shape)
+
+    @ds.model(mode="static")
+    def conv_pretrained(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained conv model.
+
+        Parameters
+        ----------
+        pipeline :
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : TripletModel
+            Loaded model.
+        """
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified")
+        if 'path' not in config.keys():
+            raise KeyError("Model config does not contain path")
+        return ConvModel().load(fname=config['path'])
+
+    @ds.model(mode="static")
+    def fft_inception(batch, config=None):#pylint: disable=no-self-argument
+        '''
+        Define fft model
+        '''
+        _ = config
+        return FFTModel().build()
+
+    @ds.model(mode="static")
+    def fft_pretrained(pipeline, config=None):  # pylint: disable=no-self-argument
+        """Load pretrained FFT model.
+
+        Parameters
+        ----------
+        pipeline :
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : FFTModel
+            Loaded model.
+        """
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified")
+        if 'path' not in config.keys():
+            raise KeyError("Model config does not contain path")
+        return FFTModel().load(config['path'])
 
     @ds.model(mode="dynamic")
     def dirichlet(batch, config=None):  # pylint: disable=no-self-argument
@@ -43,8 +190,7 @@ class ModelEcgBatch(EcgBatch):
 
         Parameters
         ----------
-        batch : ModelEcgBatch
-            First batch to request a model.
+        pipeline :
         config : dict
             Model config.
 
@@ -62,6 +208,28 @@ class ModelEcgBatch(EcgBatch):
             raise KeyError("Model config does not contain {}".format(", ".join(sorted(diff))))
         args = [config[path] for path in paths]
         return DirichletModel().load(*args)
+
+    @ds.model(mode="static")
+    def hmm_annotation_pretrained(pipeline, config=None): # pylint: disable=no-self-argument
+        """Load pretrained HMM annotation model.
+
+        Parameters
+        ----------
+        pipeline : dataset.Pipeline
+            Pipeline in which model is used.
+        config : dict
+            Model config.
+
+        Returns
+        -------
+        model : HMMAnnotationModel
+            Loaded model.
+        """
+
+        _ = pipeline
+        if config is None:
+            raise ValueError("Model config must be specified!")
+        return HMMAnnotation.load(config["path"])
 
     @ds.action(use_lock="train_lock")
     def train_on_batch(self, model_name, *args, **kwargs):
@@ -119,3 +287,41 @@ class ModelEcgBatch(EcgBatch):
         """
         model = self.get_model_by_name(model_name)
         return model.predict_on_batch(self, *args, **kwargs)
+
+    @ds.action
+    def save_model(self, model_name, *args, **kwargs):
+        """Save model weights.
+
+        Parameters
+        ----------
+        model_name : str
+            Model name.
+        *args, **kwargs : misc
+            Any additional model.save.
+
+        Returns
+        -------
+        result : misc
+            model.save output.
+        """
+        model = self.get_model_by_name(model_name)
+        return model.save(self, *args, **kwargs)
+
+    @ds.action
+    def load_model(self, model_name, *args, **kwargs):
+        """Load model weights.
+
+        Parameters
+        ----------
+        model_name : str
+            Model name.
+        *args, **kwargs : misc
+            Any additional model.load argments.
+
+        Returns
+        -------
+        result : misc
+            model.load output.
+        """
+        model = self.get_model_by_name(model_name)
+        return model.load(self, *args, **kwargs)

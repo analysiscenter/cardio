@@ -1,4 +1,4 @@
-"""Contains kernel creation functions."""
+"""Contains kernel generation functions."""
 
 import numpy as np
 

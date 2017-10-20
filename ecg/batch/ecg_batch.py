@@ -1,35 +1,47 @@
-"""Contains ECG Batch class."""
+"""Contains ECG Batch class.""" #pylint: disable=too-many-lines
 
 import copy
-import itertools
-import warnings
 
 import numpy as np
 import pandas as pd
 import scipy
 
-from sklearn.metrics import f1_score, log_loss
-from sklearn.externals import joblib
-
-from keras.layers import Input, Conv1D, Lambda, \
-                         MaxPooling1D, MaxPooling2D, \
-                         Dense, GlobalMaxPooling2D
-from keras.layers.core import Dropout
-from keras.models import Model, model_from_yaml
-from keras.optimizers import Adam
-import keras.backend as K
-
-from hmmlearn import hmm
-
 from .. import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
 from .utils import LabelBinarizer
-from .keras_extra_layers import RFFT, Crop, Inception2D
 
 
 class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
-    """Class for storing batch of ECG signals."""
+    """Class for storing batch of ECG signals.
+
+    Alongside with data this class contains various methods of ECG
+    data processing, used to create pipelines for model training.
+
+    Parameters
+    ----------
+    index : DatasetIndex
+        Instance of DatasetIndex class.
+    preloaded : tuple, optional
+        Data to put in the batch if.
+        Defaul value is None.
+    unique_labels : 1-D ndarray
+        Array with unique labels in dataset.
+
+    Attributes
+    ----------
+    signal : 1-D ndarray
+        1-D ndarray of objects - 2-D arrays with ECG
+        signals.
+    annotation : 1-D ndarray
+        Array of dicts with different types of annotations.
+    meta : 1-D ndarray
+        Array of dicts with metadata about signals.
+    target : 1-D ndarray
+        Array with labels of the signals.
+    unique_labels : 1-D ndarray
+        Array with unique labels in dataset.
+    """
 
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
@@ -49,6 +61,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         results : list
             Post function computation results.
+
+        Raises
+        ------
+        RuntimeError
+            If any paralleled action failed and
+            returned error.
         """
         if ds.any_action_failed(results):
             all_errors = self.get_errors(results)
@@ -62,18 +80,23 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         signal : ndarray
             Signal to check.
+
+        Raises
+        ------
+        ValueError
+            If any signal is not two-dimensional.
         """
         if signal.ndim != 2:
             raise ValueError("Each signal in batch must be 2-D ndarray")
 
     @property
     def components(self):
-        """Return data components names."""
+        """tuple of str: Data components names."""
         return "signal", "annotation", "meta", "target"
 
     @property
     def unique_labels(self):
-        """Return unique labels in dataset."""
+        """ndarray: Unique labels in dataset."""
         return self._unique_labels
 
     @unique_labels.setter
@@ -93,7 +116,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @property
     def label_binarizer(self):
-        """Return LabelBinarizer instance for unique labels in dataset."""
+        """LabelBinarizer object: LabelBinarizer instance for unique labels in dataset."""
         return self._label_binarizer
 
     def update(self, signal=None, annotation=None, meta=None, target=None):
@@ -127,7 +150,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @classmethod
     def merge(cls, batches, batch_size=None):
-        """Concatenate list of EcgBatch instances and split the result into two batches of sizes
+        """Merge number of batches in one and return it splitted into two batches of defined shape.
+
+        Concatenate list of EcgBatch instances and split the result into two batches of sizes
         (batch_size, sum(lens of batches) - batch_size).
 
         Parameters
@@ -205,8 +230,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         Parameters
         ----------
-        src : dict
-            Path to wfdb file for every batch index. If None, path from FilesIndex is used.
+        src : misc
+            Source to load components from. If None, path from FilesIndex is used.
         components : iterable
             Components to load.
 
@@ -283,7 +308,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         Returns
         -------
-        batch : EcgBatch
+        batch : same class as self
             Filtered batch. Creates a new EcgBatch instance.
         """
         indices = self.indices[keep_mask]
@@ -368,8 +393,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         ----------
         min_length : positive int
             Minimal signal length.
-        axis : int
+        axis : int, optional
             Axis along which length is calculated.
+            Default value is -1.
 
         Returns
         -------
@@ -462,8 +488,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def segment_signals(self, index, length, step, pad_value=0):
-        """Segment signals along axis 1 with given length and step.
+    def split_signals(self, index, length, step, pad_value=0):
+        """Split signals along axis 1 with given length and step.
 
         If signal length along axis 1 is less than length, it is padded to the left with pad value.
 
@@ -479,7 +505,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Returns
         -------
         batch : EcgBatch
-            Segmented batch. Changes self.signal and self.meta inplace.
+            Batch of splitted signals. Changes self.signal and self.meta inplace.
         """
         i = self.get_pos(None, "signal", index)
         step = self._check_segmentation_args(self.signal[i], self.target[i], length, step, "step size")
@@ -487,13 +513,13 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             tmp_sig = self._pad_signal(self.signal[i], length, pad_value)
             self.signal[i] = tmp_sig[np.newaxis, ...]
         else:
-            self.signal[i] = bt.segment_signals(self.signal[i], length, step)
+            self.signal[i] = bt.split_signals(self.signal[i], length, step)
         self.meta[i]["siglen"] = length
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def random_segment_signals(self, index, length, n_segments, pad_value=0):
-        """Segment signals along axis 1 n_segments times with random start position and given length.
+    def random_split_signals(self, index, length, n_segments, pad_value=0):
+        """Split signals along axis 1 n_segments times with random start position and given length.
 
         If signal length along axis 1 is less than length, it is padded to the left with pad value.
 
@@ -509,7 +535,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         Returns
         -------
         batch : EcgBatch
-            Segmented batch. Changes self.signal and self.meta inplace.
+            Batch of splitted signals. Changes self.signal and self.meta inplace.
         """
         i = self.get_pos(None, "signal", index)
         n_segments = self._check_segmentation_args(self.signal[i], self.target[i], length,
@@ -518,7 +544,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             tmp_sig = self._pad_signal(self.signal[i], length, pad_value)
             self.signal[i] = np.tile(tmp_sig, (n_segments, 1, 1))
         else:
-            self.signal[i] = bt.random_segment_signals(self.signal[i], length, n_segments)
+            self.signal[i] = bt.random_split_signals(self.signal[i], length, n_segments)
         self.meta[i]["siglen"] = length
 
     def _safe_fs_resample(self, index, fs):
@@ -595,8 +621,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Convolution kernel.
         padding_mode : str or function
             np.pad padding mode.
-        axis : int
+        axis : int, optional
             Axis along which signals are sliced.
+            Default value is -1.
         **kwargs : misc
             Any additional named argments to np.pad.
 
@@ -620,8 +647,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             High-pass filter cutoff frequency (Hz).
         high : positive float
             Low-pass filter cutoff frequency (Hz).
-        axis : int
+        axis : int, optional
             Axis along which signals are sliced.
+            Default value is -1.
 
         Returns
         -------
@@ -633,10 +661,22 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def flip_signals(self, index):
+    def flip_signals(self, index, window_size=None, threshold=0):
         """Flip signals whose R-peaks are directed downwards.
 
         Each element of self.signal must be a 2-D ndarray. Signals are flipped along axis 1.
+        For each subarray of length window_size skewness is calculated and compared with
+        threshold to decide whether this subarray should be flipped. Then the mode of those
+        results is calculated to mae final decision.
+
+        Parameters
+        ----------
+        window_size : int
+            Signal is splitted into K subarrays with length window_size. If it is
+            not possible, data in the end of the signal is removed.
+        threshold: float
+            If skewness of the fragment with size window size less than threshold, this
+            fragment "votes" for flipping signal. Default value is 0.
 
         Returns
         -------
@@ -647,315 +687,322 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self._check_2d(self.signal[i])
         sig = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low=5, high=50)
         sig = bt.convolve_signals(sig, kernels.gaussian(11, 3))
-        self.signal[i] *= np.where(scipy.stats.skew(sig, axis=-1) < 0, -1, 1).reshape(-1, 1)
 
-    # The following action methods are not guaranteed to work properly
 
-    def init_parallel(self, *args, **kwargs):
+        if window_size is None:
+            window_size = sig.shape[1]
+
+        number_of_splits = sig.shape[1] // window_size
+        sig = sig[:, :window_size*number_of_splits]
+
+        splits = np.split(sig, number_of_splits, axis=-1)
+        votes = [np.where(scipy.stats.skew(subseq, axis=-1) < threshold, -1, 1).reshape(-1, 1) for subseq in splits]
+        mode_of_votes = scipy.stats.mode(votes)[0].reshape(-1, 1)
+        self.signal[i] *= mode_of_votes
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target='threads')
+    def wavelet_transform_signal(self, index, cwt_scales, cwt_wavelet):
+        """Generate wavelet transformation of signal and write to annotation.
+
+        Parameters
+        ----------
+        cwt_scales : array_like
+            Scales to use for Continuous Wavelet Transformation.
+        cwt_wavelet : Wavelet object or name
+            Wavelet to use in CWT.
+
+        Returns
+        -------
+        batch : EcgBatch
+            EcgBatch with wavelet transform of signals.
+        """
+        i = self.get_pos(None, "signal", index)
+        self._check_2d(self.signal[i])
+
+        self.annotation[i]["wavelets"] = bt.wavelet_transform(self.signal[i],
+                                                              cwt_scales,
+                                                              cwt_wavelet)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target='threads')
+    def calc_ecg_parameters(self, index):
+        """ Calculate ECG report parameters and write it ti meta component.
+
+        Calculates PQ, QT, QRS intervals and heart rate value based on annotation
+        and writes it in meta.
+        Also writes to meta locations of the starts and ends of those intervals.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with report parameters stored in meta component.
+        """
+        i = self.get_pos(None, "signal", index)
+
+        self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
+                                        self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.R_STATE)
+
+        self.meta[i]["pq"] = bt.calc_pq(self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.P_STATES,
+                                        bt.Q_STATE,
+                                        bt.R_STATE)
+
+        self.meta[i]["qt"] = bt.calc_qt(self.annotation[i]['hmm_annotation'],
+                                        np.float64(self.meta[i]['fs']),
+                                        bt.T_STATES,
+                                        bt.Q_STATE,
+                                        bt.R_STATE)
+
+        self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
+                                          np.float64(self.meta[i]['fs']),
+                                          bt.S_STATE,
+                                          bt.Q_STATE,
+                                          bt.R_STATE)
+
+        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                           bt.QRS_STATES))
+
+        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                         bt.P_STATES))
+
+        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+                                                                         bt.T_STATES))
+
+    @ds.action
+    def get_signal_meta(self, var_name):
+        """ Writes ecg signal and some metadata about it to pipeline variable
+        var_name as dictionaries. Metadata include sampling rate and units of
+        the signal.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of pipeline variable to write results to.
+
+        Returns
+        -------
+        batch : EcgBatch
+        """
+        for ind in self.indices:
+            res_dict = {"units": self[ind].meta['units'],
+                        "frequency": np.float64(self[ind].meta['fs']),
+                        "signal":self[ind].signal}
+            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+        return self
+
+    @ds.action
+    def get_signal_annotation_results(self, var_name):
+        """ Writes ecg report data in batch to pipeline variable
+        var_name as dictionaries. Ecg report includes heart rate,
+        median QRS, PQ, QT intervals and array with starts and ends
+        of P, QRS, T complexes.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of pipeline variable to write results to.
+
+        Returns
+        -------
+        batch : EcgBatch
+        """
+        for ind in self.indices:
+            res_dict = {"heart_rate": self[ind].meta['hr'],
+                        "qrs_interval": self[ind].meta['qrs'],
+                        "pq_interval": self[ind].meta['pq'],
+                        "qt_interval": self[ind].meta['qt'],
+                        "p_segments": self[ind].meta["p_segments"],
+                        "qrs_segments": self[ind].meta["qrs_segments"],
+                        "t_segments": self[ind].meta["t_segments"]
+                       }
+            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
+
+        return self
+
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def repeat_signal(self, index, reps):
         '''
-        Return array of ecg with index
+        Construct an array by repeating signal the number of times given by reps. New
+        signal shape will be (reps, initial_signal_shape).
+
+        Parameters
+        ----------
+        repeat : positive int
+            Number of times to repeat signal.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with each signal repeated. Changes self.signal inplace.
         '''
-        _ = args, kwargs
-        return [[*self[i], i] for i in self.indices]
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = np.broadcast_to(self.signal[i], (reps, *self.signal[i].shape))
 
-    def post_parallel(self, all_results, *args, **kwargs):
-        #pylint: disable=too-many-locals
-        #pylint: disable=too-many-branches
-        '''
-        Build ecg_batch from a list of items either [signal, annot, meta] or None.
-        All Nones are ignored.
-        Signal can be either a single signal or a list of signals.
-        If signal is a list of signals, annot and meta can be a single annot and meta
-        or a list of annots and metas of the same lentgh as the list of signals. In the
-        first case annot and meta are broadcasted to each signal in the list of signals.
+    @ds.action
+    def ravel(self):
+        """Join a sequence of arrays along axis 0.
 
-        Arguments
-        all results: list of items either [signal, annot, meta] or None
-        '''
-        _ = args, kwargs
-        if any([isinstance(res, Exception) for res in all_results]):
-            print([res for res in all_results if isinstance(res, Exception)])
-            return self
+        Returns
+        -------
+        batch : same class as self
+            Batch with signals joined along signal axis 0.
 
-        valid_results = [res for res in all_results if res is not None]
-        if len(valid_results) == 0:
-            print('Error: all resulta are None')
-            return self
+        Notes
+        -----
+        This method creates new EcgBatch instance with empty meta and annotation components.
+        """
+        x = np.concatenate(self.signal)
+        x = list(x)
+        x.append([])
+        x = np.array(x)[:-1]
+        y = np.concatenate([np.tile(item.target, (item.signal.shape[0], 1)) for item in self])
+        new_index = ds.DatasetIndex(np.arange(len(x), dtype=int))
+        out_batch = self.__class__(new_index)
+        return out_batch.update(signal=x, target=y)
 
-        list_of_arrs = [x[0] for x in valid_results]
-        list_of_lens = np.array([len(x[0]) for x in valid_results])
-        list_of_annot = np.array([x[1] for x in valid_results]).ravel()
-        list_of_meta = np.array([x[2] for x in valid_results]).ravel()
-        list_of_origs = np.array([x[3] for x in valid_results]).ravel()
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def tile(self, index, reps):
+        """Repeat each signal reps times.
 
-        if max(list_of_lens) <= 1:
-            ind = ds.DatasetIndex(index=list_of_origs)
+        Parameters
+        ----------
+        reps : positive int
+            The number of repetitions.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with each signal repeated reps times. Changes self.signal inplace.
+        """
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = np.tile(self.signal[i], reps).reshape((*self.signal[i].shape, reps))
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def slice_signal(self, index, slice_index):
+        """Slice signal
+
+        Parameters
+        ----------
+        slice_index : slice obj
+            Starting index, stopping index and the step
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with each sliced signal. Changes self.signal inplace.
+        """
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = self.signal[i][slice_index]
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def apply(self, index, function, *args, **kwargs):
+        """Apply given function to each signal in batch
+
+        Parameters
+        ----------
+        function : function
+            Function that is applied to signal.
+        *args : arguments
+            Function args.
+        **kwags : keyword arguments
+            Function kwargs.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with each signal transformed. Changes self.signal inplace.
+        """
+        i = self.get_pos(None, "signal", index)
+        self.signal[i] = function(self.signal[i], *args, **kwargs)
+
+    @ds.action
+    def get_triplets(self, size, siglen, opp_classes=None):#pylint: disable=too-many-locals
+        """Generate triplets for triplet model.
+
+        Samples triplets [anchor, positive_sement, negative_segmant] so that
+        1) anchor and positive segments are drawn at random from the same ecg
+        2) negative segments is drawn from other ecg
+        3) if opp_classes is not None then opp_classes is a list of two targets and
+        ecg are sampled from these classes.
+
+        Parameters
+        ----------
+        size : positive int
+            Number of triplets to be sampled from batch.
+        siglen : positive int
+            Length of signal to be sampled from ecg.
+        opp_classes : None or list of two targets
+            List of targets from which ecg are sampled. If None ecg are sampled
+            from the whole batch.
+
+        Returns
+        -------
+        batch : same class as self
+            Batch of triplets [anchor, positive_sement, negative_segmant]
+
+        Notes
+        -----
+        This method creates new EcgBatch instance with empty meta and annotation components.
+        """
+        ind = ds.DatasetIndex(index=np.arange(size, dtype=int))
+        out_batch = self.__class__(ind)
+
+        batch_data = []
+        batch_meta = []
+
+        if opp_classes is not None:
+            a_indices = np.array([ind for ind in self.indices
+                                  if self[ind].target == opp_classes[0]])
+            b_indices = np.array([ind for ind in self.indices
+                                  if self[ind].target != opp_classes[1]])
+
+            if len(a_indices) == 0:
+                raise ValueError('There are no {0} signals in batch'.format(opp_classes[0]))
+            if len(b_indices) == 0:
+                raise ValueError('There are no {0} signals in batch'.format(opp_classes[1]))
+
+            a_choice = a_indices[np.random.randint(low=0, high=len(a_indices), size=size)]
+            b_choice = b_indices[np.random.randint(low=0, high=len(b_indices), size=size)]
+            pair_choice = np.array([a_choice, b_choice]).T
+
+            first_choice = np.random.randint(low=0, high=2, size=size)
+            pos_indices = pair_choice[range(size), first_choice]
+            neg_indices = pair_choice[range(size), 1 - first_choice]
         else:
-            ind = ds.DatasetIndex(index=np.arange(sum(list_of_lens), dtype=int))
-        out_batch = EcgBatch(ind)
+            pair_choice = np.array([np.random.choice(self.indices, 2, replace=False) for _ in range(size)])
+            pos_indices, neg_indices = pair_choice.T
 
-        if list_of_arrs[0].ndim > 3:
-            raise ValueError('Signal is expected to have ndim = 1, 2 or 3, found ndim = {0}'
-                             .format(list_of_arrs[0].ndim))
-        if list_of_arrs[0].ndim in [1, 3]:
-            #list_of_arrs[0] has shape (nb_signals, nb_channels, siglen)
-            #ndim = 3 for signals with similar siglens and 1 for signals with differenr siglens
-            list_of_arrs = list(itertools.chain([x for y in list_of_arrs
-                                                 for x in y]))
-        list_of_arrs.append([])
-        batch_data = np.array(list_of_arrs)[:-1]
+        for i in range(size):
+            pos_index = pos_indices[i]
+            neg_index = neg_indices[i]
 
-        if len(ind.indices) == len(list_of_origs):
-            origins = list_of_origs
-        else:
-            origins = np.repeat(list_of_origs, list_of_lens)
+            pos_signal = self[pos_index].signal
+            if pos_signal.shape[1] < siglen:
+                raise ValueError('Signal is shorter than length of target segment')
+            seg_1, seg_2 = np.random.randint(low=0, high=pos_signal.shape[1] - siglen, size=2)
 
-        if len(ind.indices) == len(list_of_meta):
-            metas = list_of_meta
-        else:
-            metas = []
-            for i, rep in enumerate(list_of_lens):
-                for _ in range(rep):
-                    metas.append(copy.deepcopy(list_of_meta[i]))
-            metas = np.array(metas)
-        for i in range(len(batch_data)):
-            metas[i].update({'origin': origins[i]})
-        batch_meta = dict(zip(ind.indices, metas))
+            neg_signal = self[neg_index].signal
+            if neg_signal.shape[1] < siglen:
+                raise ValueError('Signal is shorter than length of target segment')
+            seg_3 = np.random.randint(low=0, high=neg_signal.shape[1] - siglen)
 
-        if len(ind.indices) == len(list_of_annot):
-            annots = list_of_annot
-        else:
-            annots = []
-            for i, rep in enumerate(list_of_lens):
-                for _ in range(rep):
-                    annots.append(copy.deepcopy(list_of_annot[i]))
-            annots = np.array(annots)
-        if len(annots) > 0:
-            keys = list(annots[0].keys())
-        else:
-            keys = []
-        batch_annot = {}
-        for k in keys:
-            list_of_arrs = [x[k] for x in annots]
-            list_of_arrs.append(np.array([]))
-            batch_annot[k] = np.array(list_of_arrs)[:-1]
+            batch_data.append([pos_signal[:, seg_1: seg_1 + siglen],
+                               pos_signal[:, seg_2: seg_2 + siglen],
+                               neg_signal[:, seg_3: seg_3 + siglen]])
+            batch_meta.append([pos_index, seg_1, seg_2, neg_index, seg_3])
 
+        batch_data.append(None)
+        batch_data = np.array(batch_data)[:-1]
+        batch_meta = np.array(batch_meta)
         return out_batch.update(signal=batch_data,
-                                annotation=batch_annot,
-                                meta=batch_meta)
-
-    @ds.model()
-    def hmm_learn():
-        """
-        Hidden Markov Model to find n_components in signal
-        """
-        n_components = 3
-        n_iter = 10
-        warnings.filterwarnings("ignore")
-        model = hmm.GaussianHMM(n_components=n_components, covariance_type="full",
-                                n_iter=n_iter)
-        return model
-
-    @ds.action
-    def set_new_model(self, model_name, new_model):
-        '''
-        Replace base model by new model.
-
-        Arguments
-        model_name: name of the model where to set new model.
-        new_model: new model to replace previous.
-        '''
-        model = self.get_model_by_name(model_name)#pylint: disable=unused-variable
-        model = new_model
-        return self
-
-    @ds.model()
-    def fft_inception():#pylint: disable=too-many-locals
-        '''
-        FFT inception model. Includes initial convolution layers, then FFT transform, then
-        a series of inception blocks.
-        '''
-        x = Input((None, 1))
-
-        conv_1 = Conv1D(4, 4, activation='relu')(x)
-        mp_1 = MaxPooling1D()(conv_1)
-
-        conv_2 = Conv1D(8, 4, activation='relu')(mp_1)
-        mp_2 = MaxPooling1D()(conv_2)
-        conv_3 = Conv1D(16, 4, activation='relu')(mp_2)
-        mp_3 = MaxPooling1D()(conv_3)
-        conv_4 = Conv1D(32, 4, activation='relu')(mp_3)
-
-        fft_1 = RFFT()(conv_4)
-        crop_1 = Crop(begin=0, size=128)(fft_1)
-        to2d = Lambda(K.expand_dims)(crop_1)
-
-        incept_1 = Inception2D(4, 4, 3, 5, activation='relu')(to2d)
-        mp2d_1 = MaxPooling2D(pool_size=(4, 2))(incept_1)
-
-        incept_2 = Inception2D(4, 8, 3, 5, activation='relu')(mp2d_1)
-        mp2d_2 = MaxPooling2D(pool_size=(4, 2))(incept_2)
-
-        incept_3 = Inception2D(4, 12, 3, 3, activation='relu')(mp2d_2)
-
-        pool = GlobalMaxPooling2D()(incept_3)
-
-        fc_1 = Dense(8, kernel_initializer='uniform', activation='relu')(pool)
-        drop = Dropout(0.2)(fc_1)
-
-        fc_2 = Dense(2, kernel_initializer='uniform',
-                     activation='softmax')(drop)
-
-        opt = Adam()
-        model = Model(inputs=x, outputs=fc_2)
-        model.compile(optimizer=opt, loss="categorical_crossentropy")
-
-        hist = {'train_loss': [], 'train_metric': [],
-                'val_loss': [], 'val_metric': []}
-        diag_classes = ['A', 'NonA']
-
-        return model, hist, diag_classes
-
-    @ds.action
-    def train_on_batch(self, model_name):
-        '''
-        Train model
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model, hist, _ = model_comp
-        train_x = np.array([x for x in self.signal]).reshape((-1, 3000, 1))
-        train_y = self.get_categorical_labels(model_name)
-        res = model.train_on_batch(train_x, train_y)
-        pred = model.predict(train_x)
-        y_pred = bt.get_pos_of_max(pred)
-        hist['train_loss'].append(res)
-        hist['train_metric'].append(f1_score(train_y, y_pred, average='macro'))
-        return self
-
-    @ds.action
-    def validate_on_batch(self, model_name):
-        '''
-        Validate model
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model, hist, _ = model_comp
-        test_x = np.array([x for x in self.signal]).reshape((-1, 3000, 1))
-        test_y = self.get_categorical_labels(model_name)
-        pred = model.predict(test_x)
-        y_pred = bt.get_pos_of_max(pred)
-        hist['val_loss'].append(log_loss(test_y, pred))
-        hist['val_metric'].append(f1_score(test_y, y_pred, average='macro'))
-        return self
-
-    @ds.action
-    def model_summary(self, model_name):
-        '''
-        Print model layers
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        print(model_name)
-        print(model_comp[0].summary())
-        return self
-
-    @ds.action
-    def save_model(self, model_name, fname):
-        '''
-        Save model layers and weights
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model = model_comp[0]
-        model.save_weights(fname)
-        yaml_string = model.to_yaml()
-        fout = open(fname + ".layers", "w")
-        fout.write(yaml_string)
-        fout.close()
-        return self
-
-    @ds.action
-    def load_model(self, model_name, fname):
-        '''
-        Load model layers and weights
-        '''
-        model_comp = self.get_model_by_name(model_name)
-        model = model_comp[0]
-        fin = open(fname + ".layers", "r")
-        yaml_string = fin.read()
-        fin.close()
-        model = model_from_yaml(yaml_string)
-        model.load_weights(fname)
-        return self
-
-    @ds.action
-    def train_hmm(self, model_name):
-        '''
-        Train hmm model on the whole batch
-        '''
-        warnings.filterwarnings("ignore")
-        model = self.get_model_by_name(model_name)
-        train_x = np.concatenate(self.signal, axis=1).T
-        lengths = [x.shape[1] for x in self.signal]
-        model.fit(train_x, lengths)
-        return self
-
-    @ds.action
-    def predict_hmm(self, model_name):
-        '''
-        Get hmm predictited classes
-        '''
-        model = self.get_model_by_name(model_name)
-        return self.predict_all_hmm(model)
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def predict_all_hmm(self, model):
-        '''
-        Get hmm predictited classes
-        '''
-        _ = model
-        return bt.predict_hmm_classes
-
-    @ds.action
-    def save_hmm_model(self, model_name, fname):
-        '''
-        Save hmm model
-        '''
-        model = self.get_model_by_name(model_name)
-        joblib.dump(model, fname + '.pkl')
-        return self
-
-    @ds.action
-    def load_hmm_model(self, model_name, fname):
-        '''
-        Load hmm model
-        '''
-        model = self.get_model_by_name(model_name)#pylint: disable=unused-variable
-        model = joblib.load(fname + '.pkl')
-        return self
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def gradient(self, order):
-        """
-        Compute derivative of given order and add it to annotation
-        """
-        _ = order
-        return bt.get_gradient
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel", target='mpc')
-    def convolve_layer(self, layer, kernel):
-        """
-        Convolve layer with kernel
-        """
-        _ = layer, kernel
-        return bt.convolve_layer
-
-    @ds.action
-    @ds.inbatch_parallel(init="init_parallel", post="post_parallel",
-                         target='mpc')
-    def merge_layers(self, list_of_layers):
-        """
-        Merge layers from list of layers to signal
-        """
-        _ = list_of_layers
-        return bt.merge_list_of_layers
+                                meta=batch_meta,
+                                target=np.zeros(len(batch_data), dtype=int))
