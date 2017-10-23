@@ -30,7 +30,7 @@ We have a number of built-in models for ECG classification:
 * [```dirichlet```](dirichlet_model.md)
 * [```conv_model```](conv_model.md)
 
-Below you can find a guide how to build a your own model with [Keras]() and [Tensorflow]()
+Below you can find a guide how to build a your own model with Keras and Tensorflow.
 
 ## KerasBaseModel
 Defines model and implements methods of ```BaseModel``` for Keras framework. 

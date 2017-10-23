@@ -5,7 +5,7 @@ Then for each channel it applies fast fourier transform.
 The result is considered as 2D image and is processed with a number of [Inception2d]() blocks
 to resulting output, which is a predicted class. See below the model architecture:
 
-![image](doc/fft_model.PNG)
+![image](fft_model.PNG)
 
 ## How to use
 We applied this model to arrhythmia prediction from single-lead ECG. Train pipeline we used for the fft model looks as follows:
