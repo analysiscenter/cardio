@@ -4,7 +4,7 @@ Triplet model is designed to construct an ECG embedding. It learns to map an ECG
 
 The model is trained on triplets, where each triplet is a list [anchor_segment, positive_segment, negative_segment]. Anchor and positive segments are segments from the same ECG. Negative segment is a segment from other ECG. The next figure shows triplet.
 
-![image](https://github.com/analysiscenter/ecg/blob/unify_models/doc/triplet.PNG)
+![image](https://github.com/analysiscenter/ecg/blob/master/doc/triplet.PNG)
 
 Loss of the model is a difference *d*(anchor_segment, positive_segment) - *d*(anchor_segment, negative_segment), where *d* is some metric in embedding space. At the moment *d* is a cosine similarity metric.
 

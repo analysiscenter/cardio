@@ -1,7 +1,7 @@
 # Models
 
 This is a place where ECG models live. You can write your own model or exploit provided models, however,
-models should extend [base_model]() class. 
+models should extend ```BaseModel``` class. 
 
 ## Base model
 All what you may need from model are the following methods:
@@ -50,7 +50,7 @@ See details of methods [here]()
 
 ## How to build a model with Keras
 
-To build a model with Keras you only need to define a sequence of layers, everything else is implemented in [KerasBaseModel]().
+To build a model with Keras you only need to define a sequence of layers, everything else is implemented in ```KerasBaseModel```.
 For example, let's build a simple FC model. 
 ```python
 from keras.layers import Input, Dense
@@ -72,7 +72,7 @@ class SimpleFCModel(KerasBaseModel):
             self.model.compile(loss="binary_crossentropy", optimizer="adam")
             return self
 ```
-SimpleFCModel is a [dynamic]() model, i.e. it is build and compiles at first time it gets batch. So we do not need specify the input shape in advance. The dynamic model gets is automatically from batch. To enable dynamic mode, the following declaration is required in [model_ecg_batch]():
+SimpleFCModel is a dynamic model, i.e. it is build and compiles at first time it gets batch. So we do not need specify the input shape in advance. The dynamic model gets is automatically from batch. To enable dynamic mode, the following declaration is required in ```ModelEcgBatch```:
 
 ```python
 @ds.model(mode="dynamic")
