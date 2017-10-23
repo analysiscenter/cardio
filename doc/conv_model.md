@@ -12,7 +12,7 @@ Train pipeline we used for the convolutional model looks as follows:
 conv_train_pipeline = (ds.Pipeline(config={'triplet_embedding': config_tr})
                          .init_model('triplet_embedding')
                          .load(fmt="wfdb", components=["signal", "meta"])
-                         .load(src=".../REFERENCE.csv", fmt="csv", components="target")
+                         .load(src="REFERENCE.csv", fmt="csv", components="target")
                          .drop_labels(["~"])
                          .replace_labels({"N": "NO", "O": "NO"})
                          .split_signals(3000, 3000)

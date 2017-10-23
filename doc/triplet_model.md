@@ -13,7 +13,7 @@ We applied this model to generate features of ECG signal that would increase acc
 ```python
 triplet_train_pipeline = (ds.Pipeline()
                           .load(fmt="wfdb", components=["signal", "meta"])
-                          .load(src=".../REFERENCE.csv", fmt="csv", components="target")
+                          .load(src="REFERENCE.csv", fmt="csv", components="target")
                           .drop_labels(["~"])
                           .drop_short_signals(6000)
                           .replace_labels({"N": "NO", "O": "NO"})

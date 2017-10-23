@@ -12,7 +12,7 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
 ```python
 fft_train_pipeline = (ds.Pipeline()
                       .load(fmt="wfdb", components=["signal", "meta"])
-                      .load(src=".../REFERENCE.csv", fmt="csv", components="target")
+                      .load(src="REFERENCE.csv", fmt="csv", components="target")
                       .drop_labels(["~"])
                       .replace_labels({"N": "NO", "O": "NO"})
                       .random_resample_signals("normal", loc=300, scale=10)

@@ -1,6 +1,6 @@
 # Tutorial on ecg
 
-Tutorial consists of 3 Ipython Notebooks that learn you from simple to complex how to create an ECG dataset and run ECG models.
+Tutorial consists of 3 Ipython Notebooks that will teach you from simple to complex how to create an ECG dataset and run ECG models.
 
 Content:
 * [Notebook 1: create a dataset](ecg_tutorial_part_1.ipynb)

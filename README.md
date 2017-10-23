@@ -26,7 +26,7 @@ Here is an example of pipeline that loads ECG signals, makes some preprocessing 
 ```python
 model_train_pipeline = (ds.Pipeline()
                         .load(fmt="wfdb", components=["signal", "meta"])
-                        .load(src=".../data/REFERENCE.csv", fmt="csv", components="target")
+                        .load(src="REFERENCE.csv", fmt="csv", components="target")
                         .drop_labels(["~"])
                         .replace_labels({"N": "NO", "O": "NO"})
                         .random_resample_signals("normal", loc=300, scale=10)
