@@ -40,7 +40,7 @@ As a result of this pipeline one obtains a trained model.
 
 # How to start
 
-See [tutorial](https://github.com/analysiscenter/ecg/blob/master/doc/tutorial.md) to start working with ECG.
+See [tutorial](doc/tutorial.md) to start working with ECG.
 
 # Further reading
 
