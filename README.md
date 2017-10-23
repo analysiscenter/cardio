@@ -44,4 +44,4 @@ See [tutorial](doc/tutorial.md) to start working with ECG.
 
 # Further reading
 
-Detailed documentation on ```ecg``` is available [here](doc/README.md).
+Detailed documentation on `ecg` is available [here](doc/README.md).
