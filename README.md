@@ -26,7 +26,7 @@ Here is an example of pipeline that loads ECG signals, makes some preprocessing 
 ```python
 model_train_pipeline = (ds.Pipeline()
                         .load(fmt="wfdb", components=["signal", "meta"])
-                        .load(src=".../data/REFERENCE.csv", fmt="csv", components="target")
+                        .load(src="REFERENCE.csv", fmt="csv", components="target")
                         .drop_labels(["~"])
                         .replace_labels({"N": "NO", "O": "NO"})
                         .random_resample_signals("normal", loc=300, scale=10)
@@ -40,8 +40,8 @@ As a result of this pipeline one obtains a trained model.
 
 # How to start
 
-See [tutorial](https://github.com/analysiscenter/ecg/blob/unify_models/doc/tutorial.md) to start working with ECG.
+See [tutorial](doc/tutorial.md) to start working with ECG.
 
 # Further reading
 
-Detailed documentation on ```ecg``` is available [here](https://github.com/analysiscenter/ecg/blob/unify_models/doc/README.md).
+Detailed documentation on `ecg` is available [here](doc/README.md).

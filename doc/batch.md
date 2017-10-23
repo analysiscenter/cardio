@@ -21,7 +21,7 @@ Methods of EcgBatch allows:
 * allocate PQ, QT, QRS segments
 * dump results in blosc.
 
-More detailed API see [here]().
+More detailed API see [here](https://analysiscenter.github.io/ecg/index.html).
 
 
 ## ecg_batch_tools
