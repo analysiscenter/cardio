@@ -773,58 +773,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
                                                                          bt.T_STATES))
 
     @ds.action
-    def get_signal_meta(self, var_name):
-        """ Writes ecg signal and some metadata about it to pipeline variable
-        var_name as dictionaries. Metadata include sampling rate and units of
-        the signal.
-
-        Parameters
-        ----------
-        var_name : str
-            Name of pipeline variable to write results to.
-
-        Returns
-        -------
-        batch : EcgBatch
-        """
-        for ind in self.indices:
-            res_dict = {"units": self[ind].meta['units'],
-                        "frequency": np.float64(self[ind].meta['fs']),
-                        "signal":self[ind].signal}
-            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
-        return self
-
-    @ds.action
-    def get_signal_annotation_results(self, var_name):
-        """ Writes ecg report data in batch to pipeline variable
-        var_name as dictionaries. Ecg report includes heart rate,
-        median QRS, PQ, QT intervals and array with starts and ends
-        of P, QRS, T complexes.
-
-        Parameters
-        ----------
-        var_name : str
-            Name of pipeline variable to write results to.
-
-        Returns
-        -------
-        batch : EcgBatch
-        """
-        for ind in self.indices:
-            res_dict = {"heart_rate": self[ind].meta['hr'],
-                        "qrs_interval": self[ind].meta['qrs'],
-                        "pq_interval": self[ind].meta['pq'],
-                        "qt_interval": self[ind].meta['qt'],
-                        "p_segments": self[ind].meta["p_segments"],
-                        "qrs_segments": self[ind].meta["qrs_segments"],
-                        "t_segments": self[ind].meta["t_segments"]
-                       }
-            self.pipeline.get_variable(var_name, init=list, init_on_each_run=True).append(res_dict)
-
-        return self
-
-
-    @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def repeat_signal(self, index, reps):
         '''

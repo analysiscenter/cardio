@@ -303,33 +303,30 @@ class TestEcgBatchPipelineMethods:
         assert np.all([True if sig.shape[-1] == 9000 else False for sig in batch.signal])
         assert batch.target.shape == (2, 3)
 
-    def test_get_signal_meta(self, setup_module_load): #pylint: disable=redefined-outer-name
+    def test_get_signal_with_meta(self, setup_module_load): #pylint: disable=redefined-outer-name
         """
         Testing get_signal_meta.
         """
         # Arrange
         ppln = (ds.Pipeline()
+                .init_variable(name="signal", init_on_each_run=list())
                 .load(fmt='wfdb', components=["signal", "meta"])
                 .flip_signals()
-                .get_signal_meta(var_name="signal")
+                .update_variable("signal", ds.B("signal"), mode='a')
                 .run(batch_size=2, shuffle=False,
                      drop_last=False, n_epochs=1, lazy=True))
 
         index = setup_module_load[0]
-        dtst = ds.Dataset(index, batch_class=ModelEcgBatch)
+        dtst = ds.Dataset(index, batch_class=EcgBatch)
 
         # Act
         (dtst >> ppln).run()
         signal_var = ppln.get_variable("signal")
 
         # Assert
-        assert len(signal_var) == 6
-        assert len(signal_var[0]) == 3
-        assert 'signal' in signal_var[0].keys()
-        assert 'frequency' in signal_var[0].keys()
-        assert 'units' in signal_var[0].keys()
-        assert signal_var[0]["signal"].shape == (1, 9000)
-        assert isinstance(signal_var[0]["frequency"], np.float64)
+        assert len(signal_var) == 3
+        assert len(signal_var[0]) == 2
+        assert signal_var[0][0].shape == (1, 9000)
 
 class TestIntervalBatchTools:
     """
