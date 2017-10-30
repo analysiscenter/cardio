@@ -24,7 +24,7 @@ class HMModel(BaseModel):
         init_params = self.get_from_config("init_params", None)
         if init_params is not None:
             self.estimator.means_ = init_params["means_"]
-            self.estimator.covars_ = init_params["covars_"] 
+            self.estimator.covars_ = init_params["covars_"]
             self.estimator.transmat_ = init_params["transmat_"]
             self.estimator.startprob_ = init_params["startprob_"]
 
@@ -52,14 +52,14 @@ class HMModel(BaseModel):
         """
         with open(path, "rb") as file:
             self.estimator = dill.load(file)
-    
+
     def train(self, X, *args, **kwargs):
         """ Train the model with the data provided
-        
+
         Parameters
         ----------
-        X : 
-        y : 
+        X :
+        y :
         For more details and other parameters look at the documentation for the estimator used.
         """
         lengths = kwargs.get("lengths", None)
@@ -71,7 +71,7 @@ class HMModel(BaseModel):
 
         Parameters
         ----------
-        X : 
+        X :
 
 
         For more details and other parameters look at the documentation for the estimator used.
