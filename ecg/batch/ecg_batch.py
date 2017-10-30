@@ -12,7 +12,7 @@ from . import ecg_batch_tools as bt
 from .utils import LabelBinarizer
 
 
-class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
+class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-instance-attributes
     """Class for storing batch of ECG signals.
 
     Alongside with data this class contains various methods of ECG
@@ -774,38 +774,38 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
                                                                          bt.T_STATES))
-        
+
     @ds.action
     def write_to_annotation(self, key, value):
         """
         Writes values from value to annotation under defined key.
-        
+
         It is supposed that length of batch and value are the same.
-        
+
         Parameters
         ----------
         key: misc
             Key of the annotation dict to save value under.
         value: iterable
             Source of the values to write to annotation dict.
-            
+
         Returns
         -------
         batch: EcgBatch
             Batch with modified annotation component.
-            
+
         Raises
         ------
         ValueError
             If length of the batch does not correspond to length of the value.
         """
         value = getattr(self, value)
-        
+
         if len(self) != len(value):
             raise ValueError("Length of the value %i is not equal to batch length %i" % (len(value), len(self)))
-            
+
         for i in range(len(self)):
-            self.annotation[i][key] = value[i]   
+            self.annotation[i][key] = value[i]
         return self
 
     @ds.action
