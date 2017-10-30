@@ -53,6 +53,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         self._unique_labels = None
         self._label_binarizer = None
         self.unique_labels = unique_labels
+        self._temp = None
 
     def _reraise_exceptions(self, results):
         """Reraise all exceptions in results list.
@@ -197,7 +198,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         return new_batch, rest_batch
 
     @ds.action
-    def load(self, src=None, fmt=None, components=None, *args, **kwargs):
+    def load(self, src=None, fmt=None, components=None, ann_ext=None, *args, **kwargs):
         """Load given batch components from source.
 
         Parameters
@@ -208,6 +209,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             Source format.
         components : iterable
             Components to load.
+        ann_ext: str
+            Extension of the annotation file.
 
         Returns
         -------
@@ -220,12 +223,12 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
         if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
             return self._load_labels(src)
         elif fmt == "wfdb":
-            return self._load_wfdb(src=src, components=components)
+            return self._load_wfdb(src=src, components=components, ann_ext=ann_ext, *args, **kwargs)
         else:
             return super().load(src, fmt, components, *args, **kwargs)
 
     @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
-    def _load_wfdb(self, index, src=None, components=None):
+    def _load_wfdb(self, index, src=None, components=None, ann_ext=None):
         """Load given components from wfdb files.
 
         Parameters
@@ -246,7 +249,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
             path = self.index.get_fullpath(index)  # pylint: disable=no-member
         else:
             raise ValueError("Source path is not specified")
-        return bt.load_wfdb(path, components)
+        return bt.load_wfdb(path, components, ann_ext)
 
     def _assemble_load(self, results, *args, **kwargs):
         """Concatenate results of different workers and update self.
@@ -771,6 +774,39 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods
 
         self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
                                                                          bt.T_STATES))
+        
+    @ds.action
+    def write_to_annotation(self, key, value):
+        """
+        Writes values from value to annotation under defined key.
+        
+        It is supposed that length of batch and value are the same.
+        
+        Parameters
+        ----------
+        key: misc
+            Key of the annotation dict to save value under.
+        value: iterable
+            Source of the values to write to annotation dict.
+            
+        Returns
+        -------
+        batch: EcgBatch
+            Batch with modified annotation component.
+            
+        Raises
+        ------
+        ValueError
+            If length of the batch does not correspond to length of the value.
+        """
+        value = getattr(self, value)
+        
+        if len(self) != len(value):
+            raise ValueError("Length of the value %i is not equal to batch length %i" % (len(value), len(self)))
+            
+        for i in range(len(self)):
+            self.annotation[i][key] = value[i]   
+        return self
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")

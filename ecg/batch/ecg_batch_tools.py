@@ -20,7 +20,7 @@ R_STATE = np.array([1], np.int64)
 S_STATE = np.array([2], np.int64)
 
 
-def load_wfdb(path, components):
+def load_wfdb(path, components, ann_ext=None):
     """Load given components from wfdb file.
 
     Parameters
@@ -29,6 +29,8 @@ def load_wfdb(path, components):
         Path to .hea file.
     components : iterable
         Components to load.
+    ann_ext: str
+        Extension of the annotation file.
 
     Returns
     -------
@@ -39,8 +41,15 @@ def load_wfdb(path, components):
     record = wfdb.rdsamp(path)
     signal = record.__dict__.pop("p_signals").T
     meta = record.__dict__
+    if "annotation" in components and ann_ext is not None:
+        annotation = wfdb.rdann(path, ann_ext)
+        annot = {"annsamp":annotation.annsamp,
+                 "anntype":annotation.anntype}
+    else:
+        annot = {}
+
     data = {"signal": signal,
-            "annotation": {},
+            "annotation": annot,
             "meta": meta}
     return [data[comp] for comp in components]
 
