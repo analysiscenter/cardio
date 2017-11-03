@@ -46,10 +46,10 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
         self._data = (None, None, None, None)
-        self.signal = np.array([np.array([])] * len(index) + [None])[:-1]
-        self.annotation = np.array([{}] * len(index))
-        self.meta = np.array([{}] * len(index))
-        self.target = np.array([None] * len(index))
+        self.signal = np.array([np.array([]) for _ in range(len(index))] + [None])[:-1]
+        self.annotation = np.array([{} for _ in range(len(index))])
+        self.meta = np.array([{} for _ in range(len(index))])
+        self.target = np.array([None for _ in range(len(index))])
         self._unique_labels = None
         self._label_binarizer = None
         self.unique_labels = unique_labels
