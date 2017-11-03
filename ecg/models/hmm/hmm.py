@@ -8,7 +8,10 @@ from ecg.dataset.dataset.models.base import BaseModel
 
 class HMModel(BaseModel):
     """
-    Class for Hidden Markov Models based on hmmlearn API.
+    Hidden Markov Model realisation.
+
+    This realisation is based on hmmlearn API. It is supposed
+    that estimators of HMModel are model classes if hmmlearn.
     """
 
     def __init__(self, *args, **kwargs):
@@ -65,7 +68,7 @@ class HMModel(BaseModel):
         ----------
         X : array
             An array of observations to learn from. Also, it is expected
-            that kwargs contain key "lenghts", which define lengths of 
+            that kwargs contain key "lenghts", which define lengths of
             sequences.
 
         For more details and other parameters look at the documentation for the estimator used.
@@ -90,7 +93,7 @@ class HMModel(BaseModel):
             Predicted value per observation.
         """
         lengths = kwargs.get("lengths", None)
-        preds = self.estimator.predict(X, lenghts)
+        preds = self.estimator.predict(X, lengths)
         if lengths:
             output = np.array(np.split(preds, np.cumsum(lengths)[:-1])+[None])[:-1]
         else:
