@@ -74,7 +74,7 @@ class HMModel(BaseModel):
         self.estimator.fit(X, lengths)
         return list(self.estimator.monitor_.history)
 
-    def predict(self, X *args, **kwargs):
+    def predict(self, X, *args, **kwargs):
         """ Predict with the data provided
 
         Parameters
