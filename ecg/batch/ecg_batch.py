@@ -775,6 +775,69 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
                                                                          bt.T_STATES))
 
+    def print_ecg(self, index=None, start=0, end=None, fs=None, annotate=False): #pylint: disable=too-many-locals
+        """ Method for printing an ECG.
+
+        Parameters
+        ----------
+        index : element of self.indices
+            Index of the signal in the batch to print report about.
+        start : int
+            From which second of the signal to start plotting.
+        end : int
+            Second of the signal to end plot.
+        fs : float
+            Sampling rate of the signal.
+        annotate : bool
+            Show annotation on the plot or not.
+
+        Returns
+        -------
+        self
+        """
+        if index is None:
+            index = self.indices[0]
+        i = self.get_pos(None, "signal", index)
+
+        sig = self.signal[i]
+        annotation = self.annotation[i]
+        meta = self.meta[i]
+
+        if fs is None:
+            fs = meta["fs"]
+
+        if end is None:
+            end = sig.shape[1]
+        else:
+            end = np.int(end*fs)
+        start = np.int(start*fs)
+
+        sig = sig[:, start:end]
+
+        num_channels = sig.shape[0]
+        fig = plt.figure(figsize=(10, 4*num_channels))
+        for channel in range(num_channels):
+            ax = fig.add_subplot(num_channels, 1, channel+1)
+            ax.plot((np.arange(start, end) / fs), sig[channel, :])
+            ax.set_xlabel("t, sec")
+            ax.set_ylabel(meta["units"][channel] if "units" in meta.keys() else "mV")
+            ax.grid("on", which='major')
+            if annotate:
+                r_starts, r_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
+                                                             np.array([0, 1, 2]))
+                for begin, stop in zip((r_starts + start)/fs, (r_ends + start)/fs):
+                    ax.axvspan(begin, stop, color='red', alpha=0.3)
+
+                p_starts, p_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
+                                                             np.array([14, 15, 16]))
+                for begin, stop in zip((p_starts + start)/fs, (p_ends + start)/fs):
+                    ax.axvspan(begin, stop, color='green', alpha=0.3)
+
+                t_starts, t_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
+                                                             np.array([5, 6, 7, 8, 9, 10]))
+                for begin, stop in zip((t_starts + start)/fs, (t_ends + start)/fs):
+                    ax.axvspan(begin, stop, color='blue', alpha=0.3)
+
     @ds.action
     def write_to_annotation(self, key, value):
         """
