@@ -5,6 +5,7 @@ import copy
 import numpy as np
 import pandas as pd
 import scipy
+import matplotlib.pyplot as plt
 
 from .. import dataset as ds
 from . import kernels
