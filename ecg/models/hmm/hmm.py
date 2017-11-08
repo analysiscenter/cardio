@@ -3,7 +3,7 @@
 import numpy as np
 import dill
 
-from ecg.dataset.dataset.models.base import BaseModel
+from cardio.dataset.dataset.models.base import BaseModel
 
 
 class HMModel(BaseModel):
