@@ -111,7 +111,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             New unique labels.
         """
         self._unique_labels = val
-        if self.unique_labels is None:
+        if self.unique_labels is None or len(self.unique_labels) == 0:
             self._label_binarizer = None
         else:
             self._label_binarizer = LabelBinarizer().fit(self.unique_labels)

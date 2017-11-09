@@ -1,10 +1,11 @@
 """Contains metric functions."""
 
 import numpy as np
+import pandas as pd
 import sklearn
 
 
-__all__ = ["f1_score", "auc", "classification_report", "calculate_metrics"]
+__all__ = ["f1_score", "auc", "classification_report", "confusion_matrix", "calculate_metrics"]
 
 
 def get_class_prob(predictions_dict):
@@ -143,10 +144,35 @@ def classification_report(predictions_list, **kwargs):
     return sklearn.metrics.classification_report(*get_labels(predictions_list), **kwargs)
 
 
+def confusion_matrix(predictions_list, margins=True, **kwargs):
+    """Compute confusion matrix from correct and estimated targets.
+
+    Parameters
+    ----------
+    predictions_list : list
+        List, containing dicts of model predictions. Each dict must contain "target_true" and "target_pred" keys
+        with corresponding dict values of the form class_label : probability.
+    margins : bool
+        Specifies whether to add row and column margins with subtotals.
+    **kwargs : misc
+        Other pandas.crosstab keyword arguments.
+
+    Returns
+    -------
+    crosstab : DataFrame
+        Classifier confusion matrix.
+    """
+    true, pred = get_labels(predictions_list)
+    true = pd.Series(true, name="True")
+    pred = pd.Series(pred, name="Pred")
+    return pd.crosstab(pred, true, margins=margins, **kwargs)
+
+
 METRICS_DICT = {
     "f1_score": f1_score,
     "auc": auc,
     "classification_report": classification_report,
+    "confusion_matrix": confusion_matrix,
 }
 
 
