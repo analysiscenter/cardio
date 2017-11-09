@@ -51,7 +51,7 @@ class HMModel(BaseModel):
             raise ValueError("HMM estimator does not exist. Check your cofig for 'estimator'.")
 
     def load(self, path, *args, **kwargs): # pylint: disable=arguments-differ
-        """Load HMModel.
+        """Load HMModel from file with dill.
 
         Parameters
         ----------
@@ -62,7 +62,7 @@ class HMModel(BaseModel):
             self.estimator = dill.load(file)
 
     def train(self, X, *args, **kwargs):
-        """ Train the model with the data provided
+        """ Train the model using data provided.
 
         Parameters
         ----------

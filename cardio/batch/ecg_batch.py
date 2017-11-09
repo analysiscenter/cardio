@@ -794,7 +794,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
 
         Returns
         -------
-        self
+        batch : EcgBatch
+            Unchanged instance of the batch.
         """
         if index is None:
             index = self.indices[0]
