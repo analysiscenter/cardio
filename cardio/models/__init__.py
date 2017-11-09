@@ -1,8 +1,6 @@
 """Contains ECG models and custom functions."""
 
-from .autoencoder import *  # pylint: disable=wildcard-import
 from .dirichlet_model import *  # pylint: disable=wildcard-import
 from .fft_model import *  # pylint: disable=wildcard-import
-from .metrics import *  # pylint: disable=wildcard-import
+from . import metrics
 from .hmm import * # pylint: disable=wildcard-import
-from .keras_custom_objects import * # pylint: disable=wildcard-import

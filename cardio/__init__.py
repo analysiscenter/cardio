@@ -2,7 +2,7 @@
 import sys
 
 from .batch import *  # pylint: disable=wildcard-import
-from . import dataset as ds
+from . dataset import *  # pylint: disable=wildcard-import
 from .models import *  # pylint: disable=wildcard-import
 
 

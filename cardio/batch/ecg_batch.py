@@ -874,26 +874,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         return self
 
     @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
-    def repeat_signal(self, index, reps):
-        '''
-        Construct an array by repeating signal the number of times given by reps. New
-        signal shape will be (reps, initial_signal_shape).
-
-        Parameters
-        ----------
-        repeat : positive int
-            Number of times to repeat signal.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Batch with each signal repeated. Changes self.signal inplace.
-        '''
-        i = self.get_pos(None, "signal", index)
-        self.signal[i] = np.broadcast_to(self.signal[i], (reps, *self.signal[i].shape))
-
-    @ds.action
     def ravel(self):
         """Join a sequence of arrays along axis 0.
 
@@ -914,24 +894,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         new_index = ds.DatasetIndex(np.arange(len(x), dtype=int))
         out_batch = self.__class__(new_index)
         return out_batch.update(signal=x, target=y)
-
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
-    def tile(self, index, reps):
-        """Repeat each signal reps times.
-
-        Parameters
-        ----------
-        reps : positive int
-            The number of repetitions.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Batch with each signal repeated reps times. Changes self.signal inplace.
-        """
-        i = self.get_pos(None, "signal", index)
-        self.signal[i] = np.tile(self.signal[i], reps).reshape((*self.signal[i].shape, reps))
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
@@ -974,84 +936,23 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         self.signal[i] = function(self.signal[i], *args, **kwargs)
 
     @ds.action
-    def get_triplets(self, size, siglen, opp_classes=None):#pylint: disable=too-many-locals
-        """Generate triplets for triplet model.
-
-        Samples triplets [anchor, positive_sement, negative_segmant] so that
-        1) anchor and positive segments are drawn at random from the same ecg
-        2) negative segments is drawn from other ecg
-        3) if opp_classes is not None then opp_classes is a list of two targets and
-        ecg are sampled from these classes.
-
+    def get_targets(self, var_name, mode='a'):
+        """Write batch targets to pipeline variable.
         Parameters
         ----------
-        size : positive int
-            Number of triplets to be sampled from batch.
-        siglen : positive int
-            Length of signal to be sampled from ecg.
-        opp_classes : None or list of two targets
-            List of targets from which ecg are sampled. If None ecg are sampled
-            from the whole batch.
-
+        var_name : str
+            Name of pipeline variable to write results to.
+        mode : str
+            If 'a' batch targets are appended to list var_name, if 'e' batch targets are extended.
+            Defaul value is 'a'.
         Returns
         -------
-        batch : same class as self
-            Batch of triplets [anchor, positive_sement, negative_segmant]
-
-        Notes
-        -----
-        This method creates new EcgBatch instance with empty meta and annotation components.
+        batch : EcgBatch
         """
-        ind = ds.DatasetIndex(index=np.arange(size, dtype=int))
-        out_batch = self.__class__(ind)
-
-        batch_data = []
-        batch_meta = []
-
-        if opp_classes is not None:
-            a_indices = np.array([ind for ind in self.indices
-                                  if self[ind].target == opp_classes[0]])
-            b_indices = np.array([ind for ind in self.indices
-                                  if self[ind].target != opp_classes[1]])
-
-            if len(a_indices) == 0:
-                raise ValueError('There are no {0} signals in batch'.format(opp_classes[0]))
-            if len(b_indices) == 0:
-                raise ValueError('There are no {0} signals in batch'.format(opp_classes[1]))
-
-            a_choice = a_indices[np.random.randint(low=0, high=len(a_indices), size=size)]
-            b_choice = b_indices[np.random.randint(low=0, high=len(b_indices), size=size)]
-            pair_choice = np.array([a_choice, b_choice]).T
-
-            first_choice = np.random.randint(low=0, high=2, size=size)
-            pos_indices = pair_choice[range(size), first_choice]
-            neg_indices = pair_choice[range(size), 1 - first_choice]
+        if mode == 'a':
+            self.pipeline.get_variable(var_name).append(self.target)
+        elif mode == 'e':
+            self.pipeline.get_variable(var_name).extend(self.target)
         else:
-            pair_choice = np.array([np.random.choice(self.indices, 2, replace=False) for _ in range(size)])
-            pos_indices, neg_indices = pair_choice.T
-
-        for i in range(size):
-            pos_index = pos_indices[i]
-            neg_index = neg_indices[i]
-
-            pos_signal = self[pos_index].signal
-            if pos_signal.shape[1] < siglen:
-                raise ValueError('Signal is shorter than length of target segment')
-            seg_1, seg_2 = np.random.randint(low=0, high=pos_signal.shape[1] - siglen, size=2)
-
-            neg_signal = self[neg_index].signal
-            if neg_signal.shape[1] < siglen:
-                raise ValueError('Signal is shorter than length of target segment')
-            seg_3 = np.random.randint(low=0, high=neg_signal.shape[1] - siglen)
-
-            batch_data.append([pos_signal[:, seg_1: seg_1 + siglen],
-                               pos_signal[:, seg_2: seg_2 + siglen],
-                               neg_signal[:, seg_3: seg_3 + siglen]])
-            batch_meta.append([pos_index, seg_1, seg_2, neg_index, seg_3])
-
-        batch_data.append(None)
-        batch_data = np.array(batch_data)[:-1]
-        batch_meta = np.array(batch_meta)
-        return out_batch.update(signal=batch_data,
-                                meta=batch_meta,
-                                target=np.zeros(len(batch_data), dtype=int))
+            raise KeyError("Unknown mode. ")
+        return self
