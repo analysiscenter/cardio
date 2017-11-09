@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-import sklearn
+from sklearn import metrics
 
 
 __all__ = ["f1_score", "auc", "classification_report", "confusion_matrix", "calculate_metrics"]
@@ -101,7 +101,7 @@ def f1_score(predictions_list, average="macro", **kwargs):
     """
     true_labels, pred_labels = get_labels(predictions_list)
     unique_labels = sorted(set(true_labels) | set(pred_labels))
-    return sklearn.metrics.f1_score(true_labels, pred_labels, labels=unique_labels, average=average, **kwargs)
+    return metrics.f1_score(true_labels, pred_labels, labels=unique_labels, average=average, **kwargs)
 
 
 def auc(predictions_list, average="macro", **kwargs):
@@ -122,7 +122,7 @@ def auc(predictions_list, average="macro", **kwargs):
     auc : float or array of floats
         AUC for each class or weighted average of the AUCs.
     """
-    return sklearn.metrics.roc_auc_score(*get_probs(predictions_list), average=average, **kwargs)
+    return metrics.roc_auc_score(*get_probs(predictions_list), average=average, **kwargs)
 
 
 def classification_report(predictions_list, **kwargs):
@@ -141,7 +141,7 @@ def classification_report(predictions_list, **kwargs):
     report : string
         Text summary of the precision, recall and F1 score for each class.
     """
-    return sklearn.metrics.classification_report(*get_labels(predictions_list), **kwargs)
+    return metrics.classification_report(*get_labels(predictions_list), **kwargs)
 
 
 def confusion_matrix(predictions_list, margins=True, **kwargs):
