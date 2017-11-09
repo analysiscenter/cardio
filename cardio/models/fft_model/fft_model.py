@@ -1,31 +1,26 @@
-"""Model and model tools for ECG"""
+""" Contains fft_model architecture """
 
 from keras.layers import Input, Conv1D, Lambda, \
                          MaxPooling1D, MaxPooling2D, \
                          Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
-from keras.models import Model, load_model
-from keras.optimizers import Adam
 import keras.backend as K
 import tensorflow as tf
 
-from ..keras_base_model import KerasBaseModel
+from ...dataset.dataset.models.keras import KerasModel
 from ..keras_custom_objects import RFFT, Crop, Inception2D
 
-class FFTModel(KerasBaseModel):#pylint: disable=too-many-locals
+class FFTModel(KerasModel):#pylint: disable=too-many-locals
     '''
     FFT inception model. Includes initial convolution layers, then FFT transform, then
     a series of inception blocks.
     '''
-    def __init__(self):
-        super().__init__()
-
-    def build(self):#pylint: disable=too-many-locals
+    def _build(self, **kwargs):#pylint: disable=too-many-locals
         '''
-        Build and compile model
+        Build model
         '''
         with tf.variable_scope('fft_model'):#pylint: disable=not-context-manager
-            x = Input((None, 1))
+            x = Input(kwargs['input_shape'])
 
             conv_1 = Conv1D(4, 4, activation='relu')(x)
             mp_1 = MaxPooling1D()(conv_1)
@@ -55,16 +50,4 @@ class FFTModel(KerasBaseModel):#pylint: disable=too-many-locals
             fc_2 = Dense(2, kernel_initializer='uniform',
                          activation='softmax')(drop)
 
-            opt = Adam()
-            self.model = Model(inputs=x, outputs=fc_2)
-            self.model.compile(optimizer=opt, loss="binary_crossentropy")
-
-            return self
-
-    def load(self, fname):#pylint: disable=arguments-differ
-        '''
-        Load keras model
-        '''
-        custom_objects = {'RFFT': RFFT, 'Crop': Crop, 'Inception2D': Inception2D}
-        self.model = load_model(fname, custom_objects=custom_objects)
-        return self
+            return x, fc_2
