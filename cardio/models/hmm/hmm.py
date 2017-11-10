@@ -31,10 +31,14 @@ class HMModel(BaseModel):
         self.estimator = self.get_from_config("estimator")
         init_params = self.get_from_config("init_params", None)
         if init_params is not None:
-            self.estimator.means_ = init_params["means_"]
-            self.estimator.covars_ = init_params["covars_"]
-            self.estimator.transmat_ = init_params["transmat_"]
-            self.estimator.startprob_ = init_params["startprob_"]
+            if "m" not in estimator.init_params:
+                self.estimator.means_ = init_params["means_"]
+            if "c" not in estimator.init_params:
+                self.estimator.covars_ = init_params["covars_"]
+            if "t" not in estimator.init_params:
+                self.estimator.transmat_ = init_params["transmat_"]
+            if "s" not in estimator.init_params:
+                self.estimator.startprob_ = init_params["startprob_"]
 
     def save(self, path, *args, **kwargs): # pylint: disable=arguments-differ
         """Save HMModel with dill.
