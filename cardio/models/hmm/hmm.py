@@ -24,7 +24,7 @@ class HMModel(BaseModel):
 
         Uses estimator from model config variable as estimator.
         If config contains key "init_params", sets up initial
-        values "mean_", "covars_", "transmat_" and "startprob_"
+        values `means_`, `covars_`, `transmat_` and `startprob_`
         of the estimator as defined in "init_params".
         """
         _ = args, kwargs

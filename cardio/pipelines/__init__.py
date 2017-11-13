@@ -1,3 +1,3 @@
 """Contains ECG pipelines."""
 
-from .dummy_pipeline import *  # pylint: disable=wildcard-import
+from .pipelines import *  # pylint: disable=wildcard-import
