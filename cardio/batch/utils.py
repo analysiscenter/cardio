@@ -7,8 +7,8 @@ from sklearn.preprocessing import LabelBinarizer as LB
 class LabelBinarizer(LB):
     """Encode categorical features using a one-hot scheme.
 
-    Unlike sklearn.preprocessing.LabelBinarizer, each label will be encoded using
-    n_classes numbers even for binary problems.
+    Unlike sklearn.preprocessing.LabelBinarizer, each label will be encoded
+    using n_classes numbers even for binary problems.
     """
     # pylint: disable=invalid-name
 
@@ -22,7 +22,7 @@ class LabelBinarizer(LB):
 
         Returns
         -------
-        Y : 2-D array of shape [n_samples, n_classes]
+        Y : 2-D ndarray of shape [n_samples, n_classes]
             One-hot encoded labels.
         """
         Y = super().transform(y)
@@ -37,10 +37,12 @@ class LabelBinarizer(LB):
 
         Parameters
         ----------
-        Y : 2-D array of shape [n_samples, n_classes]
+        Y : 2-D ndarray of shape [n_samples, n_classes]
             One-hot encoded labels.
-        threshold : float or None
-            Threshold used in the binary and multi-label cases.
+        threshold : float, optional
+            The threshold used in the binary and multi-label cases. If None,
+            the threshold is assumed to be half way between neg_label and
+            pos_label.
 
         Returns
         -------

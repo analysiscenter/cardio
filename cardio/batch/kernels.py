@@ -10,20 +10,25 @@ def _check_kernel_size(size):
 
 
 def gaussian(size, sigma=None):
-    """Create 1-D gaussian kernel.
+    """Create a 1-D Gaussian kernel.
 
     Parameters
     ----------
     size : positive int
         Kernel size.
-    sigma : positive float
-        Standard deviation of gaussian distribution. Controls the degree of smoothing.
-        If None, it is set to (size + 1) / 6.
+    sigma : positive float, optional
+        Standard deviation of Gaussian distribution. Controls the degree of
+        smoothing. If None, it is set to (size + 1) / 6.
 
     Returns
     -------
     kernel : 1-D ndarray
         Gaussian kernel.
+
+    Raises
+    ------
+    ValueError
+        If size or sigma is negative or non-numeric.
     """
     _check_kernel_size(size)
     if sigma is None:
