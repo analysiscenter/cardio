@@ -3,7 +3,7 @@
 import numpy as np
 import dill
 
-from cardio.dataset.dataset.models.base import BaseModel
+from ...dataset.dataset.models.base import BaseModel
 
 
 class HMModel(BaseModel):
@@ -31,16 +31,16 @@ class HMModel(BaseModel):
         self.estimator = self.get_from_config("estimator")
         init_params = self.get_from_config("init_params", None)
         if init_params is not None:
-            if "m" not in estimator.init_params:
+            if "m" not in self.estimator.init_params:
                 self.estimator.means_ = init_params["means_"]
-            if "c" not in estimator.init_params:
+            if "c" not in self.estimator.init_params:
                 self.estimator.covars_ = init_params["covars_"]
-            if "t" not in estimator.init_params:
+            if "t" not in self.estimator.init_params:
                 self.estimator.transmat_ = init_params["transmat_"]
-            if "s" not in estimator.init_params:
+            if "s" not in self.estimator.init_params:
                 self.estimator.startprob_ = init_params["startprob_"]
 
-    def save(self, path, *args, **kwargs): # pylint: disable=arguments-differ
+    def save(self, path, *args, **kwargs):  # pylint: disable=arguments-differ
         """Save HMModel with dill.
 
         Parameters
@@ -54,7 +54,7 @@ class HMModel(BaseModel):
         else:
             raise ValueError("HMM estimator does not exist. Check your cofig for 'estimator'.")
 
-    def load(self, path, *args, **kwargs): # pylint: disable=arguments-differ
+    def load(self, path, *args, **kwargs):  # pylint: disable=arguments-differ
         """Load HMModel from file with dill.
 
         Parameters
@@ -99,7 +99,7 @@ class HMModel(BaseModel):
         lengths = kwargs.get("lengths", None)
         preds = self.estimator.predict(X, lengths)
         if lengths:
-            output = np.array(np.split(preds, np.cumsum(lengths)[:-1])+[None])[:-1]
+            output = np.array(np.split(preds, np.cumsum(lengths)[:-1]) + [None])[:-1]
         else:
             output = preds
         return output
