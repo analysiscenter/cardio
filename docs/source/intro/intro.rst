@@ -17,8 +17,9 @@ Contents
 
 
 EcgBatch
------
+--------
 The main class the CardIO is EcgBatch. It contains the I/O and preprocessing :func:`actions <dataset.action>` that allow to load and prepare data for the modeling.
+
 .. code-block :: python
 
   from cardio import EcgBatch
@@ -29,34 +30,37 @@ The main class the CardIO is EcgBatch. It contains the I/O and preprocessing :fu
 Models
 ------
 This module contain model suited to classify whether ECG signal is normal or pathological, to annotate segments of the signal (e.g., P-wave).
+
 .. code-block:: python
 
-    dirichlet_train_ppl = (
-    ds.Pipeline()
-      .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
-      .init_variable("loss_history", init=list)
-      .load(components=["signal", "meta"], fmt="wfdb")
-      .load(components="target", fmt="csv", src=LABELS_PATH)
-      .drop_labels(["~"])
-      .replace_labels({"N": "NO", "O": "NO"})
-      .flip_signals()
-      .random_resample_signals("normal", loc=300, scale=10)
-      .random_split_signals(2048, {"A": 9, "NO": 3})
-      .binarize_labels()
-      .train_model("dirichlet", make_data=concatenate_ecg_batch,
-                   fetches="loss", save_to=V("loss_history"), mode="a")
-      .run(batch_size=BATCH_SIZE, shuffle=True, drop_last=True, n_epochs=N_EPOCH, lazy=True)
+  dirichlet_train_ppl = (
+  ds.Pipeline()
+    .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
+    .init_variable("loss_history", init=list)
+    .load(components=["signal", "meta"], fmt="wfdb")
+    .load(components="target", fmt="csv", src=LABELS_PATH)
+    .drop_labels(["~"])
+    .replace_labels({"N": "NO", "O": "NO"})
+    .flip_signals()
+    .random_resample_signals("normal", loc=300, scale=10)
+    .random_split_signals(2048, {"A": 9, "NO": 3})
+    .binarize_labels()
+    .train_model("dirichlet", make_data=concatenate_ecg_batch,
+                 fetches="loss", save_to=V("loss_history"), mode="a")
+    .run(batch_size=BATCH_SIZE, shuffle=True, drop_last=True, n_epochs=N_EPOCH, lazy=True)
   )
 
 Pipelines
 ---------
 Pipelines were designed to ease usage of exhisting models make final code simpler. 
+
 .. code-block:: python
 
   from cardio.pipelines import hmm_predict_pipeline
   res = (data >> hmm_predict_pipeline(model_path)).run()
 
 Under the hood this function contains a list of actions:
+
 .. code-block:: python
 
   template_hmm_predict = (

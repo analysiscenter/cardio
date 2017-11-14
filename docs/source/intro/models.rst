@@ -7,7 +7,7 @@ This is a place where ECG models live. You can write your own model or exploit p
 Built-in models
 ---------------
 
-We have a number of built-in :doc:`models <../api/models>` for ECG classification and annotation:
+We have a number of built-in :doc:`models <api/models>` for ECG classification and annotation:
 
 * FFTModel
 * DirichletModel
