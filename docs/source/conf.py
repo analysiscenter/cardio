@@ -33,6 +33,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode',
 #    'numpydoc', # used to parse numpy-style docstrings for autodoc
 ]
 

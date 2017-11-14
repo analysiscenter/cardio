@@ -7,7 +7,7 @@ This is a place where ECG models live. You can write your own model or exploit p
 Built-in models
 ---------------
 
-We have a number of built-in `models <../api/models>`_ for ECG classification and annotation:
+We have a number of built-in :doc:`models <../api/models>` for ECG classification and annotation:
 
 * FFTModel
 * DirichletModel
@@ -65,4 +65,4 @@ named 'target' (this will be our output tensor).
 Fron now on ``train_pipeline`` contains compiled model and is ready for training.
 
 
-See more detailed documentation on models `here <https://analysiscenter.github.io/dataset/intro/models.html>`_.
+See more detailed documentation on models :func:`here <dataset.models>`.

@@ -14,9 +14,9 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     """Train pipeline for Dirichlet model.
     This pipeline trains Dirichlet model to find propability of artrial fibrillation.
     It works with dataset that generates bathes of class EcgBatch.
+    
     Parameters
     ----------
-    
     labels_path : str
         Path to csv file with true labels.
     batch_size : int
@@ -31,7 +31,6 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     
     Returns
     -------
-    
     pipeline : Pipeline
         Output pipeline.
     """
@@ -64,7 +63,6 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
     
     Parameters
     ----------
-    
     model_path : str
         path to pretrained Dirichlet model
     batch_size : int
@@ -76,7 +74,6 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
     
     Returns
     -------
-    
     pipeline : Pipeline
         Output pipeline.
     """
@@ -104,14 +101,12 @@ def hmm_preprocessing_pipeline(batch_size=20):
     
     Parameters
     ----------
-    
     batch_size : int
         Number of samples in batch.
         Default value is 100.
     
     Returns
     -------
-    
     pipeline : Pipeline
         Output pipeline.
     """
@@ -143,7 +138,6 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
     
     Parameters
     ----------
-    
     hmm_preprocessed : Pipeline
         Pipeline with precomputed hmm features through hmm_preprocessing_pipeline
     batch_size : int
@@ -152,7 +146,6 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
     
     Returns
     -------
-    
     pipeline : Pipeline
         Output pipeline.
     """
@@ -251,7 +244,6 @@ def hmm_predict_pipeline(model_path, batch_size=20):
     
     Parameters
     ----------
-    
     model_path : str
         Path to pretrained hmm model.
     batch_size : int
@@ -260,7 +252,6 @@ def hmm_predict_pipeline(model_path, batch_size=20):
     
     Returns
     -------
-    
     pipeline : Pipeline
         Output pipeline.
     """

@@ -1,6 +1,8 @@
 Pipelines
 =========
 
+Module Pipelines was designed to ease usage of the existing pipelines for training and predicting.
+
 dirichlet_train_pipeline
 ------------------------
 

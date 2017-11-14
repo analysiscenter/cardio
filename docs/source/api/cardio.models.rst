@@ -104,4 +104,5 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
 
 .. autoclass:: cardio.models.FFTModel
     :members:
+    :show-inheritance:
     :noindex:
