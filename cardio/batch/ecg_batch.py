@@ -1,4 +1,5 @@
 """Contains ECG Batch class."""
+# pylint: disable=too-many-lines
 
 import copy
 
@@ -878,67 +879,55 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
                                                                          bt.T_STATES))
 
-    def print_ecg(self, index=None, start=0, end=None, fs=None, annotate=False): #pylint: disable=too-many-locals
-        """ Method for printing an ECG.
+    def show_ecg(self, index=None, start=0, end=None, annotate=False):  # pylint: disable=too-many-locals
+        """Plot an ECG signal. Optionally highlight QRS complexes along with P
+        and T waves.
 
         Parameters
         ----------
         index : element of self.indices, optional
-            Index of the signal in the batch to print report about.
+            Index of a signal to plot. If undefined, the first ECG in the
+            batch is used.
         start : int, optional
-            From which second of the signal to start plotting.
+            The start point of the displayed part of the signal (in seconds).
         end : int, optional
-            Second of the signal to end plot.
-        fs : float, optional
-            Sampling rate of the signal.
+            The end point of the displayed part of the signal (in seconds).
         annotate : bool, optional
-            Show annotation on the plot or not.
+            Specifies whether to highlight ECG segments on the plot.
 
-        Returns
-        -------
-        batch : EcgBatch
-            Unchanged instance of the batch.
+        Raises
+        ------
+        ValueError
+            If the chosen signal is not two-dimensional.
         """
-        if index is None:
-            index = self.indices[0]
-        i = self.get_pos(None, "signal", index)
+        i = 0 if index is None else self.get_pos(None, "signal", index)
+        signal, annotation, meta = self.signal[i], self.annotation[i], self.meta[i]
+        self._check_2d(signal)
 
-        sig = self.signal[i]
-        annotation = self.annotation[i]
-        meta = self.meta[i]
         fs = meta["fs"]
+        num_channels = signal.shape[0]
+        start = np.int(start * fs)
+        end = signal.shape[1] if end is None else np.int(end * fs)
 
-        if end is None:
-            end = sig.shape[1]
-        else:
-            end = np.int(end*fs)
-        start = np.int(start*fs)
-
-        sig = sig[:, start:end]
-
-        num_channels = sig.shape[0]
-        fig = plt.figure(figsize=(10, 4*num_channels))
+        fig = plt.figure(figsize=(10, 4 * num_channels))
         for channel in range(num_channels):
-            ax = fig.add_subplot(num_channels, 1, channel+1)
-            ax.plot((np.arange(start, end) / fs), sig[channel, :])
-            ax.set_xlabel("t, sec")
-            ax.set_ylabel(meta["units"][channel] if "units" in meta.keys() else "mV")
-            ax.grid("on", which='major')
+            ax = fig.add_subplot(num_channels, 1, channel + 1)
+            ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
+            ax.set_xlabel("Time (sec)")
+            ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if "units" in meta else "mV"))
+            ax.grid("on", which="major")
             if annotate:
-                r_starts, r_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
-                                                             np.array([0, 1, 2]))
-                for begin, stop in zip((r_starts + start)/fs, (r_ends + start)/fs):
-                    ax.axvspan(begin, stop, color='red', alpha=0.3)
+                signal_states = annotation["hmm_annotation"][start:end]
 
-                p_starts, p_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
-                                                             np.array([14, 15, 16]))
-                for begin, stop in zip((p_starts + start)/fs, (p_ends + start)/fs):
-                    ax.axvspan(begin, stop, color='green', alpha=0.3)
+                def fill_segments(segment_states, color):
+                    starts, ends = bt.find_intervals_borders(signal_states, segment_states)
+                    for start_t, end_t in zip((starts + start) / fs, (ends + start) / fs):
+                        ax.axvspan(start_t, end_t, color=color, alpha=0.3)
 
-                t_starts, t_ends = bt.find_intervals_borders(annotation['hmm_annotation'][start:end],
-                                                             np.array([5, 6, 7, 8, 9, 10]))
-                for begin, stop in zip((t_starts + start)/fs, (t_ends + start)/fs):
-                    ax.axvspan(begin, stop, color='blue', alpha=0.3)
+                fill_segments(bt.QRS_STATES, "red")
+                fill_segments(bt.P_STATES, "green")
+                fill_segments(bt.T_STATES, "blue")
+        plt.show()
 
     @ds.action
     def write_to_annotation(self, key, value):
