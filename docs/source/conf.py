@@ -19,13 +19,12 @@
 #
 import os
 import sys
-sys.path.append(os.path.join("..",".."))
+sys.path.insert(0, os.path.join("..",".."))
 import cardio
 
 
 extensions = [
     'sphinx.ext.autodoc',
-    #'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
@@ -33,8 +32,6 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-#    'numpydoc', # used to parse numpy-style docstrings for autodoc
 ]
 
 templates_path = ['_templates']
@@ -120,6 +117,7 @@ intersphinx_mapping = {
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
     'pandas': ('http://pandas-docs.github.io/pandas-docs-travis/', None),
+    'dataset': ('https://analysiscenter.github.io/dataset/', None),
 }
 
 viewcode_import = True

@@ -26,7 +26,7 @@ Actions of EcgBatch allows e.g.:
 * allocate PQ, QT, QRS segments
 * dump results.
 
-More detailed API see `here <https://analysiscenter.github.io/ecg/index.html>`_.
+More detailed API see :doc:`here <../api/cardio>`.
 
 
 ecg_batch_tools
