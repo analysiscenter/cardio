@@ -2,5 +2,5 @@
 EcgBatch
 ========
 
-.. autoclass:: cardio.EcgBatch
+.. automodule:: cardio.batch
 	:members:
