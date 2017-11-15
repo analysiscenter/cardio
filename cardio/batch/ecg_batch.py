@@ -914,7 +914,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         end = signal.shape[1] if end is None else np.int(end * fs)
 
         figsize = (subplot_size[0], subplot_size[1] * num_channels)
-        fig, axes = plt.subplots(num_channels, 1, squeeze=False, figsize=figsize)
+        _, axes = plt.subplots(num_channels, 1, squeeze=False, figsize=figsize)
         for channel, (ax,) in enumerate(axes):
             ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
             ax.set_xlabel("Time (sec)")
@@ -926,7 +926,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
                 """Fill ECG segments with a given color."""
                 starts, ends = bt.find_intervals_borders(signal_states, segment_states)
                 for start_t, end_t in zip((starts + start) / fs, (ends + start) / fs):
-                    [ax.axvspan(start_t, end_t, color=color, alpha=0.3) for (ax,) in axes]
+                    for (ax,) in axes:
+                        ax.axvspan(start_t, end_t, color=color, alpha=0.3)
 
             signal_states = annotation["hmm_annotation"][start:end]
             fill_segments(bt.QRS_STATES, "red")
