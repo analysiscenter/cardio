@@ -879,9 +879,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
                                                                          bt.T_STATES))
 
-    def show_ecg(self, index=None, start=0, end=None, annotate=False):  # pylint: disable=too-many-locals
-        """Plot an ECG signal. Optionally highlight QRS complexes along with P
-        and T waves.
+    def show_ecg(self, index=None, start=0, end=None, annotate=False, subplot_size=(10, 4)):
+        """Plot an ECG signal.
+
+        Each channel is displayed on a separate subplot. Optionally highlight
+        QRS complexes along with P and T waves.
 
         Parameters
         ----------
@@ -894,6 +896,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             The end point of the displayed part of the signal (in seconds).
         annotate : bool, optional
             Specifies whether to highlight ECG segments on the plot.
+        subplot_size : tuple
+            Width and height of each subplot in inches.
 
         Raises
         ------
@@ -909,24 +913,26 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         start = np.int(start * fs)
         end = signal.shape[1] if end is None else np.int(end * fs)
 
-        fig = plt.figure(figsize=(10, 4 * num_channels))
-        for channel in range(num_channels):
-            ax = fig.add_subplot(num_channels, 1, channel + 1)
+        figsize = (subplot_size[0], subplot_size[1] * num_channels)
+        fig, axes = plt.subplots(num_channels, 1, squeeze=False, figsize=figsize)
+        for channel, (ax,) in enumerate(axes):
             ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
             ax.set_xlabel("Time (sec)")
             ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if "units" in meta else "mV"))
             ax.grid("on", which="major")
-            if annotate:
-                signal_states = annotation["hmm_annotation"][start:end]
 
-                def fill_segments(segment_states, color):
-                    starts, ends = bt.find_intervals_borders(signal_states, segment_states)
-                    for start_t, end_t in zip((starts + start) / fs, (ends + start) / fs):
-                        ax.axvspan(start_t, end_t, color=color, alpha=0.3)
+        if annotate:
+            def fill_segments(segment_states, color):
+                """Fill ECG segments with a given color."""
+                starts, ends = bt.find_intervals_borders(signal_states, segment_states)
+                for start_t, end_t in zip((starts + start) / fs, (ends + start) / fs):
+                    [ax.axvspan(start_t, end_t, color=color, alpha=0.3) for (ax,) in axes]
 
-                fill_segments(bt.QRS_STATES, "red")
-                fill_segments(bt.P_STATES, "green")
-                fill_segments(bt.T_STATES, "blue")
+            signal_states = annotation["hmm_annotation"][start:end]
+            fill_segments(bt.QRS_STATES, "red")
+            fill_segments(bt.P_STATES, "green")
+            fill_segments(bt.T_STATES, "blue")
+        plt.tight_layout()
         plt.show()
 
     @ds.action
