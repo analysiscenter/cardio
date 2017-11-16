@@ -1,5 +1,5 @@
-ECG Batch
-=========
+Batch
+=====
 
 .. autoclass:: cardio.batch.EcgBatch
 	:show-inheritance:

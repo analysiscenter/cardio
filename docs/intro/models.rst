@@ -41,9 +41,9 @@ HMModel
 Hidden Markov Model is used to annotate ECG signal. This allows to calculate number of
 important parameters, important for diagnosing.
 This model allows to detect P and T waves; Q, R, S peaks; PQ and ST segments. The model 
-has a total of 19 states, the mapping of them to the segments of ECG signal can  be found in ``ecg_batch_tools`` module.
+has a total of 19 states, the mapping of them to the segments of ECG signal can  be found in ``cardio.batch.ecg_batch_tools`` submodule.
 
-..image:: hmmodel.png
+.. image:: hmmodel.png
 
 How to use
 ~~~~~~~~~~
@@ -98,12 +98,12 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
   )
 
 
-Below you can find a guide how to build your own model with Keras framework. More details you can find in our :doc:`tutorials <./inroduction#tutorials>`
+Below you can find a guide how to build your own model with Keras framework. More details you can find in our :ref:`tutorials <tutorials>`
 
 How to build a model with Keras
 -------------------------------
 
-Any custom Keras model starts with base model KerasModel. In most cases you simply create
+Any custom Keras model starts with base model :class:`KerasModel <dataset.KerasModel>`. In most cases you simply create
 a new class that inherit KerasModel and define a sequence of layers within the _build method.
 Once it is done you can include train and predict actions into pipeline.
 
@@ -156,7 +156,7 @@ From now on ``train_pipeline`` contains compiled model and is ready for training
 Other capabilities
 ------------------
 
-Aside of the describes above classes module ``models`` contain other submodules and files.
+Aside of the classes described above, module ``models`` contains other submodules and files.
 
 Training notebooks
 ~~~~~~~~~~~~~~~~~~
@@ -169,6 +169,7 @@ keras_custom_objects
 This submodule contains custom layers used in keras models. 
 To use those layers you can write
 .. code-block:: python
+  
   from cardio.batch import keras_custom_objects as kco
 
 layers
@@ -176,7 +177,9 @@ layers
 
 ``layers`` submodule stores helper functions to create tensorflow layers and blocks.
 The usage is similar to keras_custom_objects:
+
 .. code-block:: python
+
   from cardio.batch import layers
 
 metrics
@@ -185,6 +188,7 @@ metrics
 In this module you can find hepler functions to calculate metrics of existing models.
 
 .. code-block:: python
+  
   from cardio.batch import metrics
 
 API

@@ -16,7 +16,7 @@ Main features:
 
 The library is based on `Dataset <https://github.com/analysiscenter/dataset>`_. We suggest to read Dataset's documentation to learn more, however, you may skip it for the first reading.
 
-CardIO has three modules: :doc:`batch <./api/cardio.ecg_batch>`, :doc:`models <./api/cardio.models>` and :doc:`pipelines <api/cardio.pipelines>`.
+CardIO has three modules: :doc:`batch <./api/cardio.batch>`, :doc:`models <./api/cardio.models>` and :doc:`pipelines <api/cardio.pipelines>`.
 
 Module batch contains low-level actions for ECG processing. Actions are included in EcgBatch class that also defines how to store ECGs. From these actions you can build new pipelines. You can also write custom action and include it in EcgBatch.
 

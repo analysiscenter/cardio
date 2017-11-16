@@ -6,7 +6,7 @@ This section describes briefly capabilities of the CardIO framework.
 
 
 :doc:`Batch <./batch>`
---------
+----------------------
 The main class the CardIO is EcgBatch. It contains the I/O and preprocessing :func:`actions <dataset.action>` that allow to load and prepare data for the modeling.
 
 .. code-block :: python
@@ -17,7 +17,7 @@ The main class the CardIO is EcgBatch. It contains the I/O and preprocessing :fu
   dtst = Dataset(index=ecg_index, batch_class=EcgBatch) # init the dataset with ECG files
 
 :doc:`Models <./models>`
-------
+------------------------
 This module contain model suited to classify whether ECG signal is normal or pathological, to annotate segments of the signal (e.g., P-wave).
 
 .. code-block:: python
@@ -40,7 +40,7 @@ This module contain model suited to classify whether ECG signal is normal or pat
   )
 
 :doc:`Pipelines <./pipelines>`
----------
+------------------------------
 Pipelines were designed to ease usage of exhisting models make final code simpler. 
 
 .. code-block:: python

@@ -1,4 +1,4 @@
-Contents
+Intro
 ========
 
 .. toctree::

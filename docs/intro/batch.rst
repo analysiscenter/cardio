@@ -26,7 +26,8 @@ Actions of EcgBatch allows e.g.:
 * allocate PQ, QT, QRS segments
 * dump results.
 
-If you use pipeline you don't have a direct access to the EcgBatch objects, but you can create an object with ``next_batch`` method of :func:`Index <dataset.Index>`:
+If you use pipeline you don't have a direct access to the EcgBatch objects, but you can create an object with ``next_batch`` method of :class:`Pipeline <dataset.Pipeline>` class:
+
 .. code-block:: python
 
   from cardio import EcgBatch
@@ -56,6 +57,7 @@ ecg_batch_tools
 Contains general methods for signal processing that are exploited in EcgBatch actions.
 Most of those methods support multiprocessing and are written with ``numba``. 
 If you want to explore those methods or use them outside EcgBatch simply write
+
 .. code-block:: python
 
   from cardio.batch import ecg_batch_tools as bt

@@ -6,6 +6,6 @@ API
    :maxdepth: 2
    :titlesonly:
 
-   cardio.ecg_batch
+   cardio.batch
    cardio.models
    cardio.pipelines
