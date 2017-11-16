@@ -4,9 +4,6 @@ Models
 
 This is a place where ECG models live. You can write your own model or exploit provided models. 
 
-Built-in models
----------------
-
 We have a number of built-in :doc:`models <../api/cardio.models>` for ECG classification and annotation:
 
 DirichletModel
@@ -152,6 +149,40 @@ named 'target' (this will be our output tensor).
                                  save_to=V("loss_history"), mode="a"))
 
 Fron now on ``train_pipeline`` contains compiled model and is ready for training.
+
+Other capabilities
+------------------
+
+Aside of the describes above classes module ``models`` contain other submodules and files.
+
+Training notebooks
+~~~~~~~~~~~~~~~~~~
+
+There are example notebooks for each model described above in ``models``. Those notebooks are used as tests and also provide examples of use.
+
+keras_custom_objects
+~~~~~~~~~~~~~~~~~~~~
+
+This submodule contains custom layers used in keras models. 
+To use those layers you can write
+.. code-block:: python
+  from cardio.batch import keras_custom_objects as kco
+
+layers
+~~~~~~
+
+``layers`` submodule stores helper functions to create tensorflow layers and blocks.
+The usage is similar to keras_custom_objects:
+.. code-block:: python
+  from cardio.batch import layers
+
+metrics
+~~~~~~~
+
+In this module you can find hepler functions to calculate metrics of existing models.
+
+.. code-block:: python
+  from cardio.batch import metrics
 
 API
 ===
