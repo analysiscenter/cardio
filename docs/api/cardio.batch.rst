@@ -16,9 +16,13 @@ Input/output methods
 Batch modifications
 ^^^^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.batch.EcgBatch.update
-	.. automethod:: cardio.batch.EcgBatch.merge
 	.. automethod:: cardio.batch.EcgBatch.apply_transform
 
+Batch processing
+^^^^^^^^^^^^^^^^
+	.. automethod:: cardio.batch.EcgBatch.merge
+	.. automethod:: cardio.batch.EcgBatch.deepcopy
+	
 Label processing
 ^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.batch.EcgBatch.drop_labels
