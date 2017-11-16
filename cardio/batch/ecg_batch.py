@@ -162,14 +162,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         return self
 
     def deepcopy(self):
-        pipeline = self.pipeline
-        self.pipeline = None
+        pipeline = self.pipeline  # pylint: disable=access-member-before-definition
+        self.pipeline = None  # pylint: disable=attribute-defined-outside-init
         dump_batch = dill.dumps(self)
         dump_data_named = dill.dumps(self._data_named)
-        self.pipeline = pipeline
+        self.pipeline = pipeline  # pylint: disable=attribute-defined-outside-init
 
         restored_batch = dill.loads(dump_batch)
-        restored_batch._data_named = dill.loads(dump_data_named)
+        restored_batch._data_named = dill.loads(dump_data_named)  # pylint: disable=protected-access
         restored_batch.pipeline = pipeline
         return restored_batch
 
@@ -219,13 +219,13 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
 
         new_indices = indices[:batch_size]
         new_batch = cls(ds.DatasetIndex(new_indices), unique_labels=batches[0].unique_labels)
-        new_batch._data = tuple(comp[:batch_size] for comp in data)  # pylint: disable=protected-access
+        new_batch._data = tuple(comp[:batch_size] for comp in data)  # pylint: disable=protected-access, attribute-defined-outside-init, line-too-long
         if total_len <= batch_size:
             rest_batch = None
         else:
             rest_indices = indices[batch_size:]
             rest_batch = cls(ds.DatasetIndex(rest_indices), unique_labels=batches[0].unique_labels)
-            rest_batch._data = tuple(comp[batch_size:] for comp in data)  # pylint: disable=protected-access
+            rest_batch._data = tuple(comp[batch_size:] for comp in data)  # pylint: disable=protected-access, attribute-defined-outside-init, line-too-long
         return new_batch, rest_batch
 
     @ds.action
