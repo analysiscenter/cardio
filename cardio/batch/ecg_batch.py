@@ -162,6 +162,17 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         return self
 
     def deepcopy(self):
+        """Return a deep copy of the batch.
+
+        Constructs a new ``EcgBatch`` instance and then recursively copies all
+        the objects found in the original batch, except the ``pipeline``,
+        which remains unchanged.
+
+        Returns
+        -------
+        batch : EcgBatch
+            A deep copy of the batch.
+        """
         pipeline = self.pipeline  # pylint: disable=access-member-before-definition
         self.pipeline = None  # pylint: disable=attribute-defined-outside-init
         dump_batch = dill.dumps(self)
