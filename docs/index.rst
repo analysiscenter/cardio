@@ -45,33 +45,33 @@ Here is an example of pipeline that loads ECG signals, makes some preprocessing 
 
 .. code-block :: python
 
-  model_train_template = (
-      ds.Pipeline()
-      .init_model("dynamic", FFTModel, name="fft_model", config=model_config)
-      .init_variable("loss_history", init=list)
-      .load(fmt="wfdb", components=["signal", "meta"])
-      .load(src="/notebooks/data/ECG/training2017/REFERENCE.csv",
-            fmt="csv", components="target")
-      .drop_labels(["~"])
-      .replace_labels({"N": "NO", "O": "NO"})
-      .random_resample_signals("normal", loc=300, scale=10)
-      .drop_short_signals(4000)
-      .split_signals(3000, 3000)
-      .binarize_labels()
-      .apply(np.transpose , axes=[0, 2, 1])
-      .ravel()
-      .get_targets('true_targets')
-      .train_model('fft_model', make_data=make_data,
-                   save_to=V("loss_history"), mode="a")
-      .run(batch_size=300, shuffle=True,
-           drop_last=True, n_epochs=50, prefetch=0, lazy=True))
+  template_model_train = (
+  ds.Pipeline()
+    .init_model("dynamic", FFTModel, name="fft_model", config=model_config)
+    .init_variable("loss_history", init=list)
+    .load(fmt="wfdb", components=["signal", "meta"])
+    .load(src="./path/to/targets/", fmt="csv", components="target")
+    .drop_labels(["~"])
+    .replace_labels({"N": "NO", "O": "NO"})
+    .random_resample_signals("normal", loc=300, scale=10)
+    .drop_short_signals(4000)
+    .split_signals(3000, 3000)
+    .binarize_labels()
+    .apply(np.transpose , axes=[0, 2, 1])
+    .ravel()
+    .get_targets('true_targets')
+    .train_model('fft_model', make_data=make_data,
+                 save_to=V("loss_history"), mode="a")
+    .run(batch_size=100, shuffle=True,
+         drop_last=True, n_epochs=100, prefetch=0, lazy=True))
 
+To use this pipeline you need to define ``config`` dictionary, which contains parameters of the model and some other configuration and ``make_data`` function, which prepares data from batch to suit as input of the model. You can find more details in Dataset's documentation on `models <https://analysiscenter.github.io/dataset/intro/models.html>`_
 
 After linking this pipeline to the dataset with the signals you will obtain a pipeline with trained model and loss values kept in pipiline variable `loss_history`:
 
 .. code-block :: python
 
-  model_train_pipeline = (dataset >> model_train_template).run()
+  model_train_pipeline = (dataset >> template_model_train).run()
 
       
 Installation

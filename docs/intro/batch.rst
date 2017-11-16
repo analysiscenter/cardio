@@ -32,7 +32,7 @@ If you use pipeline you don't have a direct access to the EcgBatch objects, but 
   from cardio import EcgBatch
   import cardio.dataset as ds
 
-  index = ds.FilesIndex(path="path/to/data/*", no_ext=True, sort=True)
+  index = ds.FilesIndex(path="path/to/data/", no_ext=True, sort=True)
   dtst = ds.Dataset(index, batch_class=EcgBatch)
 
   template_ppln = (

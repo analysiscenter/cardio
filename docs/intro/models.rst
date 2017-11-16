@@ -23,16 +23,16 @@ How to use
       .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
       .init_variable("loss_history", init=list)
       .load(components=["signal", "meta"], fmt="wfdb")
-      .load(components="target", fmt="csv", src=LABELS_PATH)
+      .load(src='./path/to/taret/', fmt="csv", components="target")
       .drop_labels(["~"])
       .replace_labels({"N": "NO", "O": "NO"})
       .flip_signals()
       .random_resample_signals("normal", loc=300, scale=10)
       .random_split_signals(2048, {"A": 9, "NO": 3})
       .binarize_labels()
-      .train_model("dirichlet", make_data=concatenate_ecg_batch,
+      .train_model("dirichlet", make_data=make_data,
                    fetches="loss", save_to=V("loss_history"), mode="a")
-      .run(batch_size=BATCH_SIZE, shuffle=True, drop_last=True, n_epochs=N_EPOCH, lazy=True)
+      .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=100, lazy=True)
   )
 
 HMModel
@@ -55,7 +55,7 @@ How to use
       .init_model("dynamic", HMModel, "HMM", config=config_train)
       .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
       .wavelet_transform_signal(cwt_scales=[4,8,16], cwt_wavelet="mexh")
-      .train_model("HMM", make_data=prepare_batch)
+      .train_model("HMM", make_data=make_data)
       .run(batch_size=20, shuffle=False, drop_last=False, n_epochs=1, lazy=True)
   )
 
@@ -81,8 +81,7 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
       .init_variable("loss_history", init=list)
       .init_variable("true_targets", init=list)
       .load(fmt="wfdb", components=["signal", "meta"])
-      .load(src="/notebooks/data/ECG/training2017/REFERENCE.csv",
-            fmt="csv", components="target")
+      .load(src='./path/to/taret/', fmt="csv", components="target")
       .drop_labels(["~"])
       .replace_labels({"N": "NO", "O": "NO"})
       .random_resample_signals("normal", loc=300, scale=10)
@@ -94,8 +93,8 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
       .get_targets('true_targets')
       .train_model('fft_model', make_data=make_data, 
                    save_to=V("loss_history"), mode="a")
-      .run(batch_size=300, shuffle=True,
-           drop_last=True, n_epochs=1, prefetch=0, lazy=True)
+      .run(batch_size=100, shuffle=True,
+           drop_last=True, n_epochs=100, prefetch=0, lazy=True)
   )
 
 
@@ -139,16 +138,20 @@ named 'target' (this will be our output tensor).
       "optimizer": "adam"
       }
 
-  train_pipeline = (ds.Pipeline()
-                    .init_model("static", SimpleModel, name="simple_model", config=model_config)
-                    .init_variable("loss_history", init=list)
-                    ...
-                    some data preprocessing
-                    ...
-                    .train_model('simple_model', x=B('signal'), y=B('target'),
-                                 save_to=V("loss_history"), mode="a"))
+  template_simplemodel_train = (
+  ds.Pipeline()
+    .init_model("static", SimpleModel, name="simple_model", config=model_config)
+    .init_variable("loss_history", init=list)
+    ...
+    some data preprocessing
+    ...
+    .train_model('simple_model', x=B('signal'), y=B('target'),
+                 save_to=V("loss_history"), mode="a")
+    .run(batch_size=100, shuffle=True,
+           drop_last=True, n_epochs=100, prefetch=0, lazy=True)
+  )
 
-Fron now on ``train_pipeline`` contains compiled model and is ready for training.
+From now on ``train_pipeline`` contains compiled model and is ready for training.
 
 Other capabilities
 ------------------
