@@ -2,22 +2,20 @@
 Pipelines
 =========
 
-This module contains pipelines that we used for model training and
-predicting. Ypu can use them as-is to train similar models or 
-adjust them in order to find better solution.
+This module contains pipelines that we used to train models and make predictions. You can use them as-is to train similar models or 
+adjust them in order to get better perfomance.
 
 How to use
 ----------
-
-There are 3 simple steps in using pipelines. First, we import desired pipeline, e.g. dirichlet_train
+Working with pipelines consists of 3 simple steps. First, we import desired pipeline, e.g. dirichlet_train_pipeline:
 ::
-  from cardio.pipelines import dirichlet_train
+  from cardio.pipelines import dirichlet_train_pipeline
 
-Second, we specify its parameters, e.g. path to data:
+Second, we specify its parameters, e.g. path to file with labels:
 ::
-  pipeline = dirichlet_train('path')
+  pipeline = dirichlet_train_pipeline(labels_path='some_path')
 
-Third, we pass dataset to pipeline and run caclulation:
+Third, we pass dataset to the pipeline and run caclulation:
 ::
   (dataset >> pipeline).run(batch_size=100, n_epochs=10)
 
@@ -25,11 +23,13 @@ Result is typically a trained model or some values stored in pipeline variable (
 
 Available pipelines
 -------------------
-
 At this moment the module contains following pipelines:
+* dirichlet_train_pipeline
+* dirichlet_predict_pipeline
+* hmm_preprocessing_pipeline
+* hmm_train_pipeline
+* hmm_predict_pipeline
 
-* dirichlet_train
-* dirichlet_prediction
-* hmm_train
-* hmm_predicition
-* show_ecg_segments
+API
+===
+See :doc:`Pipelines API <../api/cardio.pipelines>`

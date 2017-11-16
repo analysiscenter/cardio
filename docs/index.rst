@@ -1,7 +1,7 @@
 ===================================
 Welcome to CardIO's documentation!
 ===================================
-`CardIO` is a library designed to build end-to-end machine learning models for deep research of electrocardiograms and provides ready-to-use methods for heart diseases detection
+`CardIO` is a library designed to build end-to-end machine learning models for deep research of electrocardiograms.
 
 Main features:
 

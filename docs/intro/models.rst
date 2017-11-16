@@ -12,7 +12,9 @@ We have a number of built-in :doc:`models <../api/cardio.models>` for ECG classi
 DirichletModel
 --------------
 
-The model predicts Dirichlet distribution parameters from which class probabilities are sampled. 
+This model is used to predcit probability of atrial fibrillation. It predicts Dirichlet distribution parameters from which class probabilities are sampled. 
+
+.. image:: dirichlet_model.png
 
 How to use
 ~~~~~~~~~~
@@ -43,6 +45,8 @@ Hidden Markov Model is used to annotate ECG signal. This allows to calculate num
 important parameters, important for diagnosing.
 This model allows to detect P and T waves; Q, R, S peaks; PQ and ST segments. The model 
 has a total of 19 states, the mapping of them to the segments of ECG signal can  be found in ``ecg_batch_tools`` module.
+
+..image:: hmmodel.png
 
 How to use
 ~~~~~~~~~~
@@ -98,7 +102,7 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
   )
 
 
-Below you can find a guide how to build your own model with Keras framework. More details you can find in our :doc:`tutorials <./tutorials>`
+Below you can find a guide how to build your own model with Keras framework. More details you can find in our :doc:`tutorials <./inroduction#tutorials>`
 
 How to build a model with Keras
 -------------------------------
@@ -148,3 +152,7 @@ named 'target' (this will be our output tensor).
                                  save_to=V("loss_history"), mode="a"))
 
 Fron now on ``train_pipeline`` contains compiled model and is ready for training.
+
+API
+===
+See :doc:`Models API <../api/cardio.models>`
