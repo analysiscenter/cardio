@@ -200,7 +200,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
         # Initial distribution - should add up to 1
         start_probabilities = np.array(19 * [1/np.float(19)])
 
-        return transition_matrix, start_probabilities 
+        return transition_matrix, start_probabilities
 
     def unravel_annotation(annsamp, anntype, length):
         """Unravel annotation
