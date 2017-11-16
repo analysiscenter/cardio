@@ -3,6 +3,7 @@
 
 import copy
 
+import dill
 import numpy as np
 import pandas as pd
 import scipy
@@ -57,7 +58,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
 
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
-        self._data = (None, None, None, None)
         self.signal = np.array([np.array([]) for _ in range(len(index))] + [None])[:-1]
         self.annotation = np.array([{} for _ in range(len(index))])
         self.meta = np.array([{} for _ in range(len(index))])
@@ -160,6 +160,18 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         if target is not None:
             self.target = np.asarray(target)
         return self
+
+    def deepcopy(self):
+        pipeline = self.pipeline
+        self.pipeline = None
+        dump_batch = dill.dumps(self)
+        dump_data_named = dill.dumps(self._data_named)
+        self.pipeline = pipeline
+
+        restored_batch = dill.loads(dump_batch)
+        restored_batch._data_named = dill.loads(dump_data_named)
+        restored_batch.pipeline = pipeline
+        return restored_batch
 
     @classmethod
     def merge(cls, batches, batch_size=None):
