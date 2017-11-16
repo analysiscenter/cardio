@@ -56,7 +56,7 @@ def load_wfdb(path, components, ann_ext=None):
 
 @njit(nogil=True)
 def split_signals(signals, length, step):
-    """Split signals along axis 1 with given length and step.
+    """Split signals along axis 1 with given ``length`` and ``step``.
 
     Parameters
     ----------
@@ -70,7 +70,7 @@ def split_signals(signals, length, step):
     Returns
     -------
     signals : 3-D ndarray
-        Split signals stacked along axis 2.
+        Split signals stacked along new axis with index 0.
     """
     res = np.empty(((signals.shape[1] - length) // step + 1, signals.shape[0], length), dtype=signals.dtype)
     for i in range(res.shape[0]):
@@ -80,8 +80,8 @@ def split_signals(signals, length, step):
 
 @njit(nogil=True)
 def random_split_signals(signals, length, n_segments):
-    """Split signals along axis 1 n_segments times with random start position
-    and given length.
+    """Split signals along axis 1 ``n_segments`` times with random start
+    position and given ``length``.
 
     Parameters
     ----------
@@ -95,7 +95,7 @@ def random_split_signals(signals, length, n_segments):
     Returns
     -------
     signals : 3-D ndarray
-        Split signals stacked along axis 2.
+        Split signals stacked along new axis with index 0.
     """
     res = np.empty((n_segments, signals.shape[0], length), dtype=signals.dtype)
     for i in range(res.shape[0]):
@@ -131,7 +131,7 @@ def resample_signals(signals, new_length):
 
 
 def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
-    """Convolve signals with given kernel.
+    """Convolve signals with given ``kernel``.
 
     Parameters
     ----------
@@ -140,11 +140,11 @@ def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
     kernel : array_like
         Convolution kernel.
     padding_mode : str or function
-        np.pad padding mode.
+        ``np.pad`` padding mode.
     axis : int
         Axis along which signals are sliced.
     kwargs : misc
-        Any additional named argments to np.pad.
+        Any additional named argments to ``np.pad``.
 
     Returns
     -------
@@ -154,7 +154,7 @@ def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
     Raises
     ------
     ValueError
-        If kernel is not one-dimensional or has non-numeric dtype.
+        If ``kernel`` is not one-dimensional or has non-numeric ``dtype``.
     """
     kernel = np.asarray(kernel)
     if len(kernel.shape) == 0:
@@ -201,7 +201,7 @@ def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
     Raises
     ------
     ValueError
-        If freq is negative or non-numeric.
+        If ``freq`` is negative or non-numeric.
     """
     if freq <= 0:
         raise ValueError("Sampling rate must be a positive float")

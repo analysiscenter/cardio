@@ -18,7 +18,7 @@ def gaussian(size, sigma=None):
         Kernel size.
     sigma : positive float, optional
         Standard deviation of Gaussian distribution. Controls the degree of
-        smoothing. If None, it is set to (size + 1) / 6.
+        smoothing. If ``None``, it is set to ``(size + 1) / 6``.
 
     Returns
     -------
@@ -28,7 +28,7 @@ def gaussian(size, sigma=None):
     Raises
     ------
     ValueError
-        If size or sigma is negative or non-numeric.
+        If ``size`` or ``sigma`` is negative or non-numeric.
     """
     _check_kernel_size(size)
     if sigma is None:
