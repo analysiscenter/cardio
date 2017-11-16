@@ -12,9 +12,10 @@ from cardio.models.hmm import HMModel
 
 def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_options=None):
     """Train pipeline for Dirichlet model.
+
     This pipeline trains Dirichlet model to find propability of artrial fibrillation.
     It works with dataset that generates bathes of class EcgBatch.
-    
+
     Parameters
     ----------
     labels_path : str
@@ -28,7 +29,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     gpu_options : GPUOptions
         Magic attribute generated for tf.ConfigProto "gpu_options" proto field.
         Default value is None.
-    
+
     Returns
     -------
     pipeline : Pipeline
@@ -58,9 +59,10 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
 
 def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
     """Pipeline for prediction with Dirichlet model.
+
     This pipeline finds propability of artrial fibrillation according to Dirichlet model.
     It works with dataset that generates bathes of class EcgBatch.
-    
+
     Parameters
     ----------
     model_path : str
@@ -71,7 +73,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
     gpu_options : GPUOptions
         Magic attribute generated for tf.ConfigProto "gpu_options" proto field.
         Default value is None.
-    
+
     Returns
     -------
     pipeline : Pipeline
@@ -96,15 +98,16 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
 
 def hmm_preprocessing_pipeline(batch_size=20):
     """Pipeline for prediction with hmm model.
+
     This pipeline prepares data for hmm_train_pipeline.
     It works with dataset that generates bathes of class EcgBatch.
-    
+
     Parameters
     ----------
     batch_size : int
         Number of samples in batch.
         Default value is 100.
-    
+
     Returns
     -------
     pipeline : Pipeline
@@ -133,9 +136,10 @@ def hmm_preprocessing_pipeline(batch_size=20):
 
 def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
     """Train pipeline for Hidden Markov Model.
+
     This pipeline trains hmm model to isolate QRS, PQ and QT segments.
     It works with dataset that generates bathes of class EcgBatch.
-    
+
     Parameters
     ----------
     hmm_preprocessed : Pipeline
@@ -143,7 +147,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
     batch_size : int
         Number of samples in batch.
         Default value is 20.
-    
+
     Returns
     -------
     pipeline : Pipeline
@@ -239,9 +243,10 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
 
 def hmm_predict_pipeline(model_path, batch_size=20):
     """Pipeline for prediction with hmm model.
+
     This pipeline isolates QRS, PQ and QT segments.
     It works with dataset that generates bathes of class EcgBatch.
-    
+
     Parameters
     ----------
     model_path : str
@@ -249,7 +254,7 @@ def hmm_predict_pipeline(model_path, batch_size=20):
     batch_size : int
         Number of samples in batch.
         Default value is 20.
-    
+
     Returns
     -------
     pipeline : Pipeline
