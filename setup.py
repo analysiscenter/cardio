@@ -31,7 +31,7 @@ setup(
         'wfdb>=1.2.2.',
         'dill>=0.2.7.1',
         'pywavelets>=0.5.2',
-        'sklearn>=0.19.0'
+        'scikit-learn>=0.19.0'
     ],
     extras_require={
         'tensorflow': ['tensorflow>=1.4'],
