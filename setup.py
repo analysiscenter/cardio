@@ -30,7 +30,7 @@ setup(
         'numpy>=1.10',
         'wfdb>=1.2.2.',
         'dill>=0.2.7.1',
-        'pywt>=0.5.2',
+        'pywavelets>=0.5.2',
         'sklearn>=0.19.0'
     ],
     extras_require={
