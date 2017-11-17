@@ -29,12 +29,15 @@ setup(
     install_requires=[
         'numpy>=1.10',
         'wfdb>=1.2.2.',
-        'hmmlearn>=0.2.0'
+        'dill>=0.2.7.1',
+        'pywt>=0.5.2',
+        'sklearn>=0.19.0'
     ],
     extras_require={
-        'tensorflow': ['tensorflow>=1.13'],
-        'tensorflow-gpu': ['tensorflow-gpu>=1.13'],
-        'keras': ['keras>=2.0.0']
+        'tensorflow': ['tensorflow>=1.4'],
+        'tensorflow-gpu': ['tensorflow-gpu>=1.4'],
+        'keras': ['keras>=2.0.0'],
+        'hmmlearn': ['hmmlearn>=0.2.0']
     },
     classifiers=[
         'Development Status :: 4 - Beta',
