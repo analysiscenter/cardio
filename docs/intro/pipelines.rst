@@ -31,5 +31,5 @@ At this moment the module contains following pipelines:
 * hmm_predict_pipeline
 
 API
-===
+---
 See :doc:`Pipelines API <../api/cardio.pipelines>`

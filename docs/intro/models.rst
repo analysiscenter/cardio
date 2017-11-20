@@ -192,5 +192,5 @@ In this module you can find hepler functions to calculate metrics of existing mo
   from cardio.batch import metrics
 
 API
-===
+---
 See :doc:`Models API <../api/cardio.models>`

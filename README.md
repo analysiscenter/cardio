@@ -18,7 +18,7 @@ CardIO is a library that works with electrocardiograms (ECG). With CardIO you ca
 
 For more details see [the documentation and tutorials](https://analysiscenter.github.io/cardio/).
 
-The library is based on [Dataset](https://github.com/analysiscenter/dataset/blob/master/README.md). We suggest to read Dataset's [documentation](https://analysiscenter.github.io/dataset/) to learn more, however, you may skip it for the first reading.
+The library is based on [Dataset](https://github.com/analysiscenter/dataset/). We suggest to read Dataset's [documentation](https://analysiscenter.github.io/dataset/) to learn more, however, you may skip it for the first reading.
 
 CardIO has three modules: [```batch```](https://analysiscenter.github.io/cardio/intro/batch.html) [```models```](https://analysiscenter.github.io/cardio/intro/models.html) and [```pipelines```](https://analysiscenter.github.io/cardio/intro/pipeline.html).
 
