@@ -1,4 +1,4 @@
-# CardIO
+﻿# CardIO
 
 CardIO is a library that works with electrocardiograms (ECG). With CardIO you can
 
@@ -62,6 +62,7 @@ train_ppl = (
              n_epochs=50)
 )
 ```
+
 As a result of this pipeline one obtains a trained model.
 
 ## Installation
@@ -89,3 +90,4 @@ After that just import `cardio`:
 
 ## Citing Dataset
 Please cite Dataset in your publications if it helps your research.
+
