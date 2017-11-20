@@ -75,5 +75,5 @@ utils
 Miscellaneous ECG Batch utils.
 
 API
-===
+---
 See :doc:`Batch API <../api/cardio.batch>`

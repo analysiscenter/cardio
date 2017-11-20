@@ -5,7 +5,12 @@ Welcome to CardIO's documentation!
 
 Main features:
 
-* calculate heart beat rate and find other standard ECG characteristics
+* load and save signal in a number of formats
+* resample, crop and flip signal
+* filter signal
+* allocate PQ, QT, QRS segments
+* calculate heart rate and find other standard ECG characteristics
+* apply complex transformations like fft and wavelets, or any other custom functions.
 * recognize heart diseases from ECG
 * efficiently work with large datasets that do not even fit into memory
 * easily arrange new custom actions into pipelines
@@ -45,35 +50,28 @@ Here is an example of pipeline that loads ECG signals, makes some preprocessing 
 
 .. code-block :: python
 
-  template_model_train = (
-  ds.Pipeline()
-    .init_model("dynamic", FFTModel, name="fft_model", config=model_config)
-    .init_variable("loss_history", init=list)
-    .load(fmt="wfdb", components=["signal", "meta"])
-    .load(src="./path/to/targets/", fmt="csv", components="target")
-    .drop_labels(["~"])
-    .replace_labels({"N": "NO", "O": "NO"})
-    .random_resample_signals("normal", loc=300, scale=10)
-    .drop_short_signals(4000)
-    .split_signals(3000, 3000)
-    .binarize_labels()
-    .apply(np.transpose , axes=[0, 2, 1])
-    .ravel()
-    .get_targets('true_targets')
-    .train_model('fft_model', make_data=make_data,
-                 save_to=V("loss_history"), mode="a")
-    .run(batch_size=100, shuffle=True,
-         drop_last=True, n_epochs=100, prefetch=0, lazy=True))
+  train_ppl = (
+    dtst.train
+        .pipeline
+        .init_model("dynamic", DirichletModel, name="dirichlet",
+                    config=model_config)
+        .init_variable("loss_history", init=list)
+        .load(components=["signal", "meta"], fmt="wfdb")
+        .load(components="target", fmt="csv", src=LABELS_PATH)
+        .drop_labels(["~"])
+        .replace_labels({"N": "NO", "O": "NO"})
+        .flip_signals()
+        .random_resample_signals("normal", loc=300, scale=10)
+        .random_split_signals(2048, {"A": 9, "NO": 3})
+        .binarize_labels()
+        .train_model("dirichlet", make_data=make_data,
+                     fetches="loss", save_to=V("loss_history"), mode="a")
+        .run(batch_size=100, shuffle=True, drop_last=True,
+             n_epochs=50)
+)
 
-To use this pipeline you need to define ``config`` dictionary, which contains parameters of the model and some other configuration and ``make_data`` function, which prepares data from batch to suit as input of the model. You can find more details in Dataset's documentation on `models <https://analysiscenter.github.io/dataset/intro/models.html>`_
+As a result of this pipeline one obtains a trained model.
 
-After linking this pipeline to the dataset with the signals you will obtain a pipeline with trained model and loss values kept in pipiline variable `loss_history`:
-
-.. code-block :: python
-
-  model_train_pipeline = (dataset >> template_model_train).run()
-
-      
 Installation
 ============
 
@@ -95,6 +93,7 @@ After that just import `cardio`::
 
 .. note:: `CardIO` supports python 3.5 or higher.
 
+.. note:: When cloning repo from GitHub use flag ``--recursive`` to make sure that you clone ``Dataset`` submodule as well.
 
 Citing CardIO
 ==============
