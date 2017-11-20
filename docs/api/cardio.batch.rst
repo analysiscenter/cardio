@@ -47,3 +47,10 @@ Complex ECG processing
 ^^^^^^^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.batch.EcgBatch.wavelet_transform_signal
 	.. automethod:: cardio.batch.EcgBatch.calc_ecg_parameters
+
+
+EcgDataset
+==========
+
+.. autoclass:: cardio.batch.EcgDataset
+	:show-inheritance:
