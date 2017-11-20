@@ -81,7 +81,7 @@ def get_probs(predictions_list):
     return np.array(true_probs), np.array(pred_probs)
 
 
-def f1_score(predictions_list, average="macro", **kwargs):
+def f1_score(predictions_list, labels=None, average="macro", **kwargs):
     """Compute the F1 score.
 
     Parameters
@@ -100,8 +100,9 @@ def f1_score(predictions_list, average="macro", **kwargs):
         F1 score for each class or weighted average of the F1 scores.
     """
     true_labels, pred_labels = get_labels(predictions_list)
-    unique_labels = sorted(set(true_labels) | set(pred_labels))
-    return metrics.f1_score(true_labels, pred_labels, labels=unique_labels, average=average, **kwargs)
+    if labels is None:
+        labels = sorted(set(true_labels) | set(pred_labels))
+    return metrics.f1_score(true_labels, pred_labels, labels=labels, average=average, **kwargs)
 
 
 def auc(predictions_list, average="macro", **kwargs):
