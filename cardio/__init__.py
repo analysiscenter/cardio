@@ -3,8 +3,6 @@ import sys
 
 from .batch import *  # pylint: disable=wildcard-import
 from . import dataset  # pylint: disable=wildcard-import
-from .models import *  # pylint: disable=wildcard-import
-from .pipelines import *  # pylint: disable=wildcard-import
 
 
 __version__ = '0.1.0'
