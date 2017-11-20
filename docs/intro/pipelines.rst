@@ -24,6 +24,7 @@ Result is typically a trained model or some values stored in pipeline variable (
 Available pipelines
 -------------------
 At this moment the module contains following pipelines:
+
 * dirichlet_train_pipeline
 * dirichlet_predict_pipeline
 * hmm_preprocessing_pipeline

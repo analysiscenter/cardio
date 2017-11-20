@@ -168,6 +168,7 @@ keras_custom_objects
 
 This submodule contains custom layers used in keras models. 
 To use those layers you can write
+
 .. code-block:: python
   
   from cardio.batch import keras_custom_objects as kco
