@@ -8,9 +8,9 @@ from ...dataset.dataset.models.base import BaseModel
 
 class HMModel(BaseModel):
     """
-    Hidden Markov Model realisation.
+    Hidden Markov Model.
 
-    This realisation is based on hmmlearn API. It is supposed
+    This implementation is based on hmmlearn API. It is supposed
     that estimators of HMModel are model classes if hmmlearn.
     """
 
