@@ -430,8 +430,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
 
     @ds.action
     def replace_labels(self, replace_dict):
-        """Replace labels with corresponding values in
-        ``replace_dict``.
+        """Replace labels with corresponding values in ``replace_dict``.
 
         Parameters
         ----------
@@ -478,7 +477,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
 
     @staticmethod
     def _pad_signal(signal, length, pad_value):
-        """Pad signal with ``pad_value`` to the left along axis 1.
+        """Pad signal with ``pad_value`` to the left along axis 1 (signal
+        axis).
 
         Parameters
         ----------
@@ -578,7 +578,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def split_signals(self, index, length, step, pad_value=0):
-        """Split 2-D signals along axis 1 with given ``length`` and ``step``.
+        """Split 2-D signals along axis 1 (signal axis) with given ``length``
+        and ``step``.
 
         If signal length along axis 1 is less than ``length``, it is padded to
         the left with ``pad_value``.
@@ -622,8 +623,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def random_split_signals(self, index, length, n_segments, pad_value=0):
-        """Split 2-D signals along axis 1 ``n_segments`` times with random
-        start position and given ``length``.
+        """Split 2-D signals along axis 1 (signal axis) ``n_segments`` times
+        with random start position and given ``length``.
 
         If signal length along axis 1 is less than ``length``, it is padded to
         the left with ``pad_value``.
@@ -666,7 +667,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         self.meta[i]["siglen"] = length
 
     def _safe_fs_resample(self, index, fs):
-        """Resample 2-D signal along axis 1 to given sampling rate.
+        """Resample 2-D signal along axis 1 (signal axis) to given sampling
+        rate.
 
         New sampling rate is guaranteed to be positive float.
 
@@ -690,7 +692,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def resample_signals(self, index, fs):
-        """Resample 2-D signals along axis 1 to given sampling rate.
+        """Resample 2-D signals along axis 1 (signal axis) to given sampling
+        rate.
 
         Parameters
         ----------
@@ -717,8 +720,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def random_resample_signals(self, index, distr, **kwargs):
-        """Resample 2-D signals along axis 1 to a new sampling rate, sampled
-        from given distribution.
+        """Resample 2-D signals along axis 1 (signal axis) to a new sampling
+        rate, sampled from given distribution.
 
         Parameters
         ----------
@@ -809,10 +812,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         """Flip 2-D signals whose R-peaks are directed downwards.
 
         Each element of ``self.signal`` must be a 2-D ndarray. Signals are
-        flipped along axis 1. For each subarray of ``window_size`` length
-        skewness is calculated and compared with ``threshold`` to decide
-        whether this subarray should be flipped or not. Then the mode of the
-        result is calculated to make the final decision.
+        flipped along axis 1 (signal axis). For each subarray of
+        ``window_size`` length skewness is calculated and compared with
+        ``threshold`` to decide whether this subarray should be flipped or
+        not. Then the mode of the result is calculated to make the final
+        decision.
 
         Parameters
         ----------
