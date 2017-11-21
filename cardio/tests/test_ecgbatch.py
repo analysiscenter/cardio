@@ -9,9 +9,8 @@ import pytest
 
 sys.path.append(os.path.join("."))
 
-from cardio.batch import EcgBatch #pylint: disable=no-name-in-module,import-error
-from cardio import dataset as ds #pylint: disable=no-name-in-module
 from cardio.batch import ecg_batch_tools as bt #pylint: disable=no-name-in-module,import-error
+from cardio.batch import EcgDataset #pylint: disable=no-name-in-module
 
 random.seed(170720143422)
 
@@ -65,8 +64,7 @@ def setup_class_dataset(request):
     Fixture to setup class to test EcgBatch methods in pipeline.
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
-    ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
-    ecg_dataset = ds.Dataset(ind, batch_class=EcgBatch)
+    ecg_dataset = EcgDataset(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
 
     def teardown_class_dataset():
         """
@@ -82,9 +80,8 @@ def setup_class_pipeline(request):
     Fixture to setup class to test EcgBatch methods in pipeline.
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
-    ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
     target_path = os.path.join(path, "REFERENCE.csv")
-    ecg_pipeline = (ds.Dataset(ind, batch_class=EcgBatch)
+    ecg_pipeline = (EcgDataset(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
                     .p
                     .load(src=None, fmt="wfdb", components=["signal", "annotation", "meta"])
                     .load(src=target_path, fmt="csv", components=["target"]))
@@ -316,8 +313,7 @@ class TestEcgBatchPipelineMethods:
                 .run(batch_size=2, shuffle=False,
                      drop_last=False, n_epochs=1, lazy=True))
 
-        index = setup_module_load[0]
-        dtst = ds.Dataset(index, batch_class=EcgBatch)
+        dtst = EcgDataset(setup_module_load[0])
 
         # Act
         (dtst >> ppln).run()
