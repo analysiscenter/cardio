@@ -11,7 +11,7 @@ class HMModel(BaseModel):
     Hidden Markov Model.
 
     This implementation is based on hmmlearn API. It is supposed
-    that estimators of HMModel are model classes if hmmlearn.
+    that estimators of HMModel are model classes of hmmlearn.
     """
 
     def __init__(self, *args, **kwargs):
@@ -20,7 +20,7 @@ class HMModel(BaseModel):
 
     def build(self, *args, **kwargs):
         """
-        Biuld model.
+        Set up estimator as an attribute and make initial settings.
 
         Uses estimator from model config variable as estimator.
         If config contains key "init_params", sets up initial
