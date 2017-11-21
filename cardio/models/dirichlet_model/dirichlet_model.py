@@ -56,7 +56,7 @@ class DirichletModelBase(TFModel):
         Class names.
     """
 
-    def _build(self):  # pylint: disable=too-many-locals
+    def _build(self, config=None):  # pylint: disable=too-many-locals
         """Build Dirichlet model."""
         input_shape = self.config["input_shape"]
         class_names = self.config["class_names"]
@@ -65,10 +65,12 @@ class DirichletModelBase(TFModel):
             self.store_to_attr("class_names", tf.constant(class_names))
 
             signals = tf.placeholder(tf.float32, shape=(None,) + input_shape, name="signals")
+            self.store_to_attr("signals", signals)
             signals_channels_last = tf.transpose(signals, perm=[0, 2, 1], name="signals_channels_last")
 
             k = 0.001
             targets = tf.placeholder(tf.float32, shape=(None, len(class_names)), name="targets")
+            self.store_to_attr("targets", targets)
             targets_soft = (1 - 2 * k) * targets + k
 
             block = conv1d_block("conv", signals_channels_last, is_training=self.is_training,
@@ -143,7 +145,7 @@ class DirichletModel(DirichletModelBase):
         var = np.mean(comp_m2, axis=0) - mean**2
         return mean, var
 
-    def train(self, fetches=None, feed_dict=None, *args, **kwargs):
+    def train(self, fetches=None, feed_dict=None, use_lock=False, *args, **kwargs):
         """Train the model with the data provided.
 
         The only difference between DirichletModel.train and TFModel.train is that the former also accepts
@@ -151,15 +153,19 @@ class DirichletModel(DirichletModelBase):
 
         Parameters
         ----------
-        fetches : an arbitrarily nested structure of `tf.Operation`s and `tf.Tensor`s
-        feed_dict : a dict with input data, where key is a placeholder name and value is a numpy value
+        fetches : tuple, list
+            a sequence of `tf.Operation` and/or `tf.Tensor` to calculate
+        feed_dict : dict
+            input data, where key is a placeholder name and value is a numpy value
+        use_lock : bool
+            if True, the whole train step is locked, thus allowing for multithreading.
 
         Returns
         -------
         Calculated values of tensors in `fetches` in the same structure
         """
         _ = args, kwargs
-        return super().train(fetches, feed_dict)
+        return super().train(fetches, feed_dict, use_lock)
 
     def predict(self, fetches=None, feed_dict=None, split_indices=None):  # pylint: disable=arguments-differ
         """Get predictions on the data provided.
