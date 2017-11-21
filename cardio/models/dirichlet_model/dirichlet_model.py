@@ -24,14 +24,15 @@ def concatenate_ecg_batch(batch, model, return_targets=True):
     Returns
     -------
     kwargs : dict
-        kwargs for model's train or predict method. Has the following structure:
+        Named argments for model's train or predict method. Has the following
+        structure:
         "feed_dict" : dict
             "signals" : 3-D ndarray
-                Concatenated batch signals.
+                Concatenated signals.
             "targets" : 2-D ndarray, optional
-                Concatenated batch targets.
+                Concatenated targets.
         "split_indices" : 1-D ndarray
-           Split indices to undo the concatenation.
+            Split indices to undo the concatenation.
     """
     _ = model
     x = np.concatenate(batch.signal)
@@ -45,7 +46,9 @@ def concatenate_ecg_batch(batch, model, return_targets=True):
 
 class DirichletModelBase(TFModel):
     """Dirichlet model class.
-    The model predicts Dirichlet distribution parameters from which class probabilities are sampled.
+
+    The model predicts Dirichlet distribution parameters from which class
+    probabilities are sampled.
 
     Configuration
     -------------
@@ -54,6 +57,8 @@ class DirichletModelBase(TFModel):
         Input signals's shape without the batch dimension.
     "class_names" : array_like
         Class names.
+    "loss" : None
+        The model has a predefined loss, so you should leave it ``None``.
     """
 
     def _build(self, config=None):  # pylint: disable=too-many-locals
@@ -107,7 +112,9 @@ class DirichletModelBase(TFModel):
                 act = tf.nn.softplus(bnorm, name="activation")
 
             parameters = tf.identity(act, name="parameters")
-            predictions = tf.identity(act, name="predictions")  # pylint: disable=unused-variable
+            self.store_to_attr("parameters", parameters)
+            predictions = tf.identity(act, name="predictions")
+            self.store_to_attr("predictions", predictions)
             loss = tf.reduce_mean(tf.lbeta(parameters) -
                                   tf.reduce_sum((parameters - 1) * tf.log(targets_soft), axis=1), name="loss")
             tf.losses.add_loss(loss)
@@ -116,20 +123,23 @@ class DirichletModelBase(TFModel):
 class DirichletModel(DirichletModelBase):
     """Dirichlet model with overloaded train and predict methods.
 
-    Train method is identical to DirichletModelBase.train, but also accepts args and kwargs.
-    Predict method splits resulting tensor for "parameters" fetch using split_indices.
-    It also splits and aggregates results for "predictions" fetch to get class probabilities.
+    ``train`` method is identical to ``DirichletModelBase.train``, but also
+    accepts ``args`` and ``kwargs``.
+    ``predict`` method splits the resulting tensor for ``parameters`` fetch
+    using ``split_indices``. It also splits and aggregates results for
+    ``predictions`` fetch to get class probabilities.
     """
 
     @staticmethod
     def _get_dirichlet_mixture_stats(alpha):
-        """Get mean and variance vectors of the mixture of Dirichlet distributions with equal weights
-        and given parameters.
+        """Get mean and variance vectors of the mixture of Dirichlet
+        distributions with equal weights and given parameters.
 
         Parameters
         ----------
         alpha : 2-D ndarray
-            Dirichlet distribution parameters along axis 1 for each mixture component.
+            Dirichlet distribution parameters along axis 1 for each mixture
+            component.
 
         Returns
         -------
@@ -148,21 +158,24 @@ class DirichletModel(DirichletModelBase):
     def train(self, fetches=None, feed_dict=None, use_lock=False, *args, **kwargs):
         """Train the model with the data provided.
 
-        The only difference between DirichletModel.train and TFModel.train is that the former also accepts
-        args and kwargs.
+        The only difference between ``DirichletModel.train`` and
+        ``TFModel.train`` is that the former also accepts ``args`` and
+        ``kwargs``.
 
         Parameters
         ----------
-        fetches : tuple, list
-            a sequence of `tf.Operation` and/or `tf.Tensor` to calculate
+        fetches : tf.Operation or tf.Tensor or array-like sequence of them
+            Graph element to evaluate in addition to ``train_step``.
         feed_dict : dict
-            input data, where key is a placeholder name and value is a numpy value
+            A dictionary that maps graph elements to values.
         use_lock : bool
-            if True, the whole train step is locked, thus allowing for multithreading.
+            If ``True``, the whole train step is locked, thus allowing for
+            multithreading.
 
         Returns
         -------
-        Calculated values of tensors in `fetches` in the same structure
+        output : same structure as ``fetches``
+            Calculated values for each element in ``fetches``.
         """
         _ = args, kwargs
         return super().train(fetches, feed_dict, use_lock)
@@ -172,15 +185,22 @@ class DirichletModel(DirichletModelBase):
 
         Parameters
         ----------
-        fetches : tf.Operation or tf.Tensor or list of them or tuple of them
-            If fetches contains "parameters" Tensor, the corresponding output is split using split_indices.
-            If fetches contains "predictions" Tensor, the corresponding output is split using split_indices
-            and then aggregated to get class probabilities.
-        feed_dict : a dict with input data, where key is a placeholder name and value is a numpy value
+        fetches : tf.Operation or tf.Tensor or array-like sequence of them
+            Graph element to evaluate.
+            If ``fetches`` contains ``parameters`` tensor, the corresponding
+            output is split using ``split_indices``.
+            If ``fetches`` contains ``predictions`` tensor, the corresponding
+            output is split using ``split_indices`` and then aggregated to get
+            class probabilities.
+        feed_dict : dict
+            A dictionary that maps graph elements to values.
+        split_indices : 1-D ndarray
+            Indices used to split ``parameters`` and ``predictions`` tensors.
 
         Returns
         -------
-        Calculated values of tensors in `fetches` in the same structure
+        output : same structure as ``fetches``
+            Calculated values for each element in ``fetches``.
         """
         if isinstance(fetches, (list, tuple)):
             fetches_list = list(fetches)

@@ -41,7 +41,8 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     model_config = {
         "session": {"config": tf.ConfigProto(gpu_options=gpu_options)},
         "input_shape": F(lambda batch: batch.signal[0].shape[1:]),
-        "class_names": F(lambda batch: batch.label_binarizer.classes_)
+        "class_names": F(lambda batch: batch.label_binarizer.classes_),
+        "loss": None,
     }
 
     return (ds.Pipeline()
