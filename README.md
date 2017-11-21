@@ -2,11 +2,10 @@
 
 CardIO is a library that works with electrocardiograms (ECG). With CardIO you can
 
-* load and save signal in a number of formats
-* resample, crop and flip signal
-* filter signal
+* load and save signal in various formats
+* resample, crop, filter and flip signal
 * allocate PQ, QT, QRS segments
-* calculate heart rate and find other standard ECG characteristics
+* calculate heart rate and other standard ECG characteristics
 * apply complex transformations like fft and wavelets, or any other custom functions.
 * recognize heart diseases from ECG
 * efficiently work with large datasets that do not even fit into memory
@@ -18,7 +17,9 @@ CardIO is a library that works with electrocardiograms (ECG). With CardIO you ca
 
 For more details see [the documentation and tutorials](https://analysiscenter.github.io/cardio/).
 
-The library is based on [Dataset](https://github.com/analysiscenter/dataset/). We suggest to read Dataset's [documentation](https://analysiscenter.github.io/dataset/) to learn more, however, you may skip it for the first reading.
+## About CardIO
+
+The library is based on [Dataset](https://github.com/analysiscenter/dataset/). We suggest to read Dataset's [documentation](https://analysiscenter.github.io/dataset/) to learn more.
 
 CardIO has three modules: [```batch```](https://analysiscenter.github.io/cardio/intro/batch.html) [```models```](https://analysiscenter.github.io/cardio/intro/models.html) and [```pipelines```](https://analysiscenter.github.io/cardio/intro/pipeline.html).
 
@@ -56,10 +57,8 @@ train_ppl = (
         .random_resample_signals("normal", loc=300, scale=10)
         .random_split_signals(2048, {"A": 9, "NO": 3})
         .binarize_labels()
-        .train_model("dirichlet", make_data=make_data,
-                     fetches="loss", save_to=V("loss_history"), mode="a")
-        .run(batch_size=100, shuffle=True, drop_last=True,
-             n_epochs=50)
+        .train_model("dirichlet", make_data=make_data, fetches="loss", save_to=V("loss_history"), mode="a")
+        .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=50)
 )
 ```
 
@@ -71,22 +70,26 @@ As a result of this pipeline one obtains a trained model.
 
 > `CardIO` supports python 3.5 or higher.
 
-> When cloning repo from GitHub use flag ``--recursive`` to make sure that you clone ``Dataset`` submodule as well.
+### Installation as python package
 
-
-With `pipenv <https://docs.pipenv.org/>`_::
+With [pipenv](https://docs.pipenv.org/):
 
     pipenv install git+https://github.com/analysiscenter/cardio.git#egg=cardio
 
-With `pip <https://pip.pypa.io/en/stable/>`_::
+With [pip](https://pip.pypa.io/en/stable/):
 
     pip3 install git+https://github.com/analysiscenter/cardio.git
 
-
 After that just import `cardio`:
 ```python
-    import cardio
+import cardio
 ```
+
+### Installation as a project repository:
+
+    git clone --recursive https://github.com/analysiscenter/ecg.git
+
+Flag `--recursive` used to clone submodules as well.
 
 ## Citing Dataset
 Please cite Dataset in your publications if it helps your research.
