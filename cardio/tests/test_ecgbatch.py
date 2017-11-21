@@ -10,7 +10,7 @@ import pytest
 sys.path.append(os.path.join("."))
 
 from cardio.batch import ecg_batch_tools as bt #pylint: disable=no-name-in-module,import-error
-from cardio.batch import EcgDataset #pylint: disable=no-name-in-module
+from cardio import EcgBatch, EcgDataset, dataset as ds #pylint: disable=no-name-in-module
 
 random.seed(170720143422)
 
