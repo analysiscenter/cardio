@@ -392,7 +392,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
 
     @ds.action
     def drop_labels(self, drop_list):
-        """Drop those elements from batch, whose labels are in ``drop_list``.
+        """Drop elements whose labels are in ``drop_list``.
 
         Parameters
         ----------
@@ -411,8 +411,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
 
     @ds.action
     def keep_labels(self, keep_list):
-        """Keep only those elements in batch, whose labels are in
-        ``keep_list``.
+        """Keep elements whose labels are in ``keep_list``.
 
         Parameters
         ----------
@@ -431,7 +430,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
 
     @ds.action
     def replace_labels(self, replace_dict):
-        """Replace labels in batch with corresponding values in
+        """Replace labels with corresponding values in
         ``replace_dict``.
 
         Parameters
