@@ -1,0 +1,319 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cardio.models.dirichlet_model.dirichlet_model &#8212; CardIO 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for cardio.models.dirichlet_model.dirichlet_model</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Contains Dirichlet model class.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">zip_longest</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">..layers</span> <span class="k">import</span> <span class="n">conv1d_block</span><span class="p">,</span> <span class="n">resnet1d_block</span>
+<span class="kn">from</span> <span class="nn">...dataset.dataset.models.tf</span> <span class="k">import</span> <span class="n">TFModel</span>
+
+
+<span class="k">def</span> <span class="nf">concatenate_ecg_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">return_targets</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Concatenate batch signals and (optionally) targets.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    batch : EcgBatch</span>
+<span class="sd">        Batch to concatenate.</span>
+<span class="sd">    model : BaseModel</span>
+<span class="sd">        A model to get the resulting arguments.</span>
+<span class="sd">    return_targets : bool</span>
+<span class="sd">        Specifies whether to return concatenated targets.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    kwargs : dict</span>
+<span class="sd">        Named argments for model&#39;s train or predict method. Has the following</span>
+<span class="sd">        structure:</span>
+<span class="sd">        &quot;feed_dict&quot; : dict</span>
+<span class="sd">            &quot;signals&quot; : 3-D ndarray</span>
+<span class="sd">                Concatenated signals.</span>
+<span class="sd">            &quot;targets&quot; : 2-D ndarray, optional</span>
+<span class="sd">                Concatenated targets.</span>
+<span class="sd">        &quot;split_indices&quot; : 1-D ndarray</span>
+<span class="sd">            Split indices to undo the concatenation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_</span> <span class="o">=</span> <span class="n">model</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">signal</span><span class="p">)</span>
+    <span class="n">split_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">([</span><span class="n">item</span><span class="o">.</span><span class="n">signal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">])[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">res_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;feed_dict&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;signals&quot;</span><span class="p">:</span> <span class="n">x</span><span class="p">},</span> <span class="s2">&quot;split_indices&quot;</span><span class="p">:</span> <span class="n">split_indices</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">return_targets</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">signal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">])</span>
+        <span class="n">res_dict</span><span class="p">[</span><span class="s2">&quot;feed_dict&quot;</span><span class="p">][</span><span class="s2">&quot;targets&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span>
+    <span class="k">return</span> <span class="n">res_dict</span>
+
+
+<span class="k">class</span> <span class="nc">DirichletModelBase</span><span class="p">(</span><span class="n">TFModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Dirichlet model class.</span>
+
+<span class="sd">    The model predicts Dirichlet distribution parameters from which class</span>
+<span class="sd">    probabilities are sampled.</span>
+
+<span class="sd">    Configuration</span>
+<span class="sd">    -------------</span>
+<span class="sd">    Model config must contain the following keys:</span>
+<span class="sd">    &quot;input_shape&quot; : tuple</span>
+<span class="sd">        Input signals&#39;s shape without the batch dimension.</span>
+<span class="sd">    &quot;class_names&quot; : array_like</span>
+<span class="sd">        Class names.</span>
+<span class="sd">    &quot;loss&quot; : None</span>
+<span class="sd">        The model has a predefined loss, so you should leave it ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># pylint: disable=too-many-locals</span>
+        <span class="sd">&quot;&quot;&quot;Build Dirichlet model.&quot;&quot;&quot;</span>
+        <span class="n">input_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;input_shape&quot;</span><span class="p">]</span>
+        <span class="n">class_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;class_names&quot;</span><span class="p">]</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="p">:</span>  <span class="c1"># pylint: disable=not-context-manager</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">store_to_attr</span><span class="p">(</span><span class="s2">&quot;class_names&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">class_names</span><span class="p">))</span>
+
+            <span class="n">signals</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,)</span> <span class="o">+</span> <span class="n">input_shape</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;signals&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">store_to_attr</span><span class="p">(</span><span class="s2">&quot;signals&quot;</span><span class="p">,</span> <span class="n">signals</span><span class="p">)</span>
+            <span class="n">signals_channels_last</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">signals</span><span class="p">,</span> <span class="n">perm</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;signals_channels_last&quot;</span><span class="p">)</span>
+
+            <span class="n">k</span> <span class="o">=</span> <span class="mf">0.001</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">class_names</span><span class="p">)),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;targets&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">store_to_attr</span><span class="p">(</span><span class="s2">&quot;targets&quot;</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+            <span class="n">targets_soft</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">k</span><span class="p">)</span> <span class="o">*</span> <span class="n">targets</span> <span class="o">+</span> <span class="n">k</span>
+
+            <span class="n">block</span> <span class="o">=</span> <span class="n">conv1d_block</span><span class="p">(</span><span class="s2">&quot;conv&quot;</span><span class="p">,</span> <span class="n">signals_channels_last</span><span class="p">,</span> <span class="n">is_training</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">,</span>
+                                 <span class="n">filters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+            <span class="n">block_config</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">downsample</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">block_config</span><span class="p">):</span>
+                <span class="n">block</span> <span class="o">=</span> <span class="n">resnet1d_block</span><span class="p">(</span><span class="s2">&quot;block_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">block</span><span class="p">,</span> <span class="n">is_training</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">,</span>
+                                       <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">downsample</span><span class="o">=</span><span class="n">downsample</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="s2">&quot;global_max_pooling&quot;</span><span class="p">):</span>  <span class="c1"># pylint: disable=not-context-manager</span>
+                <span class="n">block</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="s2">&quot;dense&quot;</span><span class="p">):</span>  <span class="c1"># pylint: disable=not-context-manager</span>
+                <span class="n">dense</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">dense</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">class_names</span><span class="p">),</span> <span class="n">use_bias</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;dense&quot;</span><span class="p">)</span>
+                <span class="n">bnorm</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">batch_normalization</span><span class="p">(</span><span class="n">dense</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;batch_norm&quot;</span><span class="p">,</span> <span class="n">fused</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">act</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">bnorm</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;activation&quot;</span><span class="p">)</span>
+
+            <span class="n">parameters</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">act</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;parameters&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">store_to_attr</span><span class="p">(</span><span class="s2">&quot;parameters&quot;</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+            <span class="n">predictions</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">act</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;predictions&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">store_to_attr</span><span class="p">(</span><span class="s2">&quot;predictions&quot;</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">lbeta</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span> <span class="o">-</span>
+                                  <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">((</span><span class="n">parameters</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">targets_soft</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">)</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">add_loss</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DirichletModel"><a class="viewcode-back" href="../../../../api/cardio.models.html#cardio.models.DirichletModel">[docs]</a><span class="k">class</span> <span class="nc">DirichletModel</span><span class="p">(</span><span class="n">DirichletModelBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Dirichlet model with overloaded train and predict methods.</span>
+
+<span class="sd">    ``train`` method is identical to ``DirichletModelBase.train``, but also</span>
+<span class="sd">    accepts ``args`` and ``kwargs``.</span>
+<span class="sd">    ``predict`` method splits the resulting tensor for ``parameters`` fetch</span>
+<span class="sd">    using ``split_indices``. It also splits and aggregates results for</span>
+<span class="sd">    ``predictions`` fetch to get class probabilities.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_dirichlet_mixture_stats</span><span class="p">(</span><span class="n">alpha</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get mean and variance vectors of the mixture of Dirichlet</span>
+<span class="sd">        distributions with equal weights and given parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        alpha : 2-D ndarray</span>
+<span class="sd">            Dirichlet distribution parameters along axis 1 for each mixture</span>
+<span class="sd">            component.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mean : 1-D ndarray</span>
+<span class="sd">            Mean of the mixture.</span>
+<span class="sd">        var : 1-D ndarray</span>
+<span class="sd">            Variance of the mixture.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">alpha_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="n">comp_m1</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">/</span> <span class="n">alpha_sum</span>
+        <span class="n">comp_m2</span> <span class="o">=</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">alpha_sum</span> <span class="o">*</span> <span class="p">(</span><span class="n">alpha_sum</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">comp_m1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">comp_m2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">mean</span><span class="o">**</span><span class="mi">2</span>
+        <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">var</span>
+
+<div class="viewcode-block" id="DirichletModel.train"><a class="viewcode-back" href="../../../../api/cardio.models.html#cardio.models.DirichletModel.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fetches</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_lock</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Train the model with the data provided.</span>
+
+<span class="sd">        The only difference between ``DirichletModel.train`` and</span>
+<span class="sd">        ``TFModel.train`` is that the former also accepts ``args`` and</span>
+<span class="sd">        ``kwargs``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fetches : tf.Operation or tf.Tensor or array-like sequence of them</span>
+<span class="sd">            Graph element to evaluate in addition to ``train_step``.</span>
+<span class="sd">        feed_dict : dict</span>
+<span class="sd">            A dictionary that maps graph elements to values.</span>
+<span class="sd">        use_lock : bool</span>
+<span class="sd">            If ``True``, the whole train step is locked, thus allowing for</span>
+<span class="sd">            multithreading.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        output : same structure as ``fetches``</span>
+<span class="sd">            Calculated values for each element in ``fetches``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="n">feed_dict</span><span class="p">,</span> <span class="n">use_lock</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DirichletModel.predict"><a class="viewcode-back" href="../../../../api/cardio.models.html#cardio.models.DirichletModel.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fetches</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">split_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># pylint: disable=arguments-differ</span>
+        <span class="sd">&quot;&quot;&quot;Get predictions on the data provided.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fetches : tf.Operation or tf.Tensor or array-like sequence of them</span>
+<span class="sd">            Graph element to evaluate.</span>
+<span class="sd">            If ``fetches`` contains ``parameters`` tensor, the corresponding</span>
+<span class="sd">            output is split using ``split_indices``.</span>
+<span class="sd">            If ``fetches`` contains ``predictions`` tensor, the corresponding</span>
+<span class="sd">            output is split using ``split_indices`` and then aggregated to get</span>
+<span class="sd">            class probabilities.</span>
+<span class="sd">        feed_dict : dict</span>
+<span class="sd">            A dictionary that maps graph elements to values.</span>
+<span class="sd">        split_indices : 1-D ndarray</span>
+<span class="sd">            Indices used to split ``parameters`` and ``predictions`` tensors.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        output : same structure as ``fetches``</span>
+<span class="sd">            Calculated values for each element in ``fetches``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">fetches_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">fetches</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fetches_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">fetches</span><span class="p">]</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">fetches_list</span><span class="p">,</span> <span class="n">feed_dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">fetch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fetches_list</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">fetch</span> <span class="o">==</span> <span class="s2">&quot;parameters&quot;</span><span class="p">:</span>
+                <span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">split_indices</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">fetch</span> <span class="o">==</span> <span class="s2">&quot;predictions&quot;</span><span class="p">:</span>
+                <span class="n">class_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_names</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">)</span>  <span class="c1"># pylint: disable=no-member</span>
+                <span class="n">class_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">class_names</span><span class="p">]</span>
+                <span class="n">n_classes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">class_names</span><span class="p">)</span>
+                <span class="n">max_var</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_classes</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">n_classes</span><span class="o">**</span><span class="mi">2</span>
+                <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">split_indices</span><span class="p">)</span>
+                <span class="n">targets</span> <span class="o">=</span> <span class="n">feed_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;targets&quot;</span><span class="p">)</span>
+                <span class="n">targets</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="n">split_indices</span><span class="p">)]</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">zip_longest</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
+                    <span class="n">mean</span><span class="p">,</span> <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_dirichlet_mixture_stats</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                    <span class="n">uncertainty</span> <span class="o">=</span> <span class="n">var</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">mean</span><span class="p">)]</span> <span class="o">/</span> <span class="n">max_var</span>
+                    <span class="n">predictions_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;target_pred&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">class_names</span><span class="p">,</span> <span class="n">mean</span><span class="p">)),</span>
+                                        <span class="s2">&quot;uncertainty&quot;</span><span class="p">:</span> <span class="n">uncertainty</span><span class="p">}</span>
+                    <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">predictions_dict</span><span class="p">[</span><span class="s2">&quot;target_true&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">class_names</span><span class="p">,</span> <span class="n">t</span><span class="p">))</span>
+                    <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">predictions_dict</span><span class="p">)</span>
+                <span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">output</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Analysis Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,216 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Welcome to CardIO’s documentation! &#8212; CardIO 0.1.0 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Intro" href="intro/intro.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="intro/intro.html" title="Intro"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">CardIO 0.1.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-cardio-s-documentation">
+<h1>Welcome to CardIO’s documentation!<a class="headerlink" href="#welcome-to-cardio-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p><cite>CardIO</cite> is a library designed to build end-to-end machine learning models for deep research of electrocardiograms.</p>
+<p>Main features:</p>
+<ul class="simple">
+<li>load and save signal in a number of formats</li>
+<li>resample, crop and flip signal</li>
+<li>filter signal</li>
+<li>allocate PQ, QT, QRS segments</li>
+<li>calculate heart rate and find other standard ECG characteristics</li>
+<li>apply complex transformations like fft and wavelets, or any other custom functions.</li>
+<li>recognize heart diseases from ECG</li>
+<li>efficiently work with large datasets that do not even fit into memory</li>
+<li>easily arrange new custom actions into pipelines</li>
+<li>do end-to-end ECG processing</li>
+<li>build, train and test custom models for deep research</li>
+</ul>
+<p>… and do everything under a single API.</p>
+<p>The library is based on <a class="reference external" href="https://github.com/analysiscenter/dataset">Dataset</a>. We suggest to read Dataset’s documentation to learn more, however, you may skip it for the first reading.</p>
+<p>CardIO has three modules: <a class="reference internal" href="api/cardio.batch.html"><span class="doc">batch</span></a>, <a class="reference internal" href="api/cardio.models.html"><span class="doc">models</span></a> and <a class="reference internal" href="api/cardio.pipelines.html"><span class="doc">pipelines</span></a>.</p>
+<p>Module batch contains low-level actions for ECG processing. Actions are included in EcgBatch class that also defines how to store ECGs. From these actions you can build new pipelines. You can also write custom action and include it in EcgBatch.</p>
+<p>In models we provide several models that were elaborated to learn the most important problems in ECG:</p>
+<ul class="simple">
+<li>how to recognize specific features of ECG like R-peaks, P-wave, T-wave</li>
+<li>how to recognize heart diseases from ECG, for example - atrial fibrillation.</li>
+</ul>
+<p>Module pipelines contains high-level methods that build pipelines for model training and prediction, preprocessing, etc.</p>
+<div class="section" id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro/intro.html">Intro</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="intro/introduction.html">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="intro/batch.html">Batch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="intro/models.html">Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="intro/pipelines.html">Pipelines</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/cardio.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/cardio.batch.html">Batch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/cardio.batch.html#ecgdataset">EcgDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/cardio.models.html">Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/cardio.pipelines.html">Pipelines</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="basic-usage">
+<h2>Basic usage<a class="headerlink" href="#basic-usage" title="Permalink to this headline">¶</a></h2>
+<p>Here is an example of pipeline that loads ECG signals, makes some preprocessing and learns model over 50 epochs:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">train_ppl</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="n">dtst</span><span class="o">.</span><span class="n">train</span>
+      <span class="o">.</span><span class="n">pipeline</span>
+      <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span>
+                  <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;wfdb&quot;</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">components</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">LABELS_PATH</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">drop_labels</span><span class="p">([</span><span class="s2">&quot;~&quot;</span><span class="p">])</span>
+      <span class="o">.</span><span class="n">replace_labels</span><span class="p">({</span><span class="s2">&quot;N&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">})</span>
+      <span class="o">.</span><span class="n">flip_signals</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">random_resample_signals</span><span class="p">(</span><span class="s2">&quot;normal&quot;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">random_split_signals</span><span class="p">(</span><span class="mi">2048</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s2">&quot;NO&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">})</span>
+      <span class="o">.</span><span class="n">binarize_labels</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">make_data</span><span class="p">,</span>
+                   <span class="n">fetches</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">V</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+           <span class="n">n_epochs</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>)</p>
+<p>As a result of this pipeline one obtains a trained model.</p>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>With <a class="reference external" href="https://docs.pipenv.org/">pipenv</a>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pipenv</span> <span class="n">install</span> <span class="n">git</span><span class="o">+</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">analysiscenter</span><span class="o">/</span><span class="n">cardio</span><span class="o">.</span><span class="n">git</span><span class="c1">#egg=cardio</span>
+</pre></div>
+</div>
+<p>With <a class="reference external" href="https://pip.pypa.io/en/stable/">pip</a>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pip3</span> <span class="n">install</span> <span class="n">git</span><span class="o">+</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">analysiscenter</span><span class="o">/</span><span class="n">cardio</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+<p>After that just import <cite>cardio</cite>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cardio</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><cite>CardIO</cite> module is in the beta stage. Your suggestions and improvements are very welcome.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><cite>CardIO</cite> supports python 3.5 or higher.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When cloning repo from GitHub use flag <code class="docutils literal"><span class="pre">--recursive</span></code> to make sure that <code class="docutils literal"><span class="pre">Dataset</span></code> submodule is also cloned.</p>
+</div>
+</div>
+<div class="section" id="citing-cardio">
+<h2>Citing CardIO<a class="headerlink" href="#citing-cardio" title="Permalink to this headline">¶</a></h2>
+<p>Please cite CardIO in your publications if it helps your research.</p>
+<p><code class="docutils literal"><span class="pre">`</span>
+<span class="pre">Khudorozhkov</span> <span class="pre">R.,</span> <span class="pre">Illarionov</span> <span class="pre">E.,</span> <span class="pre">Kuvaev</span> <span class="pre">A.,</span> <span class="pre">Podvyaznikov</span> <span class="pre">D.</span> <span class="pre">CardIO</span> <span class="pre">library</span> <span class="pre">for</span> <span class="pre">data</span> <span class="pre">science</span> <span class="pre">research</span> <span class="pre">of</span> <span class="pre">heart</span> <span class="pre">signals.</span> <span class="pre">2017.</span>
+<span class="pre">`</span></code></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to CardIO’s documentation!</a><ul>
+<li><a class="reference internal" href="#contents">Contents</a></li>
+<li><a class="reference internal" href="#basic-usage">Basic usage</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#citing-cardio">Citing CardIO</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="intro/intro.html"
+                        title="next chapter">Intro</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="intro/intro.html" title="Intro"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">CardIO 0.1.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Analysis Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,249 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Pipelines &#8212; CardIO 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Models" href="cardio.models.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="cardio.models.html" title="Models"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="cardio.html" accesskey="U">API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="pipelines">
+<h1>Pipelines<a class="headerlink" href="#pipelines" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="dirichlet-train-pipeline">
+<h2>dirichlet_train_pipeline<a class="headerlink" href="#dirichlet-train-pipeline" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cardio.pipelines.dirichlet_train_pipeline">
+<code class="descname">dirichlet_train_pipeline</code><span class="sig-paren">(</span><em>labels_path</em>, <em>batch_size=256</em>, <em>n_epochs=1000</em>, <em>gpu_options=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/pipelines/pipelines.html#dirichlet_train_pipeline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.pipelines.dirichlet_train_pipeline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train pipeline for Dirichlet model.</p>
+<p>This pipeline trains Dirichlet model to find propability of artrial fibrillation.
+It works with dataset that generates bathes of class EcgBatch.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>labels_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Path to csv file with true labels.</li>
+<li><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of samples per gradient update.
+Default value is 256.</li>
+<li><strong>n_epochs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of times to iterate over the training data arrays.
+Default value is 1000.</li>
+<li><strong>gpu_options</strong> (<em>GPUOptions</em>) – Magic attribute generated for tf.ConfigProto “gpu_options” proto field.
+Default value is None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>pipeline</strong> (<em>Pipeline</em>) – Output pipeline.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="dirichlet-predict-pipeline">
+<h2>dirichlet_predict_pipeline<a class="headerlink" href="#dirichlet-predict-pipeline" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cardio.pipelines.dirichlet_predict_pipeline">
+<code class="descname">dirichlet_predict_pipeline</code><span class="sig-paren">(</span><em>model_path</em>, <em>batch_size=100</em>, <em>gpu_options=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/pipelines/pipelines.html#dirichlet_predict_pipeline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.pipelines.dirichlet_predict_pipeline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pipeline for prediction with Dirichlet model.</p>
+<p>This pipeline finds propability of artrial fibrillation according to Dirichlet model.
+It works with dataset that generates bathes of class EcgBatch.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>model_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – path to pretrained Dirichlet model</li>
+<li><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of samples in batch.
+Default value is 100.</li>
+<li><strong>gpu_options</strong> (<em>GPUOptions</em>) – Magic attribute generated for tf.ConfigProto “gpu_options” proto field.
+Default value is None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>pipeline</strong> (<em>Pipeline</em>) – Output pipeline.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="hmm-preprocessing-pipeline">
+<h2>hmm_preprocessing_pipeline<a class="headerlink" href="#hmm-preprocessing-pipeline" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cardio.pipelines.hmm_preprocessing_pipeline">
+<code class="descname">hmm_preprocessing_pipeline</code><span class="sig-paren">(</span><em>batch_size=20</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/pipelines/pipelines.html#hmm_preprocessing_pipeline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.pipelines.hmm_preprocessing_pipeline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pipeline for prediction with hmm model.</p>
+<p>This pipeline prepares data for hmm_train_pipeline.
+It works with dataset that generates bathes of class EcgBatch.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of samples in batch.
+Default value is 100.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>pipeline</strong> (<em>Pipeline</em>) – Output pipeline.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="hmm-train-pipeline">
+<h2>hmm_train_pipeline<a class="headerlink" href="#hmm-train-pipeline" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cardio.pipelines.hmm_train_pipeline">
+<code class="descname">hmm_train_pipeline</code><span class="sig-paren">(</span><em>hmm_preprocessed</em>, <em>batch_size=20</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/pipelines/pipelines.html#hmm_train_pipeline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.pipelines.hmm_train_pipeline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train pipeline for Hidden Markov Model.</p>
+<p>This pipeline trains hmm model to isolate QRS, PQ and QT segments.
+It works with dataset that generates bathes of class EcgBatch.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>hmm_preprocessed</strong> (<em>Pipeline</em>) – Pipeline with precomputed hmm features through hmm_preprocessing_pipeline</li>
+<li><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of samples in batch.
+Default value is 20.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>pipeline</strong> (<em>Pipeline</em>) – Output pipeline.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="hmm-predict-pipeline">
+<h2>hmm_predict_pipeline<a class="headerlink" href="#hmm-predict-pipeline" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cardio.pipelines.hmm_predict_pipeline">
+<code class="descname">hmm_predict_pipeline</code><span class="sig-paren">(</span><em>model_path</em>, <em>batch_size=20</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/pipelines/pipelines.html#hmm_predict_pipeline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.pipelines.hmm_predict_pipeline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pipeline for prediction with hmm model.</p>
+<p>This pipeline isolates QRS, PQ and QT segments.
+It works with dataset that generates bathes of class EcgBatch.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>model_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Path to pretrained hmm model.</li>
+<li><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of samples in batch.
+Default value is 20.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>pipeline</strong> (<em>Pipeline</em>) – Output pipeline.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Pipelines</a><ul>
+<li><a class="reference internal" href="#dirichlet-train-pipeline">dirichlet_train_pipeline</a></li>
+<li><a class="reference internal" href="#dirichlet-predict-pipeline">dirichlet_predict_pipeline</a></li>
+<li><a class="reference internal" href="#hmm-preprocessing-pipeline">hmm_preprocessing_pipeline</a></li>
+<li><a class="reference internal" href="#hmm-train-pipeline">hmm_train_pipeline</a></li>
+<li><a class="reference internal" href="#hmm-predict-pipeline">hmm_predict_pipeline</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="cardio.models.html"
+                        title="previous chapter">Models</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/cardio.pipelines.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="cardio.models.html" title="Models"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="cardio.html" >API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Analysis Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>

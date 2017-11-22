@@ -1,0 +1,782 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Models &#8212; CardIO 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Pipelines" href="cardio.pipelines.html" />
+    <link rel="prev" title="Batch" href="cardio.batch.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="cardio.pipelines.html" title="Pipelines"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="cardio.batch.html" title="Batch"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="cardio.html" accesskey="U">API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="models">
+<h1>Models<a class="headerlink" href="#models" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="dirichletmodel">
+<h2>DirichletModel<a class="headerlink" href="#dirichletmodel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cardio.models.DirichletModel">
+<em class="property">class </em><code class="descname">DirichletModel</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/dirichlet_model/dirichlet_model.html#DirichletModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.DirichletModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">cardio.models.dirichlet_model.dirichlet_model.DirichletModelBase</span></code></p>
+<p>Dirichlet model with overloaded train and predict methods.</p>
+<p><code class="docutils literal"><span class="pre">train</span></code> method is identical to <code class="docutils literal"><span class="pre">DirichletModelBase.train</span></code>, but also
+accepts <code class="docutils literal"><span class="pre">args</span></code> and <code class="docutils literal"><span class="pre">kwargs</span></code>.
+<code class="docutils literal"><span class="pre">predict</span></code> method splits the resulting tensor for <code class="docutils literal"><span class="pre">parameters</span></code> fetch
+using <code class="docutils literal"><span class="pre">split_indices</span></code>. It also splits and aggregates results for
+<code class="docutils literal"><span class="pre">predictions</span></code> fetch to get class probabilities.</p>
+<dl class="method">
+<dt id="cardio.models.DirichletModel.batch_size">
+<code class="descname">batch_size</code><span class="sig-paren">(</span><em>tensor</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.batch_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return batch size (the length of the first dimension) of the input tensor</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tensor</strong> (<em>tf.Tensor</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>batch size</strong> (<em>int</em>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.body">
+<code class="descname">body</code><span class="sig-paren">(</span><em>inputs</em>, <em>name='body'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base layers which produce a network embedding</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>inputs</strong> (<em>tf.Tensor</em>) – input tensor</li>
+<li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – scope name</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>For other parameters see <code class="xref py py-func docutils literal"><span class="pre">conv_block()</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><em>tf.Tensor</em></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">MyModel</span><span class="o">.</span><span class="n">body</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s1">&#39;ca ca ca&#39;</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">],</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.build">
+<code class="descname">build</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.build" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the model</p>
+<ol class="arabic simple">
+<li>Create a graph</li>
+<li>Define <code class="docutils literal"><span class="pre">is_training</span></code> and <code class="docutils literal"><span class="pre">global_step</span></code> tensors</li>
+<li>Define a model architecture by calling :meth:<code class="docutils literal"><span class="pre">._build</span></code></li>
+<li>Create a loss function from config</li>
+<li>Create an optimizer and define a train step from config</li>
+<li><a class="reference external" href="https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization">Set UPDATE_OPS control dependency on train step</a></li>
+<li>Create a tensorflow session</li>
+</ol>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.build_config">
+<code class="descname">build_config</code><span class="sig-paren">(</span><em>names=None</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.build_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define a model architecture configuration</p>
+<p>It takes just 2 steps:</p>
+<ol class="arabic">
+<li><p class="first">Define names for all placeholders and make input tensors by calling <code class="docutils literal"><span class="pre">super().build_config(names)</span></code>.</p>
+<p>If the model config does not contain any name from <code class="docutils literal"><span class="pre">names</span></code>, <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.6)"><code class="xref py py-exc docutils literal"><span class="pre">KeyError</span></code></a> is raised.</p>
+<p>See <code class="xref py py-meth docutils literal"><span class="pre">_make_inputs()</span></code> for details.</p>
+</li>
+<li><p class="first">Define parameters for <code class="xref py py-meth docutils literal"><span class="pre">TFModel.input_block()</span></code>, <code class="xref py py-meth docutils literal"><span class="pre">TFModel.body()</span></code>, <code class="xref py py-meth docutils literal"><span class="pre">TFModel.head()</span></code>
+which depend on inputs.</p>
+</li>
+<li><p class="first">Don’t forget to return <code class="docutils literal"><span class="pre">config</span></code>.</p>
+</li>
+</ol>
+<p>Typically it looks like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">build_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">names</span> <span class="ow">or</span> <span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">,</span> <span class="s1">&#39;labels&#39;</span><span class="p">]</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_config</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;head&#39;</span><span class="p">][</span><span class="s1">&#39;num_classes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span><span class="p">(</span><span class="s1">&#39;targets&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">config</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.channels_axis">
+<code class="descname">channels_axis</code><span class="sig-paren">(</span><em>data_format</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.channels_axis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the channels axis for the tensor</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_format</strong> (<em>str {'channels_last'</em><em>, </em><em>'channels_first'}</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>number of channels</strong> (<em>int</em>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.channels_shape">
+<code class="descname">channels_shape</code><span class="sig-paren">(</span><em>tensor</em>, <em>data_format='channels_last'</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.channels_shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return number of channels in the input tensor</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tensor</strong> (<em>tf.Tensor</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>shape</strong> (<em>tuple of ints</em>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.classes">
+<code class="descname">classes</code><span class="sig-paren">(</span><em>tensor</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the  number of classes</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.crop">
+<code class="descname">crop</code><span class="sig-paren">(</span><em>inputs</em>, <em>shape_images</em>, <em>data_format='channels_last'</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.crop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Crop input tensor to a shape of a given image.
+If shape_image has not fully defined shape (shape_image.get_shape() has at leats one None),
+the returned tf.Tensor will be of unknown shape except the number of channels.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>inputs</strong> (<em>tf.Tensor</em>) – input tensor</li>
+<li><strong>shape_images</strong> (<em>tf.Tensor</em>) – a source images to which</li>
+<li><strong>data_format</strong> (<em>str {'channels_last'</em><em>, </em><em>'channels_first'}</em>) – data format</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.data_format">
+<code class="descname">data_format</code><span class="sig-paren">(</span><em>tensor</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.data_format" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the tensor data format (channels_last or channels_first)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tensor</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a><em> or </em><em>tf.Tensor</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>data_format</strong> (<em>str</em>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.default_config">
+<code class="descname">default_config</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.default_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define model defaults</p>
+<p>You need to override this method if you expect your model or its blocks to serve as a base for other models
+(e.g. VGG for FCN, ResNet for LinkNet, etc).</p>
+<p>Put here all constants (like the number of filters, kernel sizes, block layouts, strides, etc)
+specific to the model, but independent of anything else (like image shapes, number of classes, etc).</p>
+<p>These defaults can be changed in <cite>.build_config</cite> or when calling <cite>Pipeline.init_model</cite>.</p>
+<p>Usually, it looks like:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nd">@classmethod</span>
+<span class="k">def</span> <span class="nf">default_config</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">TFModel</span><span class="o">.</span><span class="n">default_config</span><span class="p">()</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;input_block&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s1">&#39;cnap&#39;</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">strides</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                                      <span class="n">pool_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">pool_strides</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;body&#39;</span><span class="p">][</span><span class="s1">&#39;filters&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">32</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;head&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s1">&#39;cnadV&#39;</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="o">=.</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">config</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.fill_params">
+<code class="descname">fill_params</code><span class="sig-paren">(</span><em>_name</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.fill_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fill block params from default config and kwargs</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.get">
+<code class="descname">get</code><span class="sig-paren">(</span><em>variables</em>, <em>config=None</em>, <em>default=None</em>, <em>pop=False</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return variables from config</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.get_number_of_trainable_vars">
+<code class="descname">get_number_of_trainable_vars</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.get_number_of_trainable_vars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of trainable variable in the model graph</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.get_shape">
+<code class="descname">get_shape</code><span class="sig-paren">(</span><em>tensor</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.get_shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return full shape of the input tensor</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tensor</strong> (<em>tf.Tensor</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>shape</strong> (<em>tuple of ints</em>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.get_tensor_config">
+<code class="descname">get_tensor_config</code><span class="sig-paren">(</span><em>tensor</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.get_tensor_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return tensor configuration</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tensor</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a><em> or </em><em>tf.Tensor</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><em>dict</em> – tensor config (see <code class="xref py py-meth docutils literal"><span class="pre">_make_inputs()</span></code>)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body">ValueError shape in tensor configuration isn’t int, tuple or list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.has_classes">
+<code class="descname">has_classes</code><span class="sig-paren">(</span><em>tensor</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.has_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if a tensor has classes defined in the config</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.head">
+<code class="descname">head</code><span class="sig-paren">(</span><em>inputs</em>, <em>name='head'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.head" title="Permalink to this definition">¶</a></dt>
+<dd><p>Last network layers which produce output from the network embedding</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>inputs</strong> (<em>tf.Tensor</em>) – input tensor</li>
+<li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – scope name</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>For other parameters see <code class="xref py py-func docutils literal"><span class="pre">conv_block()</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><em>tf.Tensor</em></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p>A fully convolutional head with 3x3 and 1x1 convolutions and global max pooling:</p>
+<blockquote>
+<div>MyModel.head(2, network_embedding, layout=’cacaP’, filters=[128, num_classes], kernel_size=[3, 1])</div></blockquote>
+<p>A fully connected head with dropouts, a dense layer with 1000 units and final dense layer with class logits:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">MyModel</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">network_embedding</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s1">&#39;dfadf&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">],</span> <span class="n">dropout_rate</span><span class="o">=.</span><span class="mi">15</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.input_block">
+<code class="descname">input_block</code><span class="sig-paren">(</span><em>inputs</em>, <em>name='input_block'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.input_block" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform inputs with a convolution block</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>inputs</strong> (<em>tf.Tensor</em>) – input tensor</li>
+<li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – scope name</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>For other parameters see <code class="xref py py-func docutils literal"><span class="pre">conv_block()</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><em>tf.Tensor</em></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.load">
+<code class="descname">load</code><span class="sig-paren">(</span><em>path</em>, <em>graph=None</em>, <em>checkpoint=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a tensorflow model from files</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – a directory where a model is stored</li>
+<li><strong>graph</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – a filename for a metagraph file</li>
+<li><strong>checkpoint</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – a checkpoint file name or None to load the latest checkpoint</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tf_model</span> <span class="o">=</span> <span class="n">ResNet34</span><span class="p">(</span><span class="n">load</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tf_model</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;/path/to/models/resnet34&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.num_channels">
+<code class="descname">num_channels</code><span class="sig-paren">(</span><em>tensor</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.num_channels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of channels in the tensor</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tensor</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a><em> or </em><em>tf.Tensor</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>number of channels</strong> (<em>int</em>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.num_classes">
+<code class="descname">num_classes</code><span class="sig-paren">(</span><em>tensor</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.num_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the  number of classes</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.output">
+<code class="descname">output</code><span class="sig-paren">(</span><em>inputs</em>, <em>ops=None</em>, <em>prefix=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add output operations to a model graph, like predictions, quality metrics, etc.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>inputs</strong> (<em>tf.Tensor</em><em> or </em><em>a sequence of tf.Tensors</em>) – input tensors</li>
+<li><strong>ops</strong> (<em>a sequence of str</em>) – <dl class="docutils">
+<dt>operation names::</dt>
+<dd><ul class="first last">
+<li>’proba’ - add <code class="docutils literal"><span class="pre">softmax(inputs)</span></code></li>
+<li>’labels’ - add <code class="docutils literal"><span class="pre">argmax(inputs)</span></code></li>
+<li>’accuracy’ - add <code class="docutils literal"><span class="pre">mean(predicted_labels</span> <span class="pre">==</span> <span class="pre">true_labels)</span></code></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><strong>prefix</strong> (<em>a sequence of str</em>) – a prefix for each input if there are multiple inputs</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li>ValueError if the number of outputs does not equal to the number of prefixes</li>
+<li>TypeError if inputs is not a Tensor or a sequence of Tensors</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.pop">
+<code class="descname">pop</code><span class="sig-paren">(</span><em>variables</em>, <em>config=None</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.pop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return variables and remove them from config</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.predict">
+<code class="descname">predict</code><span class="sig-paren">(</span><em>fetches=None</em>, <em>feed_dict=None</em>, <em>split_indices=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/dirichlet_model/dirichlet_model.html#DirichletModel.predict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.DirichletModel.predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get predictions on the data provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fetches</strong> (<em>tf.Operation</em><em> or </em><em>tf.Tensor</em><em> or </em><em>array-like sequence of them</em>) – Graph element to evaluate.
+If <code class="docutils literal"><span class="pre">fetches</span></code> contains <code class="docutils literal"><span class="pre">parameters</span></code> tensor, the corresponding
+output is split using <code class="docutils literal"><span class="pre">split_indices</span></code>.
+If <code class="docutils literal"><span class="pre">fetches</span></code> contains <code class="docutils literal"><span class="pre">predictions</span></code> tensor, the corresponding
+output is split using <code class="docutils literal"><span class="pre">split_indices</span></code> and then aggregated to get
+class probabilities.</li>
+<li><strong>feed_dict</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – A dictionary that maps graph elements to values.</li>
+<li><strong>split_indices</strong> (<em>1-D ndarray</em>) – Indices used to split <code class="docutils literal"><span class="pre">parameters</span></code> and <code class="docutils literal"><span class="pre">predictions</span></code> tensors.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>output</strong> (same structure as <code class="docutils literal"><span class="pre">fetches</span></code>) – Calculated values for each element in <code class="docutils literal"><span class="pre">fetches</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.put">
+<code class="descname">put</code><span class="sig-paren">(</span><em>variable</em>, <em>value</em>, <em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Put a new variable into config</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.save">
+<code class="descname">save</code><span class="sig-paren">(</span><em>path</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save tensorflow model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – a path to a directory where all model files will be stored</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tf_model</span> <span class="o">=</span> <span class="n">ResNet34</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Now save the model</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tf_model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;/path/to/models/resnet34&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The model will be saved to /path/to/models/resnet34</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.se_block">
+<code class="descname">se_block</code><span class="sig-paren">(</span><em>inputs</em>, <em>ratio</em>, <em>name='se'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.se_block" title="Permalink to this definition">¶</a></dt>
+<dd><p>Squeeze and excitation block</p>
+<p>Hu J. et al. “<a class="reference external" href="https://arxiv.org/abs/1709.01507">Squeeze-and-Excitation Networks</a>”</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>inputs</strong> (<em>tf.Tensor</em>) – input tensor</li>
+<li><strong>ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – squeeze ratio for the number of filters</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><em>tf.Tensor</em></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.spatial_dim">
+<code class="descname">spatial_dim</code><span class="sig-paren">(</span><em>tensor</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.spatial_dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the tensor spatial dimensionality (without channels dimension)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tensor</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a><em> or </em><em>tf.Tensor</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>number of spatial dimensions</strong> (<em>int</em>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.spatial_shape">
+<code class="descname">spatial_shape</code><span class="sig-paren">(</span><em>tensor</em>, <em>data_format='channels_last'</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.spatial_shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return spatial shape of the input tensor</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tensor</strong> (<em>tf.Tensor</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>shape</strong> (<em>tuple of ints</em>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.store_to_attr">
+<code class="descname">store_to_attr</code><span class="sig-paren">(</span><em>attr</em>, <em>graph_item</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.store_to_attr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a graph item (variable or operation) accessible as a model attribute</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.to_classes">
+<code class="descname">to_classes</code><span class="sig-paren">(</span><em>tensor</em>, <em>input_name</em>, <em>name=None</em><span class="sig-paren">)</span><a class="headerlink" href="#cardio.models.DirichletModel.to_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert tensor with labels to classes of <code class="docutils literal"><span class="pre">input_name</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.train">
+<code class="descname">train</code><span class="sig-paren">(</span><em>fetches=None</em>, <em>feed_dict=None</em>, <em>use_lock=False</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/dirichlet_model/dirichlet_model.html#DirichletModel.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.DirichletModel.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train the model with the data provided.</p>
+<p>The only difference between <code class="docutils literal"><span class="pre">DirichletModel.train</span></code> and
+<code class="docutils literal"><span class="pre">TFModel.train</span></code> is that the former also accepts <code class="docutils literal"><span class="pre">args</span></code> and
+<code class="docutils literal"><span class="pre">kwargs</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fetches</strong> (<em>tf.Operation</em><em> or </em><em>tf.Tensor</em><em> or </em><em>array-like sequence of them</em>) – Graph element to evaluate in addition to <code class="docutils literal"><span class="pre">train_step</span></code>.</li>
+<li><strong>feed_dict</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – A dictionary that maps graph elements to values.</li>
+<li><strong>use_lock</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)"><em>bool</em></a>) – If <code class="docutils literal"><span class="pre">True</span></code>, the whole train step is locked, thus allowing for
+multithreading.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>output</strong> (same structure as <code class="docutils literal"><span class="pre">fetches</span></code>) – Calculated values for each element in <code class="docutils literal"><span class="pre">fetches</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="hmmodel">
+<h2>HMModel<a class="headerlink" href="#hmmodel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cardio.models.HMModel">
+<em class="property">class </em><code class="descname">HMModel</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">cardio.dataset.dataset.models.base.BaseModel</span></code></p>
+<p>Hidden Markov Model.</p>
+<p>This implementation is based on hmmlearn API. It is supposed
+that estimators of HMModel are model classes of hmmlearn.</p>
+<dl class="method">
+<dt id="cardio.models.HMModel.build">
+<code class="descname">build</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.build"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.build" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up estimator as an attribute and make initial settings.</p>
+<p>Uses estimator from model config variable as estimator.
+If config contains key “init_params”, sets up initial
+values <cite>means_</cite>, <cite>covars_</cite>, <cite>transmat_</cite> and <cite>startprob_</cite>
+of the estimator as defined in “init_params”.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.HMModel.load">
+<code class="descname">load</code><span class="sig-paren">(</span><em>path</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load HMModel from file with dill.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Path to the model.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.HMModel.predict">
+<code class="descname">predict</code><span class="sig-paren">(</span><em>X</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.predict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict with the data provided</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>X</strong> (<a class="reference external" href="https://docs.python.org/3/library/array.html#module-array" title="(in Python v3.6)"><em>array</em></a>) – An array of observations to make predictions from.</li>
+<li><strong>more details and other parameters look at the documentation for the estimator used.</strong> (<em>For</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>output</strong> (<em>array</em>) – Predicted value per observation.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.HMModel.save">
+<code class="descname">save</code><span class="sig-paren">(</span><em>path</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save HMModel with dill.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Path to the location where to save the model.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.HMModel.train">
+<code class="descname">train</code><span class="sig-paren">(</span><em>X</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train the model using data provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>X</strong> (<a class="reference external" href="https://docs.python.org/3/library/array.html#module-array" title="(in Python v3.6)"><em>array</em></a>) – An array of observations to learn from. Also, it is expected
+that kwargs contain key “lenghts”, which define lengths of
+sequences.</li>
+<li><strong>more details and other parameters look at the documentation for the estimator used.</strong> (<em>For</em>) – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="fft-model">
+<h2>FFT model<a class="headerlink" href="#fft-model" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cardio.models.FFTModel">
+<em class="property">class </em><code class="descname">FFTModel</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/fft_model/fft_model.html#FFTModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.FFTModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">cardio.dataset.dataset.models.keras.keras_model.KerasModel</span></code></p>
+<p>FFT inception model. Includes initial convolution layers, then FFT transform, then
+a series of inception blocks.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Models</a><ul>
+<li><a class="reference internal" href="#dirichletmodel">DirichletModel</a></li>
+<li><a class="reference internal" href="#hmmodel">HMModel</a></li>
+<li><a class="reference internal" href="#fft-model">FFT model</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="cardio.batch.html"
+                        title="previous chapter">Batch</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="cardio.pipelines.html"
+                        title="next chapter">Pipelines</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/cardio.models.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="cardio.pipelines.html" title="Pipelines"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="cardio.batch.html" title="Batch"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="cardio.html" >API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Analysis Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>

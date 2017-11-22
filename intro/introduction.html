@@ -1,0 +1,191 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Introduction &#8212; CardIO 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Batch" href="batch.html" />
+    <link rel="prev" title="Intro" href="intro.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="batch.html" title="Batch"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="intro.html" title="Intro"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="intro.html" accesskey="U">Intro</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>This section describes briefly capabilities of the CardIO framework.</p>
+<div class="section" id="batch">
+<h2><a class="reference internal" href="batch.html"><span class="doc">Batch</span></a><a class="headerlink" href="#batch" title="Permalink to this headline">¶</a></h2>
+<p>The main class the CardIO is EcgBatch. It contains the I/O and preprocessing <a class="reference external" href="https://analysiscenter.github.io/dataset/api/dataset.decorators.html#dataset.action" title="(in Dataset v0.2)"><code class="xref py py-func docutils literal"><span class="pre">actions</span></code></a> that allow to load and prepare data for the modeling.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cardio</span> <span class="kn">import</span> <span class="n">EcgBatch</span>
+<span class="kn">from</span> <span class="nn">dataset</span> <span class="kn">import</span> <span class="n">FilesIndex</span><span class="p">,</span> <span class="n">Dataset</span>
+<span class="n">ecg_index</span> <span class="o">=</span> <span class="n">FilesIndex</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s1">&#39;path/to/ecg/*&#39;</span><span class="p">,</span> <span class="n">no_ext</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="c1"># set up the index</span>
+<span class="n">dtst</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">ecg_index</span><span class="p">,</span> <span class="n">batch_class</span><span class="o">=</span><span class="n">EcgBatch</span><span class="p">)</span> <span class="c1"># init the dataset with ECG files</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="models">
+<h2><a class="reference internal" href="models.html"><span class="doc">Models</span></a><a class="headerlink" href="#models" title="Permalink to this headline">¶</a></h2>
+<p>This module contain model suited to classify whether ECG signal is normal or pathological, to annotate segments of the signal (e.g., P-wave).</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">template_dirichlet_train</span> <span class="o">=</span> <span class="p">(</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
+  <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;wfdb&quot;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="s1">&#39;./path/to/taret/&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">drop_labels</span><span class="p">([</span><span class="s2">&quot;~&quot;</span><span class="p">])</span>
+  <span class="o">.</span><span class="n">replace_labels</span><span class="p">({</span><span class="s2">&quot;N&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">})</span>
+  <span class="o">.</span><span class="n">flip_signals</span><span class="p">()</span>
+  <span class="o">.</span><span class="n">random_resample_signals</span><span class="p">(</span><span class="s2">&quot;normal&quot;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">random_split_signals</span><span class="p">(</span><span class="mi">2048</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s2">&quot;NO&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">})</span>
+  <span class="o">.</span><span class="n">binarize_labels</span><span class="p">()</span>
+  <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">make_data</span><span class="p">,</span>
+               <span class="n">fetches</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">V</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="pipelines">
+<h2><a class="reference internal" href="pipelines.html"><span class="doc">Pipelines</span></a><a class="headerlink" href="#pipelines" title="Permalink to this headline">¶</a></h2>
+<p>Pipelines were designed to ease usage of exhisting models make final code simpler.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cardio.pipelines</span> <span class="kn">import</span> <span class="n">hmm_predict_pipeline</span>
+<span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span> <span class="o">&gt;&gt;</span> <span class="n">hmm_train_pipeline</span><span class="p">(</span><span class="n">model_path</span><span class="p">))</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Under the hood this function contains a list of actions:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">template_hmm_predict</span> <span class="o">=</span> <span class="p">(</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
+  <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">HMModel</span><span class="p">,</span> <span class="s2">&quot;HMM&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config_train</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;wfdb&#39;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;annotation&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">],</span> <span class="n">ann_ext</span><span class="o">=</span><span class="s1">&#39;pu1&#39;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">wavelet_transform_signal</span><span class="p">(</span><span class="n">cwt_scales</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">16</span><span class="p">],</span> <span class="n">cwt_wavelet</span><span class="o">=</span><span class="s2">&quot;mexh&quot;</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="s2">&quot;HMM&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">make_data</span><span class="p">)</span>
+  <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span> <span class="o">&gt;&gt;</span> <span class="n">template_hmm_predict</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="tutorials">
+<h2>Tutorials<a class="headerlink" href="#tutorials" title="Permalink to this headline">¶</a></h2>
+<p>There are three tutorials:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/analysiscenter/cardio/blob/master/tutorials/I.CardIO.ipynb">CardIO</a></li>
+</ul>
+<p>In this tutorail we briefly introduce some instances of <a class="reference external" href="https://github.com/analysiscenter/dataset">Dataset</a> and show capabilities of the CardIO’s EcgBatch class.</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/analysiscenter/cardio/blob/master/tutorials/II.Pipelines.ipynb">Pipelines</a></li>
+</ul>
+<p>In this tutorial we show how to create pipelines, use them for preprocessing and add your custom action to the EcgBatch with ease.</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/analysiscenter/cardio/blob/master/tutorials/III.Models.ipynb">Models</a></li>
+</ul>
+<p>This tutorial shows how to embed models in pipelines to perform training and prediction.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Introduction</a><ul>
+<li><a class="reference internal" href="#batch"><code class="docutils literal"><span class="pre">Batch</span></code></a></li>
+<li><a class="reference internal" href="#models"><code class="docutils literal"><span class="pre">Models</span></code></a></li>
+<li><a class="reference internal" href="#pipelines"><code class="docutils literal"><span class="pre">Pipelines</span></code></a></li>
+<li><a class="reference internal" href="#tutorials">Tutorials</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="intro.html"
+                        title="previous chapter">Intro</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="batch.html"
+                        title="next chapter">Batch</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/intro/introduction.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="batch.html" title="Batch"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="intro.html" title="Intro"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="intro.html" >Intro</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Analysis Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>
