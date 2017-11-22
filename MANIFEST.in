@@ -1,0 +1,16 @@
+include MANIFEST.in
+include LICENSE
+include README.md
+include setup.py
+
+recursive-include cardio *
+recursive-include docs *
+recursive-include tutorials *
+recursive-exclude docs/_build *
+
+global-exclude *.pyc *.pyo *.pyd
+global-exclude *.git
+global-exclude *.so
+global-exclude *~
+global-exclude \#*
+global-exclude .DS_Store
