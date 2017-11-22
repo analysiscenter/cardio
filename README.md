@@ -1,47 +1,96 @@
-# ecg
+﻿# CardIO
 
-```ecg``` is a library that works with electrocardiogram signal. It allows easily load and process ECG records and learn models. 
-The library is based on [Dataset](https://github.com/analysiscenter/dataset/blob/master/README.md) and supports its whole functionality. 
-So you can define your own pipeline, write custom preprocess functions and models or use built-in ones and handle with datasets even if it does not fit into memory.
+CardIO is a library that works with electrocardiograms (ECG). With CardIO you can
 
-```ecg``` has two modules: [```batch```](doc/batch.md) and [```models```](doc/models.md). 
-
-In ```batch``` we gather everything you may need to process ECG record:
-* load and save signal in a number of formats
-* resample, crop and flip signal
-* filter signal
+* load and save signal in various formats
+* resample, crop, filter and flip signal
 * allocate PQ, QT, QRS segments
-* calculate heart rate
-* apply complex transformations like fft or wavelets
-* apply custom functions.
+* calculate heart rate and other standard ECG characteristics
+* apply complex transformations like fft and wavelets, or any other custom functions.
+* recognize heart diseases from ECG
+* efficiently work with large datasets that do not even fit into memory
+* easily arrange new custom actions into pipelines
+* do end-to-end ECG processing
+* build, train and test custom models for deep research
 
-In ```models``` we provide a template model and several real models that should inspire you to start you own research.
-Provided models are created to learn the most important problems in ECG:
+… and do everything under a single API.
+
+For more details see [the documentation and tutorials](https://analysiscenter.github.io/cardio/).
+
+## About CardIO
+
+The library is based on [Dataset](https://github.com/analysiscenter/dataset/). We suggest to read Dataset's [documentation](https://analysiscenter.github.io/dataset/) to learn more.
+
+CardIO has three modules: [```batch```](https://analysiscenter.github.io/cardio/intro/batch.html) [```models```](https://analysiscenter.github.io/cardio/intro/models.html) and [```pipelines```](https://analysiscenter.github.io/cardio/intro/pipeline.html).
+
+Module ```batch``` contains low-level actions for ECG processing.
+Actions are included in ```EcgBatch``` class that also defines how
+to store ECGs. From these actions you can biuld new pipelines. You can also
+write custom action and include it in ```EcgBatch```.
+
+In ```models``` we provide several models that were elaborated to learn the most important problems in ECG:
 * how to recognize specific features of ECG like R-peaks, P-wave, T-wave
-* how to recognize dangerous diseases from ECG, for example - atrial fibrillation.
+* how to recognize heart diseases from ECG, for example - atrial fibrillation.
 
-# Basic usage
+Module ```pipelines``` contains high-level methods that
+* train model to allocate PQ, QT, QRS segments
+* calculate heart rate
+* train model to find probabilities of heart diseases.
+
+Under the hood these methods contain many actions that load signals, filter it and do complex caclulations. Using pipelines you do not think about this part of work and simply pass ECG datasets and get results.
+
+## Basic usage
 
 Here is an example of pipeline that loads ECG signals, makes some preprocessing and learns model over 50 epochs.
 ```python
-model_train_pipeline = (ds.Pipeline()
-                        .load(fmt="wfdb", components=["signal", "meta"])
-                        .load(src="REFERENCE.csv", fmt="csv", components="target")
-                        .drop_labels(["~"])
-                        .replace_labels({"N": "NO", "O": "NO"})
-                        .random_resample_signals("normal", loc=300, scale=10)
-                        .drop_short_signals(3000)
-                        .split_signals(3000, 1000)
-                        .binarize_labels()
-                        .train_on_batch('my_ecg_model', metrics=f1_score, average='macro')
-                        .run(batch_size=300, shuffle=True, n_epochs=50, prefetch=0))
+train_ppl = (
+    dtst.train
+        .pipeline
+        .init_model("dynamic", DirichletModel, name="dirichlet",
+                    config=model_config)
+        .init_variable("loss_history", init=list)
+        .load(components=["signal", "meta"], fmt="wfdb")
+        .load(components="target", fmt="csv", src=LABELS_PATH)
+        .drop_labels(["~"])
+        .replace_labels({"N": "NO", "O": "NO"})
+        .flip_signals()
+        .random_resample_signals("normal", loc=300, scale=10)
+        .random_split_signals(2048, {"A": 9, "NO": 3})
+        .binarize_labels()
+        .train_model("dirichlet", make_data=make_data, fetches="loss", save_to=V("loss_history"), mode="a")
+        .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=50)
+)
 ```
+
 As a result of this pipeline one obtains a trained model.
 
-# How to start
+## Installation
 
-See [tutorial](doc/tutorial.md) to start working with ECG.
+> `CardIO` module is in the beta stage. Your suggestions and improvements are very welcome.
 
-# Further reading
+> `CardIO` supports python 3.5 or higher.
 
-Detailed documentation on `ecg` is available [here](doc/README.md).
+### Installation as python package
+
+With [pipenv](https://docs.pipenv.org/):
+
+    pipenv install git+https://github.com/analysiscenter/cardio.git#egg=cardio
+
+With [pip](https://pip.pypa.io/en/stable/):
+
+    pip3 install git+https://github.com/analysiscenter/cardio.git
+
+After that just import `cardio`:
+```python
+import cardio
+```
+
+### Installation as a project repository:
+
+    git clone --recursive https://github.com/analysiscenter/ecg.git
+
+Flag `--recursive` used to clone submodules as well.
+
+## Citing Dataset
+Please cite Dataset in your publications if it helps your research.
+
