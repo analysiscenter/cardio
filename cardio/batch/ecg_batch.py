@@ -176,11 +176,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         pipeline = self.pipeline  # pylint: disable=access-member-before-definition
         self.pipeline = None  # pylint: disable=attribute-defined-outside-init
         dump_batch = dill.dumps(self)
-        dump_data_named = dill.dumps(self._data_named)
         self.pipeline = pipeline  # pylint: disable=attribute-defined-outside-init
 
         restored_batch = dill.loads(dump_batch)
-        restored_batch._data_named = dill.loads(dump_data_named)  # pylint: disable=protected-access
         restored_batch.pipeline = pipeline
         return restored_batch
 
