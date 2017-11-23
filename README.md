@@ -87,7 +87,7 @@ import cardio
 
 ### Installation as a project repository:
 
-    git clone --recursive https://github.com/analysiscenter/ecg.git
+    
 
 Flag `--recursive` is used to clone submodules.
 
