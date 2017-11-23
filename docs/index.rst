@@ -1,37 +1,41 @@
 ===================================
 Welcome to CardIO's documentation!
 ===================================
-`CardIO` is a library designed to build end-to-end machine learning models for deep research of electrocardiograms.
+`CardIO` is designed to build end-to-end machine learning models for deep research of electrocardiograms.
 
 Main features:
 
-* load and save signal in a number of formats
-* resample, crop and flip signal
-* filter signal
-* allocate PQ, QT, QRS segments
-* calculate heart rate and find other standard ECG characteristics
-* apply complex transformations like fft and wavelets, or any other custom functions.
-* recognize heart diseases from ECG
+* load and save signal in various formats (wfdb, blosc, etc)
+* resample, crop, flip and filter signals
+* detect PQ, QT, QRS segments
+* calculate heart rate and other ECG characteristics
+* apply complex transformations like fft and wavelets, as well as custom functions
+* recognize heart diseases (e.g. atrial fibrillation)
 * efficiently work with large datasets that do not even fit into memory
-* easily arrange new custom actions into pipelines
-* do end-to-end ECG processing
-* build, train and test custom models for deep research
+* perform end-to-end ECG processing
+* build, train and test neural networks and other machine learning models.
 
-… and do everything under a single API.
 
-The library is based on `Dataset <https://github.com/analysiscenter/dataset>`_. We suggest to read Dataset's documentation to learn more, however, you may skip it for the first reading.
+.. note:: CardIO is based on `Dataset <https://github.com/analysiscenter/dataset>`_. You might benefit from reading `its documentation <https://analysiscenter.github.io/dataset>`_. However, it is not required, especially at the beginning.
 
 CardIO has three modules: :doc:`batch <./api/cardio.batch>`, :doc:`models <./api/cardio.models>` and :doc:`pipelines <api/cardio.pipelines>`.
 
-Module batch contains low-level actions for ECG processing. Actions are included in EcgBatch class that also defines how to store ECGs. From these actions you can build new pipelines. You can also write custom action and include it in EcgBatch.
 
-In models we provide several models that were elaborated to learn the most important problems in ECG:
+``batch`` module contains ``EcgBatch`` class which defines how ECG are stored and includes actions for ECG processing.
+These actions might be used to build multi-staged workflows that can also involve machine learning models.
 
-* how to recognize specific features of ECG like R-peaks, P-wave, T-wave
-* how to recognize heart diseases from ECG, for example - atrial fibrillation.
+``models`` module provides several ready to use models for important problems in ECG analysis:
 
-Module pipelines contains high-level methods that build pipelines for model training and prediction, preprocessing, etc.
+* how to detect specific features of ECG like R-peaks, P-wave, T-wave, etc;
+* how to recognize heart diseases from ECG, for example, atrial fibrillation.
 
+``pipelines`` module contains predefined workflows to
+
+* train a model to detect PQ, QT, QRS segments
+* calculate heart rate
+* train a model to find probabilities of heart diseases, in particular, atrial fibrillation.
+
+Under the hood these methods contain actions that load signals, filter it and do complex calculations.
 
 Contents
 ========
@@ -46,9 +50,7 @@ Contents
 Basic usage
 ===========
 
-Here is an example of pipeline that loads ECG signals, makes some preprocessing and learns model over 50 epochs:
-
-.. code-block :: python
+Here is an example of pipeline that loads ECG signals, makes preprocessing and train a model over 50 epochs::
 
   train_pipeline = (
     dataset.train
@@ -69,7 +71,6 @@ Here is an example of pipeline that loads ECG signals, makes some preprocessing 
         .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=50)
 )
 
-As a result of this pipeline one obtains a trained model.
 
 Installation
 ============
@@ -93,6 +94,9 @@ After that just import `cardio`::
 .. note:: `CardIO` supports python 3.5 or higher.
 
 .. note:: When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Dataset`` submodule is also cloned.
+
+    git clone --recursive https://github.com/analysiscenter/cardio.git
+
 
 Citing CardIO
 ==============

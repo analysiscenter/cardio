@@ -1,3 +1,5 @@
+numba
+blosc
 dill
 wfdb
 pytest
