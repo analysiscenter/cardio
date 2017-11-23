@@ -43,8 +43,8 @@ Under the hood these methods contain many actions that load signals, filter it a
 
 Here is an example of pipeline that loads ECG signals, makes some preprocessing and learns model over 50 epochs.
 ```python
-train_ppl = (
-    dtst.train
+train_pipeline = (
+    dataset.train
         .pipeline
         .init_model("dynamic", DirichletModel, name="dirichlet",
                     config=model_config)

@@ -50,8 +50,8 @@ Here is an example of pipeline that loads ECG signals, makes some preprocessing 
 
 .. code-block :: python
 
-  train_ppl = (
-    dtst.train
+  train_pipeline = (
+    dataset.train
         .pipeline
         .init_model("dynamic", DirichletModel, name="dirichlet",
                     config=model_config)
@@ -66,8 +66,7 @@ Here is an example of pipeline that loads ECG signals, makes some preprocessing 
         .binarize_labels()
         .train_model("dirichlet", make_data=make_data,
                      fetches="loss", save_to=V("loss_history"), mode="a")
-        .run(batch_size=100, shuffle=True, drop_last=True,
-             n_epochs=50)
+        .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=50)
 )
 
 As a result of this pipeline one obtains a trained model.
@@ -97,8 +96,6 @@ After that just import `cardio`::
 
 Citing CardIO
 ==============
-Please cite CardIO in your publications if it helps your research.
+Please cite CardIO in your publications if it helps your research.::
 
-```
-Khudorozhkov R., Illarionov E., Kuvaev A., Podvyaznikov D. CardIO library for data science research of heart signals. 2017.
-```
+    Khudorozhkov R., Illarionov E., Kuvaev A., Podvyaznikov D. CardIO library for data science research of heart signals. 2017.
