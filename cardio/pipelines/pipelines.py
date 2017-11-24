@@ -7,7 +7,7 @@ import tensorflow as tf
 from hmmlearn import hmm
 
 from .. import dataset as ds
-from ..dataset import F, V
+from ..dataset.dataset import F, V
 from ..models.dirichlet_model import DirichletModel, concatenate_ecg_batch
 from ..models.hmm import HMModel
 
@@ -171,7 +171,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
         lengths = [ann["wavelets"].shape[0] for ann in batch.annotation]
         return {"X": x, "lengths": lengths}
 
-    def prepare_means_covars(wavelets, clustering, states=[3, 5, 11, 14, 17, 19], num_states=19, num_features=3):#pylint: disable=dangerous-default-value
+    def prepare_means_covars(wavelets, clustering, states=(3, 5, 11, 14, 17, 19), num_states=19, num_features=3):
         """This function is specific to the task and the model configuration, thus contains hardcode.
         """
         means = np.zeros((num_states, num_features))
