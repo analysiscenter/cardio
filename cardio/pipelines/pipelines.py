@@ -6,10 +6,10 @@ import numpy as np
 import tensorflow as tf
 from hmmlearn import hmm
 
-import cardio.dataset as ds
-from cardio.dataset import F, V
-from cardio.models.dirichlet_model import DirichletModel, concatenate_ecg_batch
-from cardio.models.hmm import HMModel
+from .. import dataset as ds
+from ..dataset import F, V
+from ..models.dirichlet_model import DirichletModel, concatenate_ecg_batch
+from ..models.hmm import HMModel
 
 
 def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_options=None):

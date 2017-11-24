@@ -1,5 +1,4 @@
-"""Module for testing ecg_batch methods
-"""
+"""Module for testing ecg_batch methods"""
 
 import os
 import sys
@@ -9,8 +8,8 @@ import pytest
 
 sys.path.append(os.path.join("."))
 
-from cardio.batch import ecg_batch_tools as bt #pylint: disable=no-name-in-module,import-error
-from cardio import EcgBatch, EcgDataset, dataset as ds #pylint: disable=no-name-in-module
+from cardio import EcgBatch, EcgDataset, dataset as ds  # pylint: disable=no-name-in-module
+from cardio.core import ecg_batch_tools as bt  # pylint: disable=no-name-in-module,import-error
 
 random.seed(170720143422)
 
