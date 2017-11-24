@@ -16,7 +16,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     """Train pipeline for Dirichlet model.
 
     This pipeline trains Dirichlet model to find propability of artrial fibrillation.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
@@ -64,7 +64,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
     """Pipeline for prediction with Dirichlet model.
 
     This pipeline finds propability of artrial fibrillation according to Dirichlet model.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
@@ -103,7 +103,7 @@ def hmm_preprocessing_pipeline(batch_size=20):
     """Pipeline for prediction with hmm model.
 
     This pipeline prepares data for hmm_train_pipeline.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
@@ -147,7 +147,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
     """Train pipeline for Hidden Markov Model.
 
     This pipeline trains hmm model to isolate QRS, PQ and QT segments.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
@@ -260,7 +260,7 @@ def hmm_predict_pipeline(model_path, batch_size=20):
     """Pipeline for prediction with hmm model.
 
     This pipeline isolates QRS, PQ and QT segments.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
