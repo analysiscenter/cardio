@@ -15,6 +15,8 @@ Main features:
 * perform end-to-end ECG processing
 * build, train and test neural networks and other machine learning models.
 
+About CardIO
+------------
 
 .. note:: CardIO is based on `Dataset <https://github.com/analysiscenter/dataset>`_. You might benefit from reading `its documentation <https://analysiscenter.github.io/dataset>`_. However, it is not required, especially at the beginning.
 
