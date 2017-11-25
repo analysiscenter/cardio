@@ -2,14 +2,18 @@
 Models
 ======
 
-This is a place where ECG models live. You can write your own model or exploit provided models. 
+This is a place where ECG models live. You can write your own model or exploit provided :doc:`models <../api/models>`. 
 
-We have a number of built-in :doc:`models <../api/cardio.models>` for ECG classification and annotation:
+We have two built-in model suited to classify whether ECG signal is normal or pathological, and a to annotate segments of ECG signal (e.g., P-wave).
+
 
 DirichletModel
 --------------
 
-This model is used to predcit probability of atrial fibrillation. It predicts Dirichlet distribution parameters from which class probabilities are sampled. 
+About DirichletModel
+~~~~~~~~~~~~~~~~~~~~
+
+This model is used to predcit probability of atrial fibrillation. It predicts Dirichlet distribution parameters from which class probabilities are sampled.
 
 .. image:: dirichlet_model.png
 
@@ -17,6 +21,21 @@ How to use
 ~~~~~~~~~~
 
 .. code-block :: python
+  
+  import cardio.dataset as ds
+  from cardio import EcgDataset
+  from cardio.dataset import F, V
+  from cardio.models.dirichlet_model import DirichletModel
+
+  eds = EcgDataset(path='./path/to/data/', no_ext=True, sort=True)
+
+  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5, allow_growth=True)
+  model_config = {
+    "session": {"config": tf.ConfigProto(gpu_options=gpu_options)},
+    "input_shape": F(lambda batch: batch.signal[0].shape[1:]),
+    "class_names": F(lambda batch: batch.label_binarizer.classes_),
+    "loss": None,
+  }
 
   dirichlet_train_ppl = (
     ds.Pipeline()
@@ -30,13 +49,17 @@ How to use
       .random_resample_signals("normal", loc=300, scale=10)
       .random_split_signals(2048, {"A": 9, "NO": 3})
       .binarize_labels()
-      .train_model("dirichlet", make_data=make_data,
-                   fetches="loss", save_to=V("loss_history"), mode="a")
+      .train_model("dirichlet", make_data=make_data, fetches="loss", save_to=V("loss_history"), mode="a")
       .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=100, lazy=True)
   )
 
+  train_ppl = (eds >> dirichlet_train_ppl).run()
+
 HMModel
 -------
+
+About HMModel
+~~~~~~~~~~~~~~~~~~~~
 
 Hidden Markov Model is used to annotate ECG signal. This allows to calculate number of
 important parameters, important for diagnosing.
@@ -49,18 +72,37 @@ How to use
 ~~~~~~~~~~
 
 .. code-block :: python
+  
+  from hmmlearn import hmm
 
-  HMM_train_ppl = (
+  import cardio.dataset as ds
+  from cardio import EcgBatch
+  from cardio.dataset import B, V, F
+  from cardio.models.hmm import HMModel
+
+  model_config = {
+    'build': True,
+    'estimator': hmm.GaussianHMM(n_components=19, n_iter=25, covariance_type="full", random_state=42, init_params='mstc', verbose=False),
+  }
+
+  eds = EcgDataset(path='./path/to/data/', no_ext=True, sort=True)
+
+  hmm_train_ppl = (
     ds.Pipeline()
-      .init_model("dynamic", HMModel, "HMM", config=config_train)
+      .init_model("dynamic", HMModel, "HMM", config=model_config)
       .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
       .wavelet_transform_signal(cwt_scales=[4,8,16], cwt_wavelet="mexh")
       .train_model("HMM", make_data=make_data)
       .run(batch_size=20, shuffle=False, drop_last=False, n_epochs=1, lazy=True)
   )
 
+    train_ppl = (eds >> hmm_train_ppl).run()
+
 FFTModel
 --------
+
+About FFTModel
+~~~~~~~~~~~~~~~~~~~~
 
 FFT model learns to classify ECG signals using signal spectrum. At first step it convolves signal with a number of 1D kernels.
 Then for each channel it applies fast fourier transform. 
@@ -75,7 +117,23 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
 
 .. code-block :: python
 
-  train_pipeline = (
+  import cardio.dataset as ds
+  from cardio import EcgDataset
+  from cardio.dataset import F, V
+  from cardio.models.fft_model import FFTModel
+
+  def make_data(batch, **kwagrs):
+      return {'x': np.array(list(batch.signal)), 'y': batch.target}
+  
+  eds = EcgDataset(path='./path/to/data/', no_ext=True, sort=True)
+
+  model_config = {
+    "input_shape": F(lambda batch: batch.signal[0].shape),
+    "loss": "binary_crossentropy",
+    "optimizer": "adam"
+  }
+
+  fft_train_ppl = (
     ds.Pipeline()
       .init_model("dynamic", FFTModel, name="fft_model", config=model_config)
       .init_variable("loss_history", init=list)
@@ -91,14 +149,12 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
       .apply(np.transpose , axes=[0, 2, 1])
       .ravel()
       .get_targets('true_targets')
-      .train_model('fft_model', make_data=make_data, 
-                   save_to=V("loss_history"), mode="a")
-      .run(batch_size=100, shuffle=True,
-           drop_last=True, n_epochs=100, prefetch=0, lazy=True)
+      .train_model('fft_model', make_data=make_data, save_to=V("loss_history"), mode="a")
+      .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=100, prefetch=0, lazy=True)
   )
 
+  train_ppl = (eds >> fft_train_ppl).run()
 
-Below you can find a guide how to build your own model with Keras framework. More details you can find in our :ref:`tutorials <tutorials>`
 
 How to build a model with Keras
 -------------------------------
@@ -153,45 +209,9 @@ named 'target' (this will be our output tensor).
 
 From now on ``train_pipeline`` contains compiled model and is ready for training.
 
-Other capabilities
-------------------
+More details you can find in our :doc:`tutorials <../tutorials>`.
 
-Aside of the classes described above, module ``models`` contains other submodules and files.
-
-Training notebooks
-~~~~~~~~~~~~~~~~~~
-
-There are example notebooks for each model described above in ``models``. Those notebooks are used as tests and also provide examples of use.
-
-keras_custom_objects
-~~~~~~~~~~~~~~~~~~~~
-
-This submodule contains custom layers used in keras models. 
-To use those layers you can write
-
-.. code-block:: python
-  
-  from cardio.batch import keras_custom_objects as kco
-
-layers
-~~~~~~
-
-``layers`` submodule stores helper functions to create tensorflow layers and blocks.
-The usage is similar to keras_custom_objects:
-
-.. code-block:: python
-
-  from cardio.batch import layers
-
-metrics
-~~~~~~~
-
-In this module you can find hepler functions to calculate metrics of existing models.
-
-.. code-block:: python
-  
-  from cardio.batch import metrics
 
 API
 ---
-See :doc:`Models API <../api/cardio.models>`
+See :doc:`Models API <../api/models>`

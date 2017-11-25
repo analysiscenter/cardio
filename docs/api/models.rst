@@ -2,14 +2,23 @@
 Models
 ======
 
+--------------
 DirichletModel
 --------------
 
 .. autoclass:: cardio.models.DirichletModel
     :members:
-    :inherited-members:
     :show-inheritance:
 
+------------------
+DirichletModelBase
+------------------
+
+.. autoclass:: cardio.models.dirichlet_model.dirichlet_model.DirichletModelBase
+	:members:
+	:show-inheritance:
+
+-------
 HMModel
 -------
 
@@ -17,7 +26,8 @@ HMModel
     :members:
     :show-inheritance:
 
-FFT model
+---------
+FFTModel
 ---------
 
 .. autoclass:: cardio.models.FFTModel
