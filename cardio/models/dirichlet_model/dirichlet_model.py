@@ -50,8 +50,10 @@ class DirichletModelBase(TFModel):
     The model predicts Dirichlet distribution parameters from which class
     probabilities are sampled.
 
-    Configuration
-    -------------
+    Notes
+    -----
+    **Configuration**
+
     Model config must contain the following keys:
     "input_shape" : tuple
         Input signals's shape without the batch dimension.

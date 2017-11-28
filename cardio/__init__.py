@@ -1,7 +1,6 @@
-""" ECG package """
-import sys
+""" CardIO package """
 
-from .batch import *  # pylint: disable=wildcard-import
+from .core import *  # pylint: disable=wildcard-import
 from . import dataset  # pylint: disable=wildcard-import
 
 

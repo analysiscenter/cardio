@@ -6,17 +6,17 @@ import numpy as np
 import tensorflow as tf
 from hmmlearn import hmm
 
-import cardio.dataset as ds
-from cardio.dataset import F, V
-from cardio.models.dirichlet_model import DirichletModel, concatenate_ecg_batch
-from cardio.models.hmm import HMModel
+from .. import dataset as ds
+from ..dataset.dataset import F, V
+from ..models.dirichlet_model import DirichletModel, concatenate_ecg_batch
+from ..models.hmm import HMModel
 
 
 def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_options=None):
     """Train pipeline for Dirichlet model.
 
     This pipeline trains Dirichlet model to find propability of artrial fibrillation.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
@@ -64,7 +64,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
     """Pipeline for prediction with Dirichlet model.
 
     This pipeline finds propability of artrial fibrillation according to Dirichlet model.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
@@ -103,7 +103,7 @@ def hmm_preprocessing_pipeline(batch_size=20):
     """Pipeline for prediction with hmm model.
 
     This pipeline prepares data for hmm_train_pipeline.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
@@ -147,7 +147,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
     """Train pipeline for Hidden Markov Model.
 
     This pipeline trains hmm model to isolate QRS, PQ and QT segments.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------
@@ -171,7 +171,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
         lengths = [ann["wavelets"].shape[0] for ann in batch.annotation]
         return {"X": x, "lengths": lengths}
 
-    def prepare_means_covars(wavelets, clustering, states=[3, 5, 11, 14, 17, 19], num_states=19, num_features=3):#pylint: disable=dangerous-default-value
+    def prepare_means_covars(wavelets, clustering, states=(3, 5, 11, 14, 17, 19), num_states=19, num_features=3):
         """This function is specific to the task and the model configuration, thus contains hardcode.
         """
         means = np.zeros((num_states, num_features))
@@ -260,7 +260,7 @@ def hmm_predict_pipeline(model_path, batch_size=20):
     """Pipeline for prediction with hmm model.
 
     This pipeline isolates QRS, PQ and QT segments.
-    It works with dataset that generates bathes of class EcgBatch.
+    It works with dataset that generates batches of class EcgBatch.
 
     Parameters
     ----------

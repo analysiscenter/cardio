@@ -7,7 +7,8 @@ from .ecg_batch import EcgBatch
 class EcgDataset(ds.Dataset):
     """ECG Dataset class.
 
-    Contains indices of ECGs to perform actions from specified batch class on.
+    Contains indices of ECGs and a specific ``batch_class`` to create and
+    process batches - small subsets of data.
 
     Parameters
     ----------
