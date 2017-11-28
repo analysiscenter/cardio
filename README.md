@@ -22,12 +22,13 @@ For more details see [the documentation and tutorials](https://analysiscenter.gi
 > CardIO is based on [Dataset](https://github.com/analysiscenter/dataset). You might benefit from reading [its documentation](https://analysiscenter.github.io/dataset).
 However, it is not required, especially at the beginning.
 
-CardIO has three modules: [``batch``](https://analysiscenter.github.io/cardio/intro/batch.html),
-[``models``](https://analysiscenter.github.io/cardio/intro/models.html) and
-[``pipelines``](https://analysiscenter.github.io/cardio/intro/pipeline.html).
+CardIO has three modules: [``core``](https://analysiscenter.github.io/cardio/modules/core.html),
+[``models``](https://analysiscenter.github.io/cardio/modules/models.html) and
+[``pipelines``](https://analysiscenter.github.io/cardio/modules/pipelines.html).
 
-``batch`` module contains ``EcgBatch`` class which defines how ECG are stored and includes actions for ECG processing.
-These actions might be used to build multi-staged workflows that can also involve machine learning models.
+
+``core`` module contains ``EcgBatch`` and ``EcgDataset`` classes.
+``EcgBatch`` defines how ECGs are stored and includes actions for ECG processing. These actions might be used to build multi-staged workflows that can also involve machine learning models. ``EcgDataset`` is a class that stores indices of ECGs and generates batches of type ``EcgBatch``.
 
 ``models`` module provides several ready to use models for important problems in ECG analysis:
 * how to detect specific features of ECG like R-peaks, P-wave, T-wave, etc;
@@ -38,7 +39,7 @@ These actions might be used to build multi-staged workflows that can also involv
 * calculate heart rate
 * train a model to find probabilities of heart diseases, in particular, atrial fibrillation.
 
-Under the hood these methods contain actions that load signals, filter it and do complex calculations.
+Under the hood these workflows contain actions that load signals, filter them and do complex calculations.
 
 
 ## Basic usage
