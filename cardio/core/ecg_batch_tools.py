@@ -10,6 +10,32 @@ import wfdb
 
 # Constants
 
+# This is the predefined keys of the meta component. 
+# Each key is initialized with None.
+META_KEYS = [
+"age",
+"sex",
+"timestamp",
+"comments",
+"heart_rate",
+"RR_interval",
+"PQ_interval",
+"QT_interval",
+"P_duration",
+"T_durarion",
+"QRS_duration",
+"heart_axis",
+"nsig",
+"siglen",
+"fs",
+"filter_low_freq", #* num_ch
+"filter_high_freq", #* num_ch
+"signame", #* num_ch
+"units", #* num_ch
+"units_factor", #* num_ch
+"filename",
+]
+
 # This is the mapping from inner HMM states to human-understandable
 # cardiological terms.
 P_STATES = np.array([14, 15, 16], np.int64)
@@ -40,7 +66,7 @@ def load_wfdb(path, components, ann_ext=None):
     path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
     signal = record.__dict__.pop("p_signals").T
-    meta = record.__dict__
+    record_meta = record.__dict__
     if "annotation" in components and ann_ext is not None:
         annotation = wfdb.rdann(path, ann_ext)
         annot = {"annsamp": annotation.annsamp,
@@ -48,9 +74,16 @@ def load_wfdb(path, components, ann_ext=None):
     else:
         annot = {}
 
+    # Initialize meta with defined keys, load values from record
+    # meta and preprocess to our format.
+    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+    meta.update(record_meta)
+    meta["filename"] = meta["filename"][0]
+
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
+    
     return [data[comp] for comp in components]
 
 
