@@ -165,8 +165,8 @@ def load_dicom(path, components):
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
 
     if record.PatientAge[-1] == "Y":
-        age = np.int(record.PatientAge[:-1]) 
-    else: 
+        age = np.int(record.PatientAge[:-1])
+    else:
         age = np.int(record.PatientAge[:-1]) / 12.0
 
     meta["age"] = age
