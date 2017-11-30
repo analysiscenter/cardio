@@ -13,7 +13,7 @@ import dicom
 
 # Constants
 
-# This is the predefined keys of the meta component. 
+# This is the predefined keys of the meta component.
 # Each key is initialized with None.
 META_KEYS = [
     "age",
@@ -164,7 +164,12 @@ def load_dicom(path, components):
 
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
 
-    meta["age"] = np.int(record.PatientAge[:-1]) if record.PatientAge[-1] == "Y" else np.int(record.PatientAge[:-1])/12.0
+    if record.PatientAge[-1] == "Y":
+        age = np.int(record.PatientAge[:-1]) 
+    else: 
+        age = np.int(record.PatientAge[:-1]) / 12.0
+
+    meta["age"] = age
     meta["sex"] = record.PatientSex
     meta["timestamp"] = record.AcquisitionDateTime
     meta["comments"] = [section.UnformattedTextValue for section in
