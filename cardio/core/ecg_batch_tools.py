@@ -124,8 +124,35 @@ def load_dicom(path, components):
 
         return value
 
-    def signal_decoder():
-        return None
+    def signal_decoder(record):
+        """
+        """
+        section = record.WaveformSequence[0].ChannelDefinitionSequence[0]
+        data = record.WaveformSequence[0].WaveformData
+        nsig = record.WaveformSequence[0].NumberOfWaveformChannels
+
+        unpack_fmt = "<{}h".format(int(len(data) / 2))
+        factor = np.ones(nsig)
+        baseline = np.zeros(nsig)
+        units_factor = np.ones(nsig)
+
+        for i in range(nsig):
+
+            cs = section.get("ChannelSensitivity")
+            cscf = section.get("ChannelSensitivityCorrectionFactor")
+            if cs is not None and cscf is not None:
+                factor[i] = float(cs) * float(cscf)
+
+            cb = section.get("ChannelBaseline")
+            if cb is not None:
+                baseline[i] = float(cb)        
+
+        unpacked_data = struct.unpack(unpack_fmt, data)
+
+        signals = np.asarray(unpacked_data, dtype=np.float32).reshape(-1, nsig)
+        signals = ((signals + baseline) * factor / units_factor).T
+
+        return signals
 
 
     record = dicom.read_file(path)
@@ -135,7 +162,7 @@ def load_dicom(path, components):
 
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
 
-    meta["age"] = record.PatientAge
+    meta["age"] = np.int(record.PatientAge[:-1]) if record.PatientAge[-1]=="Y" else np.int(record.PatientAge[:-1])/12.0
     meta["sex"] = record.PatientSex 
     meta["timestamp"] = record.AcquisitionDateTime
     meta["comments"] = [section.UnformattedTextValue for section in 
@@ -151,19 +178,16 @@ def load_dicom(path, components):
     meta["nsig"] = record.WaveformSequence[0].NumberOfWaveformChannels
     meta["siglen"] = record.WaveformSequence[0].NumberOfWaveformSamples
     meta["fs"] = record.WaveformSequence[0].SamplingFrequency
-    meta["filter_low_freq"] = [section.FilterLowFrequency for section in
+    meta["filter_low_freq"] = [np.float(section.FilterLowFrequency) for section in
                                record.WaveformSequence[0].ChannelDefinitionSequence]
-    meta["filter_high_freq"] = [section.FilterHighFrequency for section in
+    meta["filter_high_freq"] = [np.float(section.FilterHighFrequency) for section in
                                 record.WaveformSequence[0].ChannelDefinitionSequence]
     meta["signame"] = [section.ChannelSourceSequence[0].CodeMeaning for section in
-                       dc.WaveformSequence[0].ChannelDefinitionSequence]
+                       record.WaveformSequence[0].ChannelDefinitionSequence]
     meta["units"] = [section.ChannelSensitivityUnitsSequence[0].CodeMeaning for section in
-                     dc.WaveformSequence[0].ChannelDefinitionSequence]
+                     record.WaveformSequence[0].ChannelDefinitionSequence]
 
-
-    signal = None
-
-
+    signal = signal_decoder(record)
 
     data = {"signal": signal,
             "annotation": annot,

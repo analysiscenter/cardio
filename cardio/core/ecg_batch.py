@@ -264,6 +264,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             return self._load_labels(src)
         elif fmt == "wfdb":
             return self._load_wfdb(src=src, components=components, ann_ext=ann_ext, *args, **kwargs)
+        elif fmt == "dicom":
+            return self._load_dicom(src=src, components=components, *args, **kwargs)
         else:
             return super().load(src, fmt, components, *args, **kwargs)
 
@@ -299,6 +301,39 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         else:
             raise ValueError("Source path is not specified")
         return bt.load_wfdb(path, components, ann_ext)
+
+    @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
+    def _load_dicom(self, index, src=None, components=None):
+        """Load given components from wfdb files.
+
+        Parameters
+        ----------
+        src : misc, optional
+            Source to load components from. If ``None``, path from
+            ``FilesIndex`` is used.
+        components : iterable, optional
+            Components to load.
+        ann_ext: str, optional
+            Extension of the annotation file.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with loaded components. Changes batch data inplace.
+
+        Raises
+        ------
+        ValueError
+            If source path is not specified and batch's ``index`` is not a
+            ``FilesIndex``.
+        """
+        if src is not None:
+            path = src[index]
+        elif isinstance(self.index, ds.FilesIndex):
+            path = self.index.get_fullpath(index)  # pylint: disable=no-member
+        else:
+            raise ValueError("Source path is not specified")
+        return bt.load_dicom(path, components)
 
     def _assemble_load(self, results, *args, **kwargs):
         """Concatenate results of different workers and update self.
