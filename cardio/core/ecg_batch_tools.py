@@ -1,6 +1,7 @@
 """Сontains ECG processing tools."""
 
 import os
+import struct
 import numpy as np
 
 import pywt
@@ -8,7 +9,6 @@ from numba import njit
 
 import wfdb
 import dicom
-import struct
 
 
 # Constants
@@ -16,28 +16,28 @@ import struct
 # This is the predefined keys of the meta component. 
 # Each key is initialized with None.
 META_KEYS = [
-"age",
-"sex",
-"timestamp",
-"comments",
-"heart_rate",
-"RR Interval",
-"PP Interval",
-"PQ Interval",
-"QT Interval",
-"P Duration",
-"T Durarion",
-"QRS Duration",
-"heart_axis",
-"nsig",
-"siglen",
-"fs",
-"filter_low_freq", #* num_ch
-"filter_high_freq", #* num_ch
-"signame", #* num_ch
-"units", #* num_ch
-"units_factor", #* num_ch
-"filename",
+    "age",
+    "sex",
+    "timestamp",
+    "comments",
+    "heart_rate",
+    "RR Interval",
+    "PP Interval",
+    "PQ Interval",
+    "QT Interval",
+    "P Duration",
+    "T Durarion",
+    "QRS Duration",
+    "heart_axis",
+    "nsig",
+    "siglen",
+    "fs",
+    "filter_low_freq",
+    "filter_high_freq",
+    "signame",
+    "units",
+    "units_factor",
+    "filename",
 ]
 
 # This is the mapping from inner HMM states to human-understandable
@@ -87,7 +87,7 @@ def load_wfdb(path, components, ann_ext=None):
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
-    
+
     return [data[comp] for comp in components]
 
 
@@ -110,11 +110,12 @@ def load_dicom(path, components):
 
     def dicom_annotation_value_getter(record, key):
         """
+        Helper function to get values from dicom annotation.
         """
         value = [
-        section.NumericValue for section in record.WaveformAnnotationSequence 
-        if (section.AnnotationGroupNumber == 1 and 
-            section.ConceptNameCodeSequence[0].CodeMeaning == key)
+            section.NumericValue for section in record.WaveformAnnotationSequence
+            if (section.AnnotationGroupNumber == 1 and
+                section.ConceptNameCodeSequence[0].CodeMeaning == key)
         ]
 
         if len(value) == 0:
@@ -126,6 +127,7 @@ def load_dicom(path, components):
 
     def signal_decoder(record):
         """
+        Helper function to decode signal from binaries when reading from dicom.
         """
         section = record.WaveformSequence[0].ChannelDefinitionSequence[0]
         data = record.WaveformSequence[0].WaveformData
@@ -138,14 +140,14 @@ def load_dicom(path, components):
 
         for i in range(nsig):
 
-            cs = section.get("ChannelSensitivity")
-            cscf = section.get("ChannelSensitivityCorrectionFactor")
-            if cs is not None and cscf is not None:
-                factor[i] = float(cs) * float(cscf)
+            channel_sens = section.get("ChannelSensitivity")
+            channel_sens_cf = section.get("ChannelSensitivityCorrectionFactor")
+            if channel_sens is not None and channel_sens_cf is not None:
+                factor[i] = float(channel_sens) * float(channel_sens_cf)
 
-            cb = section.get("ChannelBaseline")
-            if cb is not None:
-                baseline[i] = float(cb)        
+            channel_bl = section.get("ChannelBaseline")
+            if channel_bl is not None:
+                baseline[i] = float(channel_bl)
 
         unpacked_data = struct.unpack(unpack_fmt, data)
 
@@ -162,11 +164,11 @@ def load_dicom(path, components):
 
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
 
-    meta["age"] = np.int(record.PatientAge[:-1]) if record.PatientAge[-1]=="Y" else np.int(record.PatientAge[:-1])/12.0
-    meta["sex"] = record.PatientSex 
+    meta["age"] = np.int(record.PatientAge[:-1]) if record.PatientAge[-1] == "Y" else np.int(record.PatientAge[:-1])/12.0
+    meta["sex"] = record.PatientSex
     meta["timestamp"] = record.AcquisitionDateTime
-    meta["comments"] = [section.UnformattedTextValue for section in 
-                        record.WaveformAnnotationSequence if section.AnnotationGroupNumber==0]
+    meta["comments"] = [section.UnformattedTextValue for section in
+                        record.WaveformAnnotationSequence if section.AnnotationGroupNumber == 0]
     meta["heart_rate"] = dicom_annotation_value_getter(record, "Ventricular Heart Rate")
     meta["RR Interval"] = dicom_annotation_value_getter(record, "RR Interval")
     meta["PP Interval"] = dicom_annotation_value_getter(record, "PP Interval")
@@ -193,7 +195,7 @@ def load_dicom(path, components):
             "annotation": annot,
             "meta": meta}
 
-    return [data[comp] for comp in components]    
+    return [data[comp] for comp in components]
 
 
 @njit(nogil=True)
