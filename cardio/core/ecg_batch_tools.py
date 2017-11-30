@@ -7,6 +7,9 @@ import pywt
 from numba import njit
 
 import wfdb
+import dicom
+import struct
+
 
 # Constants
 
@@ -18,12 +21,13 @@ META_KEYS = [
 "timestamp",
 "comments",
 "heart_rate",
-"RR_interval",
-"PQ_interval",
-"QT_interval",
-"P_duration",
-"T_durarion",
-"QRS_duration",
+"RR Interval",
+"PP Interval",
+"PQ Interval",
+"QT Interval",
+"P Duration",
+"T Durarion",
+"QRS Duration",
 "heart_axis",
 "nsig",
 "siglen",
@@ -85,6 +89,87 @@ def load_wfdb(path, components, ann_ext=None):
             "meta": meta}
     
     return [data[comp] for comp in components]
+
+
+def load_dicom(path, components):
+    """
+    Load given components from DICOM file.
+
+    Parameters
+    ----------
+    path : str
+        Path to .hea file.
+    components : iterable
+        Components to load.
+
+    Returns
+    -------
+    ecg_data : list
+        List of ecg data components.
+    """
+
+    def dicom_annotation_value_getter(record, key):
+        """
+        """
+        value = [
+        section.NumericValue for section in record.WaveformAnnotationSequence 
+        if (section.AnnotationGroupNumber == 1 and 
+            section.ConceptNameCodeSequence[0].CodeMeaning == key)
+        ]
+
+        if len(value) == 0:
+            value = None
+        else:
+            value = int(value[0])
+
+        return value
+
+    def signal_decoder():
+        return None
+
+
+    record = dicom.read_file(path)
+
+    #signal
+    annot = {}
+
+    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+
+    meta["age"] = record.PatientAge
+    meta["sex"] = record.PatientSex 
+    meta["timestamp"] = record.AcquisitionDateTime
+    meta["comments"] = [section.UnformattedTextValue for section in 
+                        record.WaveformAnnotationSequence if section.AnnotationGroupNumber==0]
+    meta["heart_rate"] = dicom_annotation_value_getter(record, "Ventricular Heart Rate")
+    meta["RR Interval"] = dicom_annotation_value_getter(record, "RR Interval")
+    meta["PP Interval"] = dicom_annotation_value_getter(record, "PP Interval")
+    meta["PQ Interval"] = dicom_annotation_value_getter(record, "PQ Interval")
+    meta["QT Interval"] = dicom_annotation_value_getter(record, "QT Interval")
+    meta["P Duration"] = dicom_annotation_value_getter(record, "P Duration")
+    meta["T Durarion"] = dicom_annotation_value_getter(record, "T Duration")
+    meta["QRS Duration"] = dicom_annotation_value_getter(record, "QRS Duration")
+    meta["nsig"] = record.WaveformSequence[0].NumberOfWaveformChannels
+    meta["siglen"] = record.WaveformSequence[0].NumberOfWaveformSamples
+    meta["fs"] = record.WaveformSequence[0].SamplingFrequency
+    meta["filter_low_freq"] = [section.FilterLowFrequency for section in
+                               record.WaveformSequence[0].ChannelDefinitionSequence]
+    meta["filter_high_freq"] = [section.FilterHighFrequency for section in
+                                record.WaveformSequence[0].ChannelDefinitionSequence]
+    meta["signame"] = [section.ChannelSourceSequence[0].CodeMeaning for section in
+                       dc.WaveformSequence[0].ChannelDefinitionSequence]
+    meta["units"] = [section.ChannelSensitivityUnitsSequence[0].CodeMeaning for section in
+                     dc.WaveformSequence[0].ChannelDefinitionSequence]
+
+
+    signal = None
+
+
+
+    data = {"signal": signal,
+            "annotation": annot,
+            "meta": meta}
+
+    return [data[comp] for comp in components]    
 
 
 @njit(nogil=True)
