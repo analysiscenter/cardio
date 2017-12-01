@@ -9,6 +9,7 @@ from numba import njit
 
 import wfdb
 import dicom
+import pyedflib
 
 
 # Constants
@@ -159,9 +160,7 @@ def load_dicom(path, components):
 
     record = dicom.read_file(path)
 
-    #signal
     annot = {}
-
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
 
     if record.PatientAge[-1] == "Y":
@@ -201,6 +200,56 @@ def load_dicom(path, components):
             "meta": meta}
 
     return [data[comp] for comp in components]
+
+
+def load_edf(path, components):
+    """
+    Load given components from EDF file.
+
+    Parameters
+    ----------
+    path : str
+        Path to .hea file.
+    components : iterable
+        Components to load.
+
+    Returns
+    -------
+    ecg_data : list
+        List of ecg data components.
+    """
+
+    record = pyedflib.EdfReader(path)
+
+    annot = {}
+    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+
+    meta["sex"] = record.getGender() if record.getGender() != '' else None
+    meta["timestamp"] = record.getStartdatetime().strftime("%Y%m%d%H%M%S")
+    meta["nsig"] = record.signals_in_file
+    
+    if len(np.unique(record.getNSamples())) == 1:
+        meta["siglen"] = record.getNSamples()[0] 
+    else:
+        raise ValueError("Different signal lenghts are not supported!")
+
+    if len(np.unique(record.getSampleFrequencies())) == 1:
+        meta["fs"] = record.getSampleFrequencies()[0] 
+    else:
+        raise ValueError("Different sampling rates are not supported!")
+
+    meta["signame"] = record.getSignalLabels()
+    meta["units"] =[section["dimension"] for section in record.getSignalHeader()]
+
+    meta.update(record.getHeader())
+
+    signals = np.array([record.readSignal(i) for i in range(meta["ngis"])])
+
+    data = {"signal": signal,
+            "annotation": annot,
+            "meta": meta}
+
+    return [data[comp] for comp in components] 
 
 
 @njit(nogil=True)
