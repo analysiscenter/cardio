@@ -227,14 +227,14 @@ def load_edf(path, components):
     meta["sex"] = record.getGender() if record.getGender() != '' else None
     meta["timestamp"] = record.getStartdatetime().strftime("%Y%m%d%H%M%S")
     meta["nsig"] = record.signals_in_file
-    
+
     if len(np.unique(record.getNSamples())) == 1:
-        meta["siglen"] = record.getNSamples()[0] 
+        meta["siglen"] = record.getNSamples()[0]
     else:
         raise ValueError("Different signal lenghts are not supported!")
 
     if len(np.unique(record.getSampleFrequencies())) == 1:
-        meta["fs"] = record.getSampleFrequencies()[0] 
+        meta["fs"] = record.getSampleFrequencies()[0]
     else:
         raise ValueError("Different sampling rates are not supported!")
 
