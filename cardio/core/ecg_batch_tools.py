@@ -239,17 +239,17 @@ def load_edf(path, components):
         raise ValueError("Different sampling rates are not supported!")
 
     meta["signame"] = record.getSignalLabels()
-    meta["units"] =[section["dimension"] for section in record.getSignalHeader()]
+    meta["units"] = [section["dimension"] for section in record.getSignalHeader()]
 
     meta.update(record.getHeader())
 
-    signals = np.array([record.readSignal(i) for i in range(meta["ngis"])])
+    signal = np.array([record.readSignal(i) for i in range(meta["ngis"])])
 
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
 
-    return [data[comp] for comp in components] 
+    return [data[comp] for comp in components]
 
 
 @njit(nogil=True)
