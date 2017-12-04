@@ -120,11 +120,11 @@ class TestEcgBatchLoad():
         assert isinstance(batch.meta[0], dict)
         del batch
 
-    def test_load_dicom(self, setup_module_load):
+    def test_load_dicom(self, setup_module_load): #pylint: disable=redefined-outer-name
         """
         Testing DICOM loader.
         """
-        Arrange
+        # Arrange
         path = setup_module_load[1]
         ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
