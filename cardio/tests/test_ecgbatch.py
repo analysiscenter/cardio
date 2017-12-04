@@ -126,7 +126,7 @@ class TestEcgBatchLoad():
         """
         # Arrange
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+        ind = ds.FilesIndex(path=os.path.join(path, '*.dcm'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         # Act
         batch = batch.load(fmt="dicom", components=["signal", "annotation", "meta"])
