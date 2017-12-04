@@ -120,6 +120,27 @@ class TestEcgBatchLoad():
         assert isinstance(batch.meta[0], dict)
         del batch
 
+    def test_load_dicom(self, setup_module_load):
+        """
+        Testing DICOM loader.
+        """
+        Arrange
+        path = setup_module_load[1]
+        ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+        batch = EcgBatch(ind)
+        # Act
+        batch = batch.load(fmt="dicom", components=["signal", "annotation", "meta"])
+        # Assert
+        assert isinstance(batch.signal, np.ndarray)
+        assert isinstance(batch.meta, np.ndarray)
+        assert isinstance(batch.annotation, np.ndarray)
+        assert batch.signal.shape == (1,)
+        assert batch.annotation.shape == (1,)
+        assert batch.meta.shape == (1,)
+        assert isinstance(batch.signal[0], np.ndarray)
+        assert isinstance(batch.annotation[0], dict)
+        assert isinstance(batch.meta[0], dict)
+        del batch
 
 class TestEcgBatchSingleMethods:
     """
