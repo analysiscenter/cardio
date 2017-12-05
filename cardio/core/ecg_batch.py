@@ -454,6 +454,23 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         """
         return self.update(target=self.label_binarizer.transform(self.target))
 
+    def _init_component(self, *args, **kwargs):
+        dst = kwargs.get("dst")
+        if dst is None:
+            raise KeyError("dst argument must be specified")
+        if not hasattr(self, dst):
+            setattr(self, dst, np.array([None] * len(self.index)))
+        return self.indices
+
+    @ds.action
+    @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
+    def apply_for_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
+        i = self.get_pos(None, src, index)
+        src_data = getattr(self, src)[i]
+        self._check_2d(src_data)
+        dst_data = np.apply_along_axis(func, axis=1, arr=src_data, *args, **kwargs)
+        getattr(self, dst)[i] = dst_data
+
     @ds.action
     def drop_short_signals(self, min_length, axis=-1):
         """Drop short signals from batch.
