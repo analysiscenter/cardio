@@ -237,6 +237,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             rest_batch._data = tuple(comp[batch_size:] for comp in data)  # pylint: disable=protected-access, attribute-defined-outside-init, line-too-long
         return new_batch, rest_batch
 
+
     @ds.action
     def load(self, src=None, fmt=None, components=None, ann_ext=None, *args, **kwargs):
         """Load given batch components from source.
@@ -262,17 +263,14 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         components = np.asarray(components).ravel()
         if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
             return self._load_labels(src)
-        elif fmt == "wfdb":
-            return self._load_wfdb(src=src, components=components, ann_ext=ann_ext, *args, **kwargs)
-        elif fmt == "dicom":
-            return self._load_dicom(src=src, components=components, *args, **kwargs)
-        elif fmt == "edf":
-            return self._load_edf(src=src, components=components, *args, **kwargs)
+        elif fmt in ["wfdb", "dicom", "edf"]:
+            return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
         else:
             return super().load(src, fmt, components, *args, **kwargs)
 
+
     @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
-    def _load_wfdb(self, index, src=None, components=None, ann_ext=None):
+    def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
         """Load given components from wfdb files.
 
         Parameters
@@ -280,6 +278,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         src : misc, optional
             Source to load components from. If ``None``, path from
             ``FilesIndex`` is used.
+        fmt : str, optional
+            Source format.
         components : iterable, optional
             Components to load.
         ann_ext: str, optional
@@ -296,75 +296,17 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             If source path is not specified and batch's ``index`` is not a
             ``FilesIndex``.
         """
+        loaders = {"wfdb": bt.load_wfdb, "dicom": bt.load_dicom, "edf": bt.load_edf,}
+
         if src is not None:
             path = src[index]
         elif isinstance(self.index, ds.FilesIndex):
             path = self.index.get_fullpath(index)  # pylint: disable=no-member
         else:
             raise ValueError("Source path is not specified")
-        return bt.load_wfdb(path, components, ann_ext)
+        
+        return loaders[fmt](path, components, *args, **kwargs)
 
-    @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
-    def _load_dicom(self, index, src=None, components=None):
-        """Load given components from wfdb files.
-
-        Parameters
-        ----------
-        src : misc, optional
-            Source to load components from. If ``None``, path from
-            ``FilesIndex`` is used.
-        components : iterable, optional
-            Components to load.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Batch with loaded components. Changes batch data inplace.
-
-        Raises
-        ------
-        ValueError
-            If source path is not specified and batch's ``index`` is not a
-            ``FilesIndex``.
-        """
-        if src is not None:
-            path = src[index]
-        elif isinstance(self.index, ds.FilesIndex):
-            path = self.index.get_fullpath(index)  # pylint: disable=no-member
-        else:
-            raise ValueError("Source path is not specified")
-        return bt.load_dicom(path, components)
-
-    @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
-    def _load_edf(self, index, src=None, components=None):
-        """Load given components from wfdb files.
-
-        Parameters
-        ----------
-        src : misc, optional
-            Source to load components from. If ``None``, path from
-            ``FilesIndex`` is used.
-        components : iterable, optional
-            Components to load.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Batch with loaded components. Changes batch data inplace.
-
-        Raises
-        ------
-        ValueError
-            If source path is not specified and batch's ``index`` is not a
-            ``FilesIndex``.
-        """
-        if src is not None:
-            path = src[index]
-        elif isinstance(self.index, ds.FilesIndex):
-            path = self.index.get_fullpath(index)  # pylint: disable=no-member
-        else:
-            raise ValueError("Source path is not specified")
-        return bt.load_edf(path, components)
 
     def _assemble_load(self, results, *args, **kwargs):
         """Concatenate results of different workers and update self.

@@ -21,24 +21,9 @@ META_KEYS = [
     "sex",
     "timestamp",
     "comments",
-    "heart_rate",
-    "RR Interval",
-    "PP Interval",
-    "PQ Interval",
-    "QT Interval",
-    "P Duration",
-    "T Durarion",
-    "QRS Duration",
-    "heart_axis",
-    "nsig",
-    "siglen",
     "fs",
-    "filter_low_freq",
-    "filter_high_freq",
     "signame",
     "units",
-    "units_factor",
-    "filename",
 ]
 
 # This is the mapping from inner HMM states to human-understandable
@@ -51,7 +36,34 @@ R_STATE = np.array([1], np.int64)
 S_STATE = np.array([2], np.int64)
 
 
-def load_wfdb(path, components, ann_ext=None):
+def check_signames(signame, nsig):
+    """Check that signame is in proper format.
+
+    Check if signame is a list of values that can be casted 
+    to string, othervise generate new signame list with numbers
+    0 to `nsig`-1 as strings.
+
+    Parameters
+    ----------
+    signame : misc
+        Signal names from file.
+    nsig : int
+        Number of signals / channels.
+    
+    Returns
+    -------
+    signame : list
+        List of string names of signals / channels.
+
+    """
+    if isinstance(signame, list) and len(signame) == nsig:
+        signame = [str(name) for name in signame]
+    else:
+        signame = [str(number) for number in np.arange(nsig)] 
+
+    return signame
+
+def load_wfdb(path, components, *args, **kwargs):
     """Load given components from wfdb file.
 
     Parameters
@@ -68,10 +80,14 @@ def load_wfdb(path, components, ann_ext=None):
     ecg_data : list
         List of ecg data components.
     """
+    ann_ext = kwargs["ann_ext"]
+
     path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
     signal = record.__dict__.pop("p_signals").T
     record_meta = record.__dict__
+    nsig = record_meta["nsig"]
+
     if "annotation" in components and ann_ext is not None:
         annotation = wfdb.rdann(path, ann_ext)
         annot = {"annsamp": annotation.annsamp,
@@ -83,7 +99,8 @@ def load_wfdb(path, components, ann_ext=None):
     # meta and preprocess to our format.
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
     meta.update(record_meta)
-    meta["filename"] = meta["filename"][0]
+
+    meta["signame"] = check_signames(meta["signame"], nsig)
 
     data = {"signal": signal,
             "annotation": annot,
@@ -92,7 +109,7 @@ def load_wfdb(path, components, ann_ext=None):
     return [data[comp] for comp in components]
 
 
-def load_dicom(path, components):
+def load_dicom(path, components, *args, **kwargs):
     """
     Load given components from DICOM file.
 
@@ -160,7 +177,10 @@ def load_dicom(path, components):
 
     record = dicom.read_file(path)
 
+    nsig = record.WaveformSequence[0].NumberOfWaveformChannels
+
     annot = {}
+
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
 
     if record.PatientAge[-1] == "Y":
@@ -173,25 +193,13 @@ def load_dicom(path, components):
     meta["timestamp"] = record.AcquisitionDateTime
     meta["comments"] = [section.UnformattedTextValue for section in
                         record.WaveformAnnotationSequence if section.AnnotationGroupNumber == 0]
-    meta["heart_rate"] = dicom_annotation_value_getter(record, "Ventricular Heart Rate")
-    meta["RR Interval"] = dicom_annotation_value_getter(record, "RR Interval")
-    meta["PP Interval"] = dicom_annotation_value_getter(record, "PP Interval")
-    meta["PQ Interval"] = dicom_annotation_value_getter(record, "PQ Interval")
-    meta["QT Interval"] = dicom_annotation_value_getter(record, "QT Interval")
-    meta["P Duration"] = dicom_annotation_value_getter(record, "P Duration")
-    meta["T Durarion"] = dicom_annotation_value_getter(record, "T Duration")
-    meta["QRS Duration"] = dicom_annotation_value_getter(record, "QRS Duration")
-    meta["nsig"] = record.WaveformSequence[0].NumberOfWaveformChannels
-    meta["siglen"] = record.WaveformSequence[0].NumberOfWaveformSamples
     meta["fs"] = record.WaveformSequence[0].SamplingFrequency
-    meta["filter_low_freq"] = [np.float(section.FilterLowFrequency) for section in
-                               record.WaveformSequence[0].ChannelDefinitionSequence]
-    meta["filter_high_freq"] = [np.float(section.FilterHighFrequency) for section in
-                                record.WaveformSequence[0].ChannelDefinitionSequence]
     meta["signame"] = [section.ChannelSourceSequence[0].CodeMeaning for section in
                        record.WaveformSequence[0].ChannelDefinitionSequence]
     meta["units"] = [section.ChannelSensitivityUnitsSequence[0].CodeMeaning for section in
                      record.WaveformSequence[0].ChannelDefinitionSequence]
+    
+    meta["signame"] = check_signames(meta["signame"], nsig)
 
     signal = signal_decoder(record)
 
@@ -202,7 +210,7 @@ def load_dicom(path, components):
     return [data[comp] for comp in components]
 
 
-def load_edf(path, components):
+def load_edf(path, components, *args, **kwargs):
     """
     Load given components from EDF file.
 
@@ -226,11 +234,9 @@ def load_edf(path, components):
 
     meta["sex"] = record.getGender() if record.getGender() != '' else None
     meta["timestamp"] = record.getStartdatetime().strftime("%Y%m%d%H%M%S")
-    meta["nsig"] = record.signals_in_file
+    nsig = record.signals_in_file
 
-    if len(np.unique(record.getNSamples())) == 1:
-        meta["siglen"] = record.getNSamples()[0]
-    else:
+    if len(np.unique(record.getNSamples())) != 1:
         raise ValueError("Different signal lenghts are not supported!")
 
     if len(np.unique(record.getSampleFrequencies())) == 1:
@@ -239,11 +245,13 @@ def load_edf(path, components):
         raise ValueError("Different sampling rates are not supported!")
 
     meta["signame"] = record.getSignalLabels()
-    meta["units"] = [section["dimension"] for section in record.getSignalHeader()]
+    meta["units"] = [record.getSignalHeader(sig)["dimension"] for sig in range(nsig)]
 
     meta.update(record.getHeader())
 
-    signal = np.array([record.readSignal(i) for i in range(meta["ngis"])])
+    meta["signame"] = check_signames(meta["signame"], nsig)
+
+    signal = np.array([record.readSignal(i) for i in range(nsig)])
 
     data = {"signal": signal,
             "annotation": annot,
