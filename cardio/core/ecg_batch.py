@@ -455,6 +455,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         return self.update(target=self.label_binarizer.transform(self.target))
 
     def _init_component(self, *args, **kwargs):
+        """Create and preallocate a new attribute with the name ``dst`` if it
+        does not exist and return batch indices."""
         dst = kwargs.get("dst")
         if dst is None:
             raise KeyError("dst argument must be specified")
@@ -465,10 +467,30 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
     def apply_for_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
+        """Apply a function to each slice of a signal over the axis 0
+        (typically the channel axis).
+
+        Parameters
+        ----------
+        func : callable
+            A function to apply. Must accept a signal as its first argument.
+        src : str, optional
+            Batch attribute or component name to get the data from.
+        dst : str, optional
+            Batch attribute or component name to put the result in.
+        args : misc
+            Any additional positional arguments to ``func``.
+        kwargs : misc
+            Any additional named arguments to ``func``.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Transformed batch. Changes ``dst`` attribute or component.
+        """
         i = self.get_pos(None, src, index)
         src_data = getattr(self, src)[i]
-        self._check_2d(src_data)
-        dst_data = np.apply_along_axis(func, axis=1, arr=src_data, *args, **kwargs)
+        dst_data = np.array([func(slc, *args, **kwargs) for slc in src_data])
         getattr(self, dst)[i] = dst_data
 
     @ds.action
@@ -783,7 +805,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         axis : int, optional
             Axis along which signals are sliced. Default value is -1.
         kwargs : misc
-            Any additional named argments to ``np.pad``.
+            Any additional named arguments to ``np.pad``.
 
         Returns
         -------
