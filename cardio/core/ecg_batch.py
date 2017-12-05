@@ -2,19 +2,69 @@
 # pylint: disable=too-many-lines
 
 import copy
+from textwrap import dedent
 
 import dill
 import numpy as np
 import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
+from scipy.signal import spectrogram
 
 from .. import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
-from .utils import LabelBinarizer
+from .utils import partialmethod, LabelBinarizer
 
 
+actions_dict = {
+    "fft": (np.fft.fft, "discrete Fourier Transform"),
+    "ifft": (np.fft.ifft, "inverse discrete Fourier Transform"),
+    "rfft": (np.fft.rfft, "real-input discrete Fourier Transform"),
+    "irfft": (np.fft.irfft, "real-input inverse discrete Fourier Transform"),
+    "spectrogram": (lambda *args, **kwargs: spectrogram(*args, **kwargs)[-1], "spectrogram"),
+}
+
+
+template_docstring = """
+    Compute a {description} for each slice of a signal over the axis 0
+    (typically the channel axis).
+
+    This method simply wraps ``apply_for_each_channel`` method by setting the
+    ``func`` argument to {func_name}.
+
+    Parameters
+    ----------
+    src : str, optional
+        Batch attribute or component name to get the data from.
+    dst : str, optional
+        Batch attribute or component name to put the result in.
+    args : misc
+        Any additional positional arguments to ``{func_name}``.
+    kwargs : misc
+        Any additional named arguments to ``{func_name}``.
+
+    Returns
+    -------
+    batch : EcgBatch
+        Transformed batch. Changes ``dst`` attribute or component.
+"""
+template_docstring = dedent(template_docstring).strip()
+
+
+def add_actions(actions_dict, template_docstring):
+    def decorator(cls):
+        for method_name, (func, description) in actions_dict.items():
+            func_name = func.__module__ + "." + func.__name__
+            docstring = template_docstring.format(func_name=func_name, description=description)
+            method = partialmethod(cls.apply_for_each_channel, func)
+            method.__doc__ = docstring
+            setattr(cls, method_name, method)
+        return cls
+    return decorator
+
+
+@add_actions(actions_dict, template_docstring)
 class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-instance-attributes
     """Batch class for ECG signals storing.
 
@@ -467,7 +517,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
     def apply_for_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
-        """Apply a function to each slice of a signal over the axis 0
+        """Apply a function for each slice of a signal over the axis 0
         (typically the channel axis).
 
         Parameters
