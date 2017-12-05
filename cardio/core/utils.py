@@ -1,7 +1,16 @@
 """Miscellaneous ECG Batch utils."""
 
+import functools
+
 import numpy as np
 from sklearn.preprocessing import LabelBinarizer as LB
+
+
+def partialmethod(func, *frozen_args, **frozen_kwargs):
+    @functools.wraps(func)
+    def method(self, *args, **kwargs):
+        return func(self, *frozen_args, *args, **frozen_kwargs, **kwargs)
+    return method
 
 
 class LabelBinarizer(LB):
