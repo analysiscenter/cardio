@@ -20,7 +20,7 @@ About CardIO
 
 .. note:: CardIO is based on `Dataset <https://github.com/analysiscenter/dataset>`_. You might benefit from reading `its documentation <https://analysiscenter.github.io/dataset>`_. However, it is not required, especially at the beginning.
 
-CardIO has three modules: :doc:`core <./api/core>`, :doc:`models <./api/models>` and :doc:`pipelines <api/pipelines>`.
+CardIO has three modules: :doc:`core <./modules/core>`, :doc:`models <./modules/models>` and :doc:`pipelines <./modules/pipelines>`.
 
 
 ``core`` module contains ``EcgBatch`` and ``EcgDataset`` classes.
