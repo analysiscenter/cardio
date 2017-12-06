@@ -304,7 +304,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             path = self.index.get_fullpath(index)  # pylint: disable=no-member
         else:
             raise ValueError("Source path is not specified")
-        
+
         return loaders[fmt](path, components, *args, **kwargs)
 
 

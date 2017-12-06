@@ -39,7 +39,7 @@ S_STATE = np.array([2], np.int64)
 def check_signames(signame, nsig):
     """Check that signame is in proper format.
 
-    Check if signame is a list of values that can be casted 
+    Check if signame is a list of values that can be casted
     to string, othervise generate new signame list with numbers
     0 to `nsig`-1 as strings.
 
@@ -49,17 +49,16 @@ def check_signames(signame, nsig):
         Signal names from file.
     nsig : int
         Number of signals / channels.
-    
+
     Returns
     -------
     signame : list
         List of string names of signals / channels.
-
     """
     if isinstance(signame, list) and len(signame) == nsig:
         signame = [str(name) for name in signame]
     else:
-        signame = [str(number) for number in np.arange(nsig)] 
+        signame = [str(number) for number in np.arange(nsig)]
 
     return signame
 
@@ -80,6 +79,8 @@ def load_wfdb(path, components, *args, **kwargs):
     ecg_data : list
         List of ecg data components.
     """
+    _ = args
+
     ann_ext = kwargs["ann_ext"]
 
     path = os.path.splitext(path)[0]
@@ -126,23 +127,6 @@ def load_dicom(path, components, *args, **kwargs):
         List of ecg data components.
     """
 
-    def dicom_annotation_value_getter(record, key):
-        """
-        Helper function to get values from dicom annotation.
-        """
-        value = [
-            section.NumericValue for section in record.WaveformAnnotationSequence
-            if (section.AnnotationGroupNumber == 1 and
-                section.ConceptNameCodeSequence[0].CodeMeaning == key)
-        ]
-
-        if len(value) == 0:
-            value = None
-        else:
-            value = int(value[0])
-
-        return value
-
     def signal_decoder(record):
         """
         Helper function to decode signal from binaries when reading from dicom.
@@ -174,6 +158,7 @@ def load_dicom(path, components, *args, **kwargs):
 
         return signals
 
+    _ = args, kwargs
 
     record = dicom.read_file(path)
 
@@ -198,7 +183,7 @@ def load_dicom(path, components, *args, **kwargs):
                        record.WaveformSequence[0].ChannelDefinitionSequence]
     meta["units"] = [section.ChannelSensitivityUnitsSequence[0].CodeMeaning for section in
                      record.WaveformSequence[0].ChannelDefinitionSequence]
-    
+
     meta["signame"] = check_signames(meta["signame"], nsig)
 
     signal = signal_decoder(record)
@@ -226,6 +211,7 @@ def load_edf(path, components, *args, **kwargs):
     ecg_data : list
         List of ecg data components.
     """
+    _ = args, kwargs
 
     record = pyedflib.EdfReader(path)
 
