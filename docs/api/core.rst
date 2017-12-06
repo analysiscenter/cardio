@@ -50,6 +50,11 @@ Signal processing
 
 Complex ECG processing
 ^^^^^^^^^^^^^^^^^^^^^^
+	.. automethod:: cardio.EcgBatch.fft
+	.. automethod:: cardio.EcgBatch.ifft
+	.. automethod:: cardio.EcgBatch.rfft
+	.. automethod:: cardio.EcgBatch.irfft
+	.. automethod:: cardio.EcgBatch.spectrogram
 	.. automethod:: cardio.EcgBatch.wavelet_transform_signal
 	.. automethod:: cardio.EcgBatch.calc_ecg_parameters
 
