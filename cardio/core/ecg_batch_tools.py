@@ -138,10 +138,10 @@ def load_dicom(path, components, *args, **kwargs):
         unpack_fmt = "<{}h".format(int(len(data) / 2))
         factor = np.ones(nsig)
         baseline = np.zeros(nsig)
-        units_factor = []
 
         for i in range(nsig):
-            assert(definition[i].WaveformBitsStored == 16)
+            
+            assert definition[i].WaveformBitsStored == 16
 
             channel_sens = definition[i].get("ChannelSensitivity")
             channel_sens_cf = definition[i].get("ChannelSensitivityCorrectionFactor")
@@ -165,8 +165,8 @@ def load_dicom(path, components, *args, **kwargs):
 
     sequence = record.WaveformSequence[0]
 
-    assert(sequence.WaveformSampleInterpretation == 'SS')
-    assert(sequence.WaveformBitsAllocated == 16)
+    assert sequence.WaveformSampleInterpretation == 'SS'
+    assert sequence.WaveformBitsAllocated == 16
 
     nsig = sequence.NumberOfWaveformChannels
 
