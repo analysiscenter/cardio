@@ -140,7 +140,7 @@ def load_dicom(path, components, *args, **kwargs):
         baseline = np.zeros(nsig)
 
         for i in range(nsig):
-            
+
             assert definition[i].WaveformBitsStored == 16
 
             channel_sens = definition[i].get("ChannelSensitivity")
