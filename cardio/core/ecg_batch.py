@@ -8,8 +8,8 @@ import dill
 import numpy as np
 import pandas as pd
 import scipy
-import matplotlib.pyplot as plt
 from scipy.signal import spectrogram
+import matplotlib.pyplot as plt
 
 from .. import dataset as ds
 from . import kernels
@@ -17,21 +17,20 @@ from . import ecg_batch_tools as bt
 from .utils import partialmethod, LabelBinarizer
 
 
-actions_dict = {
-    "fft": (np.fft.fft, "discrete Fourier Transform"),
-    "ifft": (np.fft.ifft, "inverse discrete Fourier Transform"),
-    "rfft": (np.fft.rfft, "real-input discrete Fourier Transform"),
-    "irfft": (np.fft.irfft, "real-input inverse discrete Fourier Transform"),
-    "spectrogram": (lambda *args, **kwargs: spectrogram(*args, **kwargs)[-1], "spectrogram"),
+ACTIONS_DICT = {
+    "fft": (np.fft.fft, "numpy.fft.fft", "discrete Fourier Transform"),
+    "ifft": (np.fft.ifft, "numpy.fft.ifft", "inverse discrete Fourier Transform"),
+    "rfft": (np.fft.rfft, "numpy.fft.rfft", "real-input discrete Fourier Transform"),
+    "irfft": (np.fft.irfft, "numpy.fft.irfft", "real-input inverse discrete Fourier Transform"),
 }
 
 
-template_docstring = """
+TEMPLATE_DOCSTRING = """
     Compute a {description} for each slice of a signal over the axis 0
     (typically the channel axis).
 
     This method simply wraps ``apply_for_each_channel`` method by setting the
-    ``func`` argument to {func_name}.
+    ``func`` argument to {full_name}.
 
     Parameters
     ----------
@@ -40,23 +39,41 @@ template_docstring = """
     dst : str, optional
         Batch attribute or component name to put the result in.
     args : misc
-        Any additional positional arguments to ``{func_name}``.
+        Any additional positional arguments to ``{full_name}``.
     kwargs : misc
-        Any additional named arguments to ``{func_name}``.
+        Any additional named arguments to ``{full_name}``.
 
     Returns
     -------
     batch : EcgBatch
         Transformed batch. Changes ``dst`` attribute or component.
 """
-template_docstring = dedent(template_docstring).strip()
+TEMPLATE_DOCSTRING = dedent(TEMPLATE_DOCSTRING).strip()
 
 
 def add_actions(actions_dict, template_docstring):
+    """Add new actions in ``EcgBatch`` by setting ``func`` argument in
+    ``EcgBatch.apply_for_each_channel`` method to given callables.
+
+    Parameters
+    ----------
+    actions_dict : dict
+        A dictionary, containing new methods' names as keys and a callable,
+        its full name and description for each method as values.
+    template_docstring : str
+        A string, that will be formatted for each new method from
+        ``actions_dict`` using ``full_name`` and ``description`` parameters
+        and assigned to its ``__doc__`` attribute.
+
+    Returns
+    -------
+    decorator : callable
+        Class decorator.
+    """
     def decorator(cls):
-        for method_name, (func, description) in actions_dict.items():
-            func_name = func.__module__ + "." + func.__name__
-            docstring = template_docstring.format(func_name=func_name, description=description)
+        """Returned decorator."""
+        for method_name, (func, full_name, description) in actions_dict.items():
+            docstring = template_docstring.format(full_name=full_name, description=description)
             method = partialmethod(cls.apply_for_each_channel, func)
             method.__doc__ = docstring
             setattr(cls, method_name, method)
@@ -64,8 +81,8 @@ def add_actions(actions_dict, template_docstring):
     return decorator
 
 
-@add_actions(actions_dict, template_docstring)
-class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-instance-attributes
+@add_actions(ACTIONS_DICT, TEMPLATE_DOCSTRING)  # pylint: disable=too-many-public-methods,too-many-instance-attributes
+class EcgBatch(ds.Batch):
     """Batch class for ECG signals storing.
 
     Contains ECG signals and additional metadata along with various processing
@@ -507,6 +524,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     def _init_component(self, *args, **kwargs):
         """Create and preallocate a new attribute with the name ``dst`` if it
         does not exist and return batch indices."""
+        _ = args
         dst = kwargs.get("dst")
         if dst is None:
             raise KeyError("dst argument must be specified")
