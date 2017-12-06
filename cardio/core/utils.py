@@ -7,8 +7,26 @@ from sklearn.preprocessing import LabelBinarizer as LB
 
 
 def partialmethod(func, *frozen_args, **frozen_kwargs):
+    """Wrap a method with partial application of given positional and keyword
+    arguments.
+
+    Parameters
+    ----------
+    func : callable
+        A method to wrap.
+    frozen_args : misc
+        Fixed positional arguments.
+    frozen_kwargs : misc
+        Fixed keyword arguments.
+
+    Returns
+    -------
+    method : callable
+        Wrapped method.
+    """
     @functools.wraps(func)
     def method(self, *args, **kwargs):
+        """Wrapped method."""
         return func(self, *frozen_args, *args, **frozen_kwargs, **kwargs)
     return method
 
