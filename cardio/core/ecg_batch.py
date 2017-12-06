@@ -18,19 +18,19 @@ from .utils import partialmethod, LabelBinarizer
 
 
 ACTIONS_DICT = {
-    "fft": (np.fft.fft, "numpy.fft.fft", "discrete Fourier Transform"),
-    "ifft": (np.fft.ifft, "numpy.fft.ifft", "inverse discrete Fourier Transform"),
-    "rfft": (np.fft.rfft, "numpy.fft.rfft", "real-input discrete Fourier Transform"),
-    "irfft": (np.fft.irfft, "numpy.fft.irfft", "real-input inverse discrete Fourier Transform"),
+    "fft": (np.fft.fft, "numpy.fft.fft", "a discrete Fourier Transform"),
+    "ifft": (np.fft.ifft, "numpy.fft.ifft", "an inverse discrete Fourier Transform"),
+    "rfft": (np.fft.rfft, "numpy.fft.rfft", "a real-input discrete Fourier Transform"),
+    "irfft": (np.fft.irfft, "numpy.fft.irfft", "a real-input inverse discrete Fourier Transform"),
 }
 
 
 TEMPLATE_DOCSTRING = """
-    Compute a {description} for each slice of a signal over the axis 0
+    Compute {description} for each slice of a signal over the axis 0
     (typically the channel axis).
 
     This method simply wraps ``apply_for_each_channel`` method by setting the
-    ``func`` argument to {full_name}.
+    ``func`` argument to ``{full_name}``.
 
     Parameters
     ----------
