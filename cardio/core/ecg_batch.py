@@ -991,7 +991,7 @@ class EcgBatch(ds.Batch):
         i = self.get_pos(None, src, index)
         fs = self.meta[i]["fs"]
         src_data = getattr(self, src)[i]
-        dst_data = np.array([scipy.signal.spectrogram(slc, fs, *args, **kwargs) for slc in src_data])
+        dst_data = np.array([scipy.signal.spectrogram(slc, fs, *args, **kwargs)[-1] for slc in src_data])
         getattr(self, dst)[i] = dst_data
 
     @ds.action
