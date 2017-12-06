@@ -296,7 +296,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             If source path is not specified and batch's ``index`` is not a
             ``FilesIndex``.
         """
-        loaders = {"wfdb": bt.load_wfdb, "dicom": bt.load_dicom, 
+        loaders = {"wfdb": bt.load_wfdb, "dicom": bt.load_dicom,
                    "edf": bt.load_edf, "wav": bt.load_wav}
 
         if src is not None:
