@@ -1181,18 +1181,19 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
-    def slice_signal(self, index, slice_index):
-        """Slice signal
+    def slice_signals(self, index, selection_object):
+        """Perform indexing or slicing of signals in a batch. Allows basic
+        ``numpy`` indexing and slicing along with advanced indexing.
 
         Parameters
         ----------
-        slice_index : slice obj
-            Starting index, stopping index and the step
+        selection_object : slice or int or a tuple of slices and ints
+            An object that is used to slice signals.
 
         Returns
         -------
         batch : EcgBatch
-            Batch with each sliced signal. Changes ``self.signal`` inplace.
+            Batch with sliced signals. Changes ``self.signal`` inplace.
         """
         i = self.get_pos(None, "signal", index)
-        self.signal[i] = self.signal[i][slice_index]
+        self.signal[i] = self.signal[i][selection_object]

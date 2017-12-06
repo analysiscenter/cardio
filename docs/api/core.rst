@@ -42,7 +42,7 @@ Signal processing
 	.. automethod:: cardio.EcgBatch.drop_short_signals
 	.. automethod:: cardio.EcgBatch.flip_signals
 	.. automethod:: cardio.EcgBatch.ravel
-	.. automethod:: cardio.EcgBatch.slice_signal
+	.. automethod:: cardio.EcgBatch.slice_signals
 	.. automethod:: cardio.EcgBatch.split_signals
 	.. automethod:: cardio.EcgBatch.random_split_signals
 	.. automethod:: cardio.EcgBatch.resample_signals
