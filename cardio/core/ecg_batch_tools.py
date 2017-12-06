@@ -3,6 +3,7 @@
 import os
 import struct
 import numpy as np
+from scipy.io import wavfile
 
 import pywt
 from numba import njit
@@ -244,6 +245,48 @@ def load_edf(path, components, *args, **kwargs):
             "meta": meta}
 
     return [data[comp] for comp in components]
+
+def load_wav(path, components, *args, **kwargs):
+    """
+    Load given components from wav file.
+
+    Parameters
+    ----------
+    path : str
+        Path to .hea file.
+    components : iterable
+        Components to load.
+
+    Returns
+    -------
+    ecg_data : list
+        List of ecg data components.
+    """
+    _ = args, kwargs
+
+    fs, signal = wavfile.read(path)
+    if signal.ndim == 1:
+        nsig = 1
+        signal = signal.reshape([-1, 1])
+    elif signal.ndim == 2:
+        nsig = signal.shape[1]
+    else:
+        raise ValueError("Unexpected number of dimensions in signal array: {}".format(signal.ndim))
+
+    signal = signal.T
+
+    annot = {}
+    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+
+    meta["fs"] = fs
+    meta["signame"] = check_signames(meta["signame"], nsig)
+
+    data = {"signal": signal,
+            "annotation": annot,
+            "meta": meta}
+
+    return [data[comp] for comp in components]
+
 
 
 @njit(nogil=True)

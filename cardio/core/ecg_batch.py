@@ -263,7 +263,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         components = np.asarray(components).ravel()
         if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
             return self._load_labels(src)
-        elif fmt in ["wfdb", "dicom", "edf"]:
+        elif fmt in ["wfdb", "dicom", "edf", "wav"]:
             return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
         else:
             return super().load(src, fmt, components, *args, **kwargs)
@@ -296,7 +296,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             If source path is not specified and batch's ``index`` is not a
             ``FilesIndex``.
         """
-        loaders = {"wfdb": bt.load_wfdb, "dicom": bt.load_dicom, "edf": bt.load_edf,}
+        loaders = {"wfdb": bt.load_wfdb, "dicom": bt.load_dicom, 
+                   "edf": bt.load_edf, "wav": bt.load_wav}
 
         if src is not None:
             path = src[index]
