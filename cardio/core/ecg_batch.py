@@ -972,8 +972,11 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         _, axes = plt.subplots(num_channels, 1, squeeze=False, figsize=figsize)
         for channel, (ax,) in enumerate(axes):
             ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
+            ax.set_title('Lead {}'.format(meta["signame"][channel] if ("signame" in meta)
+                                          and (meta["signame"][channel] is not None) else "undefined"))
             ax.set_xlabel("Time (sec)")
-            ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if "units" in meta else "mV"))
+            ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if ("units" in meta)
+                                                  and (meta["units"][channel] is not None) else "undefined"))
             ax.grid("on", which="major")
 
         if annotate:
