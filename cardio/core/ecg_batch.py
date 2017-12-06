@@ -8,7 +8,7 @@ import dill
 import numpy as np
 import pandas as pd
 import scipy
-from scipy.signal import spectrogram
+import scipy.signal
 import matplotlib.pyplot as plt
 
 from .. import dataset as ds
@@ -959,6 +959,40 @@ class EcgBatch(ds.Batch):
         votes = [np.where(scipy.stats.skew(subseq, axis=-1) < threshold, -1, 1).reshape(-1, 1) for subseq in splits]
         mode_of_votes = scipy.stats.mode(votes)[0].reshape(-1, 1)
         self.signal[i] *= mode_of_votes
+
+    @ds.action
+    @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
+    def spectrogram(self, index, *args, src="signal", dst="signal", **kwargs):
+        """Compute a spectrogram for each slice of a signal over the axis 0
+        (typically the channel axis).
+
+        This method is a wrapper around ``scipy.signal.spectrogram``, that
+        accepts the same arguments, except the ``fs`` which is substituted
+        automatically from signal's meta. The method returns only the
+        spectrogram itself.
+
+        Parameters
+        ----------
+        src : str, optional
+            Batch attribute or component name to get the data from.
+        dst : str, optional
+            Batch attribute or component name to put the result in.
+        args : misc
+            Any additional positional arguments to
+            ``scipy.signal.spectrogram``.
+        kwargs : misc
+            Any additional named arguments to ``scipy.signal.spectrogram``.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Transformed batch. Changes ``dst`` attribute or component.
+        """
+        i = self.get_pos(None, src, index)
+        fs = self.meta[i]["fs"]
+        src_data = getattr(self, src)[i]
+        dst_data = np.array([scipy.signal.spectrogram(slc, fs, *args, **kwargs) for slc in src_data])
+        getattr(self, dst)[i] = dst_data
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')
