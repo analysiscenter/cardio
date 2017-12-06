@@ -164,6 +164,28 @@ class TestEcgBatchLoad():
         assert isinstance(batch.meta[0], dict)
         del batch
 
+    def test_load_wav(self, setup_module_load): #pylint: disable=redefined-outer-name
+        """
+        Testing EDF loader.
+        """
+        # Arrange
+        path = setup_module_load[1]
+        ind = ds.FilesIndex(path=os.path.join(path, '*.wav'), no_ext=True, sort=True)
+        batch = EcgBatch(ind)
+        # Act
+        batch = batch.load(fmt="wav", components=["signal", "annotation", "meta"])
+        # Assert
+        assert isinstance(batch.signal, np.ndarray)
+        assert isinstance(batch.meta, np.ndarray)
+        assert isinstance(batch.annotation, np.ndarray)
+        assert batch.signal.shape == (1,)
+        assert batch.annotation.shape == (1,)
+        assert batch.meta.shape == (1,)
+        assert isinstance(batch.signal[0], np.ndarray)
+        assert isinstance(batch.annotation[0], dict)
+        assert isinstance(batch.meta[0], dict)
+        del batch
+
 class TestEcgBatchSingleMethods:
     """
     Class for testing other single methods of EcgBatch class
