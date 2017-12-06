@@ -128,34 +128,34 @@ def load_dicom(path, components, *args, **kwargs):
         List of ecg data components.
     """
 
-    def signal_decoder(record):
+    def signal_decoder(record, nsig):
         """
         Helper function to decode signal from binaries when reading from dicom.
         """
-        section = record.WaveformSequence[0].ChannelDefinitionSequence[0]
+        definition = record.WaveformSequence[0].ChannelDefinitionSequence
         data = record.WaveformSequence[0].WaveformData
-        nsig = record.WaveformSequence[0].NumberOfWaveformChannels
 
         unpack_fmt = "<{}h".format(int(len(data) / 2))
         factor = np.ones(nsig)
         baseline = np.zeros(nsig)
-        units_factor = np.ones(nsig)
+        units_factor = []
 
         for i in range(nsig):
+            assert(definition[i].WaveformBitsStored == 16)
 
-            channel_sens = section.get("ChannelSensitivity")
-            channel_sens_cf = section.get("ChannelSensitivityCorrectionFactor")
+            channel_sens = definition[i].get("ChannelSensitivity")
+            channel_sens_cf = definition[i].get("ChannelSensitivityCorrectionFactor")
             if channel_sens is not None and channel_sens_cf is not None:
                 factor[i] = float(channel_sens) * float(channel_sens_cf)
 
-            channel_bl = section.get("ChannelBaseline")
+            channel_bl = definition[i].get("ChannelBaseline")
             if channel_bl is not None:
                 baseline[i] = float(channel_bl)
 
         unpacked_data = struct.unpack(unpack_fmt, data)
 
         signals = np.asarray(unpacked_data, dtype=np.float32).reshape(-1, nsig)
-        signals = ((signals + baseline) * factor / units_factor).T
+        signals = ((signals + baseline) * factor).T
 
         return signals
 
@@ -163,7 +163,12 @@ def load_dicom(path, components, *args, **kwargs):
 
     record = dicom.read_file(path)
 
-    nsig = record.WaveformSequence[0].NumberOfWaveformChannels
+    sequence = record.WaveformSequence[0]
+
+    assert(sequence.WaveformSampleInterpretation == 'SS')
+    assert(sequence.WaveformBitsAllocated == 16)
+
+    nsig = sequence.NumberOfWaveformChannels
 
     annot = {}
 
@@ -179,15 +184,15 @@ def load_dicom(path, components, *args, **kwargs):
     meta["timestamp"] = record.AcquisitionDateTime
     meta["comments"] = [section.UnformattedTextValue for section in
                         record.WaveformAnnotationSequence if section.AnnotationGroupNumber == 0]
-    meta["fs"] = record.WaveformSequence[0].SamplingFrequency
+    meta["fs"] = sequence.SamplingFrequency
     meta["signame"] = [section.ChannelSourceSequence[0].CodeMeaning for section in
-                       record.WaveformSequence[0].ChannelDefinitionSequence]
-    meta["units"] = [section.ChannelSensitivityUnitsSequence[0].CodeMeaning for section in
-                     record.WaveformSequence[0].ChannelDefinitionSequence]
+                       sequence.ChannelDefinitionSequence]
+    meta["units"] = [section.ChannelSensitivityUnitsSequence[0].CodeValue for section in
+                     sequence.ChannelDefinitionSequence]
 
     meta["signame"] = check_signames(meta["signame"], nsig)
 
-    signal = signal_decoder(record)
+    signal = signal_decoder(record, nsig)
 
     data = {"signal": signal,
             "annotation": annot,
