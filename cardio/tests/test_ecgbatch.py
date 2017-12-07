@@ -125,28 +125,6 @@ class TestEcgBatchSingleMethods:
     """
     Class for testing other single methods of EcgBatch class
     """
-    def test_update(self):
-        """
-        Testing update
-        """
-        new_inds = ["A00001", "A00004"]
-        ind = ds.DatasetIndex(index=new_inds)
-        batch = EcgBatch(ind)
-
-        seq1 = np.array([1, 2, 3]).reshape(1, -1)
-        seq2 = np.array([1, 2, 3, 4]).reshape(1, -1)
-        signal = np.array([seq1, seq2, []], dtype=object)[:-1]
-        annotation = np.array([{}] * len(new_inds))
-        meta = np.array([{"new_meta":True}, {"new_meta":True}])
-        target = np.array(["N", "A"])
-        batch.update(signal, annotation, meta, target)
-        assert batch.signal[0].shape == (1, 3)
-        assert batch.signal[1].shape == (1, 4)
-        assert batch["A00001"].meta["new_meta"]
-        assert batch["A00004"].meta["new_meta"]
-        assert batch["A00001"].target == "N"
-        assert batch["A00004"].target == "A"
-
     @pytest.mark.usefixtures("setup_class_methods")
     def tets_drop_short_signal(self, setup_class_methods): #pylint: disable=redefined-outer-name
         """
