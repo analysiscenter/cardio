@@ -27,7 +27,7 @@ def setup_module_load(request):
     # REFERENCE.csv
 
     if np.all([os.path.isfile(os.path.join(path, file)) for file in files]):
-        ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+        ind = ds.FilesIndex(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
     else:
         raise FileNotFoundError("Test files not found in 'tests/data/'!")
 
@@ -45,7 +45,7 @@ def setup_class_methods(request):
     Fixture to setup class to test EcgBatch methods separately.
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
-    ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+    ind = ds.FilesIndex(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
     batch_loaded = (EcgBatch(ind, unique_labels=["A", "O", "N"])
                     .load(fmt="wfdb", components=["signal", "annotation", "meta"]))
 
@@ -63,7 +63,7 @@ def setup_class_dataset(request):
     Fixture to setup class to test EcgBatch methods in pipeline.
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
-    ecg_dataset = EcgDataset(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+    ecg_dataset = EcgDataset(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
 
     def teardown_class_dataset():
         """
@@ -80,7 +80,7 @@ def setup_class_pipeline(request):
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     target_path = os.path.join(path, "REFERENCE.csv")
-    ecg_pipeline = (EcgDataset(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+    ecg_pipeline = (EcgDataset(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
                     .p
                     .load(src=None, fmt="wfdb", components=["signal", "annotation", "meta"])
                     .load(src=target_path, fmt="csv", components=["target"]))
@@ -126,7 +126,7 @@ class TestEcgBatchLoad():
         """
         # Arrange
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, '*.dcm'), no_ext=True, sort=True)
+        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.dcm'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         # Act
         batch = batch.load(fmt="dicom", components=["signal", "annotation", "meta"])
@@ -148,7 +148,7 @@ class TestEcgBatchLoad():
         """
         # Arrange
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, '*.edf'), no_ext=True, sort=True)
+        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.edf'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         # Act
         batch = batch.load(fmt="edf", components=["signal", "annotation", "meta"])
@@ -170,7 +170,7 @@ class TestEcgBatchLoad():
         """
         # Arrange
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, '*.wav'), no_ext=True, sort=True)
+        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.wav'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         # Act
         batch = batch.load(fmt="wav", components=["signal", "annotation", "meta"])

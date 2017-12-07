@@ -99,6 +99,7 @@ def load_wfdb(path, components, *args, **kwargs):
     # Initialize meta with defined keys, load values from record
     # meta and preprocess to our format.
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+    meta.update(record_meta)
 
     meta["signame"] = check_signames(meta["signame"], nsig)
 
