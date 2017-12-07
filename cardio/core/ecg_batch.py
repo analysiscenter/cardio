@@ -174,10 +174,12 @@ class EcgBatch(ds.Batch):
 
     @property
     def array_of_nones(self):
+        """1-D ndarray: ``NumPy`` array with ``None`` values."""
         return np.array([None] * len(self.index))
 
     @property
     def array_of_dicts(self):
+        """1-D ndarray: ``NumPy`` array with empty ``dict`` values."""
         return np.array([{} for _ in range(len(self.index))])
 
     @property
@@ -816,7 +818,7 @@ class EcgBatch(ds.Batch):
         Parameters
         ----------
         distr : str or callable
-            NumPy distribution name or callable to sample from.
+            ``NumPy`` distribution name or callable to sample from.
         kwargs : misc
             Distribution parameters. If new sampling rate is negative, the
             signal is left unchanged.
@@ -1194,7 +1196,7 @@ class EcgBatch(ds.Batch):
     @ds.inbatch_parallel(init="indices", target="threads")
     def slice_signals(self, index, selection_object):
         """Perform indexing or slicing of signals in a batch. Allows basic
-        ``numpy`` indexing and slicing along with advanced indexing.
+        ``NumPy`` indexing and slicing along with advanced indexing.
 
         Parameters
         ----------
