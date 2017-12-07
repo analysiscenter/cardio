@@ -625,7 +625,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             self.signal[i] = tmp_sig[np.newaxis, ...]
         else:
             self.signal[i] = bt.split_signals(self.signal[i], length, step)
-        self.meta[i]["siglen"] = length
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
@@ -671,7 +670,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             self.signal[i] = np.tile(tmp_sig, (n_segments, 1, 1))
         else:
             self.signal[i] = bt.random_split_signals(self.signal[i], length, n_segments)
-        self.meta[i]["siglen"] = length
 
     def _safe_fs_resample(self, index, fs):
         """Resample 2-D signal along axis 1 (signal axis) to given sampling
@@ -693,7 +691,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         self._check_2d(self.signal[i])
         new_len = max(1, int(fs * self.signal[i].shape[1] / self.meta[i]["fs"]))
         self.meta[i]["fs"] = fs
-        self.meta[i]["siglen"] = new_len
         self.signal[i] = bt.resample_signals(self.signal[i], new_len)
 
     @ds.action
