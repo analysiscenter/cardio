@@ -968,7 +968,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         for channel, (ax,) in enumerate(axes):
             ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
             ax.set_title('Lead name: {}'.format("undefined" if meta["signame"][channel] == "None"
-                                          else meta["signame"][channel]))
+                                                else meta["signame"][channel]))
             ax.set_xlabel("Time (sec)")
             ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if ("units" in meta)
                                                   and (meta["units"][channel] is not None) else "undefined"))
