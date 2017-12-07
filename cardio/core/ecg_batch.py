@@ -199,35 +199,6 @@ class EcgBatch(ds.Batch):
         dataset."""
         return self._label_binarizer
 
-    def update(self, signal=None, annotation=None, meta=None, target=None):
-        """Update batch components.
-
-        Parameters
-        ----------
-        signal : ndarray, optional
-            New ``signal`` component.
-        annotation : ndarray, optional
-            New ``annotation`` component.
-        meta : ndarray, optional
-            New ``meta`` component.
-        target : ndarray, optional
-            New ``target`` component.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Updated batch. Changes batch components inplace.
-        """
-        if signal is not None:
-            self.signal = np.asarray(signal)
-        if annotation is not None:
-            self.annotation = np.asarray(annotation)
-        if meta is not None:
-            self.meta = np.asarray(meta)
-        if target is not None:
-            self.target = np.asarray(target)
-        return self
-
     def deepcopy(self):
         """Return a deep copy of the batch.
 
@@ -419,7 +390,7 @@ class EcgBatch(ds.Batch):
             raise TypeError("Unsupported type of source")
         if isinstance(src, str):
             src = pd.read_csv(src, header=None, names=["index", "label"], index_col=0)["label"]
-        self.update(target=src[self.indices].values)
+        self.target = src[self.indices].values
         if self.unique_labels is None:
             if self.pipeline is None:
                 raise RuntimeError("Batch with undefined unique_labels must be created in a pipeline")
@@ -431,6 +402,10 @@ class EcgBatch(ds.Batch):
         """Drop elements from batch with corresponding ``False`` values in
         ``keep_mask``.
 
+        This method creates a new batch and updates only components and
+        ``unique_labels`` attribute. The information stored in other
+        attributes will be lost.
+
         Parameters
         ----------
         keep_mask : bool 1-D ndarray
@@ -439,7 +414,7 @@ class EcgBatch(ds.Batch):
         Returns
         -------
         batch : same class as self
-            Filtered batch. Creates a new ``EcgBatch`` instance.
+            Filtered batch.
 
         Raises
         ------
@@ -450,10 +425,10 @@ class EcgBatch(ds.Batch):
         indices = self.indices[keep_mask]
         if len(indices) == 0:
             raise ds.SkipBatchException("All batch data was dropped")
-        res_batch = self.__class__(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
-        res_batch.update(self.signal[keep_mask], self.annotation[keep_mask],
-                         self.meta[keep_mask], self.target[keep_mask])
-        return res_batch
+        batch = self.__class__(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
+        for component in self.components:
+            setattr(batch, component, getattr(self, component)[keep_mask])
+        return batch
 
     @ds.action
     def drop_labels(self, drop_list):
@@ -508,7 +483,8 @@ class EcgBatch(ds.Batch):
             Batch with replaced labels. Changes ``self.target`` inplace.
         """
         self.unique_labels = np.array(sorted({replace_dict.get(t, t) for t in self.unique_labels}))
-        return self.update(target=[replace_dict.get(t, t) for t in self.target])
+        self.target = np.array([replace_dict.get(t, t) for t in self.target])
+        return self
 
     @ds.action
     def binarize_labels(self):
@@ -519,7 +495,8 @@ class EcgBatch(ds.Batch):
         batch : EcgBatch
             Batch with binarized labels. Changes ``self.target`` inplace.
         """
-        return self.update(target=self.label_binarizer.transform(self.target))
+        self.target = self.label_binarizer.transform(self.target)
+        return self
 
     def _init_component(self, *args, **kwargs):
         """Create and preallocate a new attribute with the name ``dst`` if it
@@ -1161,11 +1138,10 @@ class EcgBatch(ds.Batch):
         """Create a new batch in which each signal's element along axis 0 is
         considered as a separate signal.
 
-        This method creates a new ``EcgBatch`` instance and updates only
-        components and ``unique_labels`` attribute. Signal's data from
-        non-signal components is duplicated using a deep copy for each of the
-        resulting signals. The information stored in other attributes will be
-        lost.
+        This method creates a new batch and updates only components and
+        ``unique_labels`` attribute. Signal's data from non-signal components
+        is duplicated using a deep copy for each of the resulting signals. The
+        information stored in other attributes will be lost.
 
         Returns
         -------
