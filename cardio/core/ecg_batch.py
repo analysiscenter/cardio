@@ -125,10 +125,10 @@ class EcgBatch(ds.Batch):
 
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
-        self.signal = np.array([np.array([]) for _ in range(len(index))] + [None])[:-1]
-        self.annotation = np.array([{} for _ in range(len(index))])
-        self.meta = np.array([{} for _ in range(len(index))])
-        self.target = np.array([None for _ in range(len(index))])
+        self.signal = self.array_of_nones
+        self.annotation = self.array_of_dicts
+        self.meta = self.array_of_dicts
+        self.target = self.array_of_nones
         self._unique_labels = None
         self._label_binarizer = None
         self.unique_labels = unique_labels
@@ -171,6 +171,14 @@ class EcgBatch(ds.Batch):
     def components(self):
         """tuple of str: Data components names."""
         return "signal", "annotation", "meta", "target"
+
+    @property
+    def array_of_nones(self):
+        return np.array([None] * len(self.index))
+
+    @property
+    def array_of_dicts(self):
+        return np.array([{} for _ in range(len(self.index))])
 
     @property
     def unique_labels(self):
