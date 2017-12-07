@@ -237,7 +237,6 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             rest_batch._data = tuple(comp[batch_size:] for comp in data)  # pylint: disable=protected-access, attribute-defined-outside-init, line-too-long
         return new_batch, rest_batch
 
-
     @ds.action
     def load(self, src=None, fmt=None, components=None, ann_ext=None, *args, **kwargs):
         """Load given batch components from source.
@@ -305,9 +304,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
             path = self.index.get_fullpath(index)  # pylint: disable=no-member
         else:
             raise ValueError("Source path is not specified")
-
         return loaders[fmt](path, components, *args, **kwargs)
-
 
     def _assemble_load(self, results, *args, **kwargs):
         """Concatenate results of different workers and update self.

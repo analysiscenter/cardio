@@ -12,7 +12,6 @@ import wfdb
 import dicom
 import pyedflib
 
-
 # Constants
 
 # This is the predefined keys of the meta component.
@@ -60,8 +59,8 @@ def check_signames(signame, nsig):
         signame = [str(name) for name in signame]
     else:
         signame = [str(number) for number in np.arange(nsig)]
-
     return signame
+
 
 def load_wfdb(path, components, *args, **kwargs):
     """Load given components from wfdb file.
@@ -100,14 +99,12 @@ def load_wfdb(path, components, *args, **kwargs):
     # Initialize meta with defined keys, load values from record
     # meta and preprocess to our format.
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
-    meta.update(record_meta)
 
     meta["signame"] = check_signames(meta["signame"], nsig)
 
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
-
     return [data[comp] for comp in components]
 
 
@@ -197,7 +194,6 @@ def load_dicom(path, components, *args, **kwargs):
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
-
     return [data[comp] for comp in components]
 
 
@@ -248,8 +244,8 @@ def load_edf(path, components, *args, **kwargs):
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
-
     return [data[comp] for comp in components]
+
 
 def load_wav(path, components, *args, **kwargs):
     """
@@ -289,9 +285,7 @@ def load_wav(path, components, *args, **kwargs):
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
-
     return [data[comp] for comp in components]
-
 
 
 @njit(nogil=True)
@@ -545,7 +539,6 @@ def find_maxes(signal, starts, ends):
     maxes = np.empty(starts.shape, dtype=np.float64)
     for i in range(maxes.shape[0]):
         maxes[i] = starts[i] + np.argmax(signal[0][starts[i]:ends[i]])
-
     return maxes
 
 
@@ -576,7 +569,6 @@ def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     maxes = find_maxes(signal, starts, ends)
     diff = maxes[1:] - maxes[:-1]
     hr_val = (np.median(diff / fs) ** -1) * 60
-
     return hr_val
 
 
@@ -638,7 +630,6 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
     q_final = q_final[q_final > -1]
 
     intervals = q_final - p_final
-
     return np.median(intervals) / fs
 
 
@@ -700,7 +691,6 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
     q_final = q_final[q_final > -1][:-1]
 
     intervals = t_final - q_final
-
     return np.median(intervals) / fs
 
 
@@ -761,5 +751,4 @@ def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STA
     q_final = q_final[q_final > -1][:-1]
 
     intervals = s_final - q_final
-
     return np.median(intervals) / fs
