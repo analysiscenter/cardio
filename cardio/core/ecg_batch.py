@@ -604,8 +604,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         Returns
         -------
         batch : EcgBatch
-            Batch of split signals. Changes ``self.signal`` and ``self.meta``
-            inplace.
+            Batch of split signals. Changes ``self.signal`` inplace.
 
         Raises
         ------
@@ -648,8 +647,7 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         Returns
         -------
         batch : EcgBatch
-            Batch of split signals. Changes ``self.signal`` and ``self.meta``
-            inplace.
+            Batch of split signals. Changes ``self.signal`` inplace.
 
         Raises
         ------
@@ -969,8 +967,8 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
         _, axes = plt.subplots(num_channels, 1, squeeze=False, figsize=figsize)
         for channel, (ax,) in enumerate(axes):
             ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
-            ax.set_title('Lead {}'.format(meta["signame"][channel] if ("signame" in meta)
-                                          and (meta["signame"][channel] is not None) else "undefined"))
+            ax.set_title('Lead name: {}'.format("undefined" if meta["signame"][channel] == "None"
+                                          else meta["signame"][channel]))
             ax.set_xlabel("Time (sec)")
             ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if ("units" in meta)
                                                   and (meta["units"][channel] is not None) else "undefined"))
