@@ -438,14 +438,14 @@ class EcgBatch(ds.Batch):
 
         Returns
         -------
-        batch : EcgBatch
+        batch : same class as self
             Filtered batch. Creates a new ``EcgBatch`` instance.
 
         Raises
         ------
         SkipBatchException
             If all batch data was dropped. This exception is caught in the
-            ``Pipeline``.
+            ``pipeline``.
         """
         indices = self.indices[keep_mask]
         if len(indices) == 0:
@@ -1157,27 +1157,54 @@ class EcgBatch(ds.Batch):
         return self
 
     @ds.action
-    def ravel(self):
-        """Join a sequence of arrays along axis 0.
+    def unstack_signals(self):
+        """Create a new batch in which each signal's element along axis 0 is
+        considered as a separate signal.
+
+        This method creates a new ``EcgBatch`` instance and updates only
+        components and ``unique_labels`` attribute. Signal's data from
+        non-signal components is duplicated using a deep copy for each of the
+        resulting signals. The information stored in other attributes will be
+        lost.
 
         Returns
         -------
         batch : same class as self
-            Batch with signals joined along signal axis 0.
+            Batch with split signals and duplicated other components.
 
-        Notes
-        -----
-        This method creates new ``EcgBatch`` instance with empty ``meta`` and
-        ``annotation`` components.
+        Examples
+        --------
+        >>> batch.signal
+        array([array([[ 0,  1,  2,  3],
+                      [ 4,  5,  6,  7],
+                      [ 8,  9, 10, 11]])],
+              dtype=object)
+
+        >>> batch = batch.unstack_signals()
+        >>> batch.signal
+        array([array([0, 1, 2, 3]),
+               array([4, 5, 6, 7]),
+               array([ 8,  9, 10, 11])],
+              dtype=object)
         """
-        x = np.concatenate(self.signal)
-        x = list(x)
-        x.append([])
-        x = np.array(x)[:-1]
-        y = np.concatenate([np.tile(item.target, (item.signal.shape[0], 1)) for item in self])
-        new_index = ds.DatasetIndex(np.arange(len(x), dtype=int))
-        out_batch = self.__class__(new_index)
-        return out_batch.update(signal=x, target=y)
+        n_reps = [sig.shape[0] for sig in self.signal]
+        signal = np.array([channel for signal in self.signal for channel in signal] + [None])[:-1]
+        index = ds.DatasetIndex(np.arange(len(signal)))
+        batch = self.__class__(index, unique_labels=self.unique_labels)
+        batch.signal = signal
+        for component_name in set(self.components) - {"signal"}:
+            val = []
+            component = getattr(self, component_name)
+            is_object_dtype = (component.dtype.kind == "O")
+            for elem, n in zip(component, n_reps):
+                for _ in range(n):
+                    val.append(copy.deepcopy(elem))
+            if is_object_dtype:
+                val = np.array(val + [None])[:-1]
+            else:
+                val = np.array(val)
+            setattr(batch, component_name, val)
+        return batch
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")

@@ -20,8 +20,8 @@ Input/output methods
 
 Batch modifications
 ^^^^^^^^^^^^^^^^^^^
-	.. automethod:: cardio.EcgBatch.update
 	.. automethod:: cardio.EcgBatch.apply_transform
+	.. automethod:: cardio.EcgBatch.apply_for_each_channel
 
 Batch processing
 ^^^^^^^^^^^^^^^^
@@ -41,10 +41,10 @@ Signal processing
 	.. automethod:: cardio.EcgBatch.band_pass_signals
 	.. automethod:: cardio.EcgBatch.drop_short_signals
 	.. automethod:: cardio.EcgBatch.flip_signals
-	.. automethod:: cardio.EcgBatch.ravel
 	.. automethod:: cardio.EcgBatch.slice_signals
 	.. automethod:: cardio.EcgBatch.split_signals
 	.. automethod:: cardio.EcgBatch.random_split_signals
+	.. automethod:: cardio.EcgBatch.unstack_signals
 	.. automethod:: cardio.EcgBatch.resample_signals
 	.. automethod:: cardio.EcgBatch.random_resample_signals
 
