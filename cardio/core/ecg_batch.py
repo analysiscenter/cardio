@@ -320,7 +320,6 @@ class EcgBatch(ds.Batch):
         else:
             return super().load(src, fmt, components, *args, **kwargs)
 
-
     @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
     def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
         """Load given components from wfdb files.
@@ -1100,8 +1099,8 @@ class EcgBatch(ds.Batch):
             ax.set_title('Lead name: {}'.format("undefined" if meta["signame"][channel] == "None"
                                                 else meta["signame"][channel]))
             ax.set_xlabel("Time (sec)")
-            ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if ("units" in meta)
-                                                  and (meta["units"][channel] is not None) else "undefined"))
+            ax.set_ylabel("Amplitude ({})".format("undefined" if meta["units"][channel] is None
+                                                  else meta["units"][channel]))
             ax.grid("on", which="major")
 
         if annotate:
