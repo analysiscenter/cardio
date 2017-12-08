@@ -55,11 +55,34 @@ def check_signames(signame, nsig):
     signame : list
         List of string names of signals / channels.
     """
-    if isinstance(signame, list) and len(signame) == nsig:
+    if isinstance(signame, (tuple, list)) and len(signame) == nsig:
         signame = [str(name) for name in signame]
     else:
-        signame = [str(number) for number in np.arange(nsig)]
-    return signame
+        signame = [str(number) for number in range(nsig)]
+    return np.array(signame)
+
+
+def check_units(units, nsig):
+    """Check that units are in proper format.
+
+    Check if units is a list of values with lenght
+    equal to number of channels.
+
+    Parameters
+    ----------
+    units : misc
+        Units from file.
+    nsig : int
+        Number of signals / channels.
+
+    Returns
+    -------
+    units : list
+        List of units of signal / channel.
+    """
+    if not (isinstance(units, (tuple, list)) and len(units) == nsig):
+        units = [None for number in range(nsig)]
+    return np.array(units)
 
 
 def load_wfdb(path, components, *args, **kwargs):
@@ -102,6 +125,7 @@ def load_wfdb(path, components, *args, **kwargs):
     meta.update(record_meta)
 
     meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["units"] = check_units(meta["units"], nsig)
 
     data = {"signal": signal,
             "annotation": annot,
@@ -189,6 +213,7 @@ def load_dicom(path, components, *args, **kwargs):
                      sequence.ChannelDefinitionSequence]
 
     meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["units"] = check_units(meta["units"], nsig)
 
     signal = signal_decoder(record, nsig)
 
@@ -239,6 +264,7 @@ def load_edf(path, components, *args, **kwargs):
     meta.update(record.getHeader())
 
     meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["units"] = check_units(meta["units"], nsig)
 
     signal = np.array([record.readSignal(i) for i in range(nsig)])
 
@@ -282,6 +308,7 @@ def load_wav(path, components, *args, **kwargs):
 
     meta["fs"] = fs
     meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["units"] = check_units(meta["units"], nsig)
 
     data = {"signal": signal,
             "annotation": annot,

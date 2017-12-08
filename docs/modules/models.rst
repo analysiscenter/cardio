@@ -147,7 +147,7 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
       .split_signals(3000, 3000)
       .binarize_labels()
       .apply(np.transpose , axes=[0, 2, 1])
-      .ravel()
+      .unstack_signals()
       .get_targets('true_targets')
       .train_model('fft_model', make_data=make_data, save_to=V("loss_history"), mode="a")
       .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=100, prefetch=0, lazy=True)
