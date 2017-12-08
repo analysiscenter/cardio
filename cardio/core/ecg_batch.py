@@ -1095,12 +1095,12 @@ class EcgBatch(ds.Batch):
         figsize = (subplot_size[0], subplot_size[1] * num_channels)
         _, axes = plt.subplots(num_channels, 1, squeeze=False, figsize=figsize)
         for channel, (ax,) in enumerate(axes):
+            lead_name = "undefined" if meta["signame"][channel] == "None" else meta["signame"][channel]
+            units = "undefined" if meta["units"][channel] is None else meta["units"][channel]
             ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
-            ax.set_title('Lead name: {}'.format("undefined" if meta["signame"][channel] == "None"
-                                                else meta["signame"][channel]))
+            ax.set_title('Lead name: {}'.format(lead_name))
             ax.set_xlabel("Time (sec)")
-            ax.set_ylabel("Amplitude ({})".format("undefined" if meta["units"][channel] is None
-                                                  else meta["units"][channel]))
+            ax.set_ylabel("Amplitude ({})".format(units))
             ax.grid("on", which="major")
 
         if annotate:
