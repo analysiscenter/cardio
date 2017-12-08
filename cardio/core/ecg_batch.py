@@ -1058,7 +1058,7 @@ class EcgBatch(ds.Batch):
         self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
                                                                          bt.T_STATES))
 
-    def show_ecg(self, index=None, start=0, end=None, annotate=False, subplot_size=(10, 4)):
+    def show_ecg(self, index=None, start=0, end=None, annotate=False, subplot_size=(10, 4)):  # pylint: disable=too-many-locals, line-too-long
         """Plot an ECG signal.
 
         Optionally highlight QRS complexes along with P and T waves. Each
