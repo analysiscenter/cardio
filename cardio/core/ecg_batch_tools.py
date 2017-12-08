@@ -81,7 +81,7 @@ def load_wfdb(path, components, *args, **kwargs):
     """
     _ = args
 
-    ann_ext = kwargs["ann_ext"]
+    ann_ext = kwargs.get("ann_ext")
 
     path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
