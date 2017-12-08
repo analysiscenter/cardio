@@ -241,9 +241,9 @@ class EcgBatch(ds.Batch):  # pylint: disable=too-many-public-methods,too-many-in
     def load(self, src=None, fmt=None, components=None, ann_ext=None, *args, **kwargs):
         """Load given batch components from source.
 
-        Most of the EcgBatch actions work under assumption that both 
+        Most of the EcgBatch actions work under assumption that both
         signal and meta components were loaded. In case this assumption
-        is not fulfilled, normal operation of the actions is not 
+        is not fulfilled, normal operation of the actions is not
         guaranteed.
 
         Parameters

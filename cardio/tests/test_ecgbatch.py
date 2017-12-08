@@ -120,7 +120,7 @@ class TestEcgBatchLoad():
         assert isinstance(batch.meta[0], dict)
         del batch
 
-    def test_load_wfdb_annotation(self, setup_module_load):
+    def test_load_wfdb_annotation(self, setup_module_load): #pylint: disable=redefined-outer-name
         """
         Testing wfdb loader for annotation.
         """
