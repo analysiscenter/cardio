@@ -27,7 +27,7 @@ def setup_module_load(request):
     # REFERENCE.csv
 
     if np.all([os.path.isfile(os.path.join(path, file)) for file in files]):
-        ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+        ind = ds.FilesIndex(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
     else:
         raise FileNotFoundError("Test files not found in 'tests/data/'!")
 
@@ -45,7 +45,7 @@ def setup_class_methods(request):
     Fixture to setup class to test EcgBatch methods separately.
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
-    ind = ds.FilesIndex(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+    ind = ds.FilesIndex(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
     batch_loaded = (EcgBatch(ind, unique_labels=["A", "O", "N"])
                     .load(fmt="wfdb", components=["signal", "annotation", "meta"]))
 
@@ -63,7 +63,7 @@ def setup_class_dataset(request):
     Fixture to setup class to test EcgBatch methods in pipeline.
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
-    ecg_dataset = EcgDataset(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+    ecg_dataset = EcgDataset(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
 
     def teardown_class_dataset():
         """
@@ -80,7 +80,7 @@ def setup_class_pipeline(request):
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
     target_path = os.path.join(path, "REFERENCE.csv")
-    ecg_pipeline = (EcgDataset(path=os.path.join(path, '*.hea'), no_ext=True, sort=True)
+    ecg_pipeline = (EcgDataset(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
                     .p
                     .load(src=None, fmt="wfdb", components=["signal", "annotation", "meta"])
                     .load(src=target_path, fmt="csv", components=["target"]))
@@ -120,6 +120,95 @@ class TestEcgBatchLoad():
         assert isinstance(batch.meta[0], dict)
         del batch
 
+    def test_load_wfdb_annotation(self, setup_module_load): #pylint: disable=redefined-outer-name
+        """
+        Testing wfdb loader for annotation.
+        """
+        # Arrange
+        path = setup_module_load[1]
+        ind = ds.FilesIndex(path=os.path.join(path, 'sel100.hea'), no_ext=True, sort=True)
+        batch = EcgBatch(ind)
+        # Act
+        batch = batch.load(fmt="wfdb", components=["signal", "annotation", "meta"], ann_ext="pu1")
+        # Assert
+        assert isinstance(batch.signal, np.ndarray)
+        assert isinstance(batch.meta, np.ndarray)
+        assert isinstance(batch.annotation, np.ndarray)
+        assert batch.signal.shape == (1,)
+        assert batch.annotation.shape == (1,)
+        assert batch.meta.shape == (1,)
+        assert isinstance(batch.signal[0], np.ndarray)
+        assert isinstance(batch.annotation[0], dict)
+        assert isinstance(batch.meta[0], dict)
+        assert 'annsamp' in batch.annotation[0]
+        assert 'anntype' in batch.annotation[0]
+        del batch
+
+    def test_load_dicom(self, setup_module_load): #pylint: disable=redefined-outer-name
+        """
+        Testing DICOM loader.
+        """
+        # Arrange
+        path = setup_module_load[1]
+        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.dcm'), no_ext=True, sort=True)
+        batch = EcgBatch(ind)
+        # Act
+        batch = batch.load(fmt="dicom", components=["signal", "annotation", "meta"])
+        # Assert
+        assert isinstance(batch.signal, np.ndarray)
+        assert isinstance(batch.meta, np.ndarray)
+        assert isinstance(batch.annotation, np.ndarray)
+        assert batch.signal.shape == (1,)
+        assert batch.annotation.shape == (1,)
+        assert batch.meta.shape == (1,)
+        assert isinstance(batch.signal[0], np.ndarray)
+        assert isinstance(batch.annotation[0], dict)
+        assert isinstance(batch.meta[0], dict)
+        del batch
+
+    def test_load_edf(self, setup_module_load): #pylint: disable=redefined-outer-name
+        """
+        Testing EDF loader.
+        """
+        # Arrange
+        path = setup_module_load[1]
+        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.edf'), no_ext=True, sort=True)
+        batch = EcgBatch(ind)
+        # Act
+        batch = batch.load(fmt="edf", components=["signal", "annotation", "meta"])
+        # Assert
+        assert isinstance(batch.signal, np.ndarray)
+        assert isinstance(batch.meta, np.ndarray)
+        assert isinstance(batch.annotation, np.ndarray)
+        assert batch.signal.shape == (1,)
+        assert batch.annotation.shape == (1,)
+        assert batch.meta.shape == (1,)
+        assert isinstance(batch.signal[0], np.ndarray)
+        assert isinstance(batch.annotation[0], dict)
+        assert isinstance(batch.meta[0], dict)
+        del batch
+
+    def test_load_wav(self, setup_module_load): #pylint: disable=redefined-outer-name
+        """
+        Testing EDF loader.
+        """
+        # Arrange
+        path = setup_module_load[1]
+        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.wav'), no_ext=True, sort=True)
+        batch = EcgBatch(ind)
+        # Act
+        batch = batch.load(fmt="wav", components=["signal", "annotation", "meta"])
+        # Assert
+        assert isinstance(batch.signal, np.ndarray)
+        assert isinstance(batch.meta, np.ndarray)
+        assert isinstance(batch.annotation, np.ndarray)
+        assert batch.signal.shape == (1,)
+        assert batch.annotation.shape == (1,)
+        assert batch.meta.shape == (1,)
+        assert isinstance(batch.signal[0], np.ndarray)
+        assert isinstance(batch.annotation[0], dict)
+        assert isinstance(batch.meta[0], dict)
+        del batch
 
 class TestEcgBatchSingleMethods:
     """

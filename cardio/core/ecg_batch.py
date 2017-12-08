@@ -289,6 +289,11 @@ class EcgBatch(ds.Batch):
     def load(self, src=None, fmt=None, components=None, ann_ext=None, *args, **kwargs):
         """Load given batch components from source.
 
+        Most of the EcgBatch actions work under assumption that both
+        signal and meta components were loaded. In case this assumption
+        is not fulfilled, normal operation of the actions is not
+        guaranteed.
+
         Parameters
         ----------
         src : misc, optional
@@ -310,13 +315,14 @@ class EcgBatch(ds.Batch):
         components = np.asarray(components).ravel()
         if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
             return self._load_labels(src)
-        elif fmt == "wfdb":
-            return self._load_wfdb(src=src, components=components, ann_ext=ann_ext, *args, **kwargs)
+        elif fmt in ["wfdb", "dicom", "edf", "wav"]:
+            return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
         else:
             return super().load(src, fmt, components, *args, **kwargs)
 
+
     @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
-    def _load_wfdb(self, index, src=None, components=None, ann_ext=None):
+    def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
         """Load given components from wfdb files.
 
         Parameters
@@ -324,6 +330,8 @@ class EcgBatch(ds.Batch):
         src : misc, optional
             Source to load components from. If ``None``, path from
             ``FilesIndex`` is used.
+        fmt : str, optional
+            Source format.
         components : iterable, optional
             Components to load.
         ann_ext: str, optional
@@ -340,13 +348,16 @@ class EcgBatch(ds.Batch):
             If source path is not specified and batch's ``index`` is not a
             ``FilesIndex``.
         """
+        loaders = {"wfdb": bt.load_wfdb, "dicom": bt.load_dicom,
+                   "edf": bt.load_edf, "wav": bt.load_wav}
+
         if src is not None:
             path = src[index]
         elif isinstance(self.index, ds.FilesIndex):
             path = self.index.get_fullpath(index)  # pylint: disable=no-member
         else:
             raise ValueError("Source path is not specified")
-        return bt.load_wfdb(path, components, ann_ext)
+        return loaders[fmt](path, components, *args, **kwargs)
 
     def _assemble_load(self, results, *args, **kwargs):
         """Concatenate results of different workers and update self.
@@ -689,8 +700,7 @@ class EcgBatch(ds.Batch):
         Returns
         -------
         batch : EcgBatch
-            Batch of split signals. Changes ``self.signal`` and ``self.meta``
-            inplace.
+            Batch of split signals. Changes ``self.signal`` inplace.
 
         Raises
         ------
@@ -710,7 +720,6 @@ class EcgBatch(ds.Batch):
             self.signal[i] = tmp_sig[np.newaxis, ...]
         else:
             self.signal[i] = bt.split_signals(self.signal[i], length, step)
-        self.meta[i]["siglen"] = length
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
@@ -734,8 +743,7 @@ class EcgBatch(ds.Batch):
         Returns
         -------
         batch : EcgBatch
-            Batch of split signals. Changes ``self.signal`` and ``self.meta``
-            inplace.
+            Batch of split signals. Changes ``self.signal`` inplace.
 
         Raises
         ------
@@ -756,7 +764,6 @@ class EcgBatch(ds.Batch):
             self.signal[i] = np.tile(tmp_sig, (n_segments, 1, 1))
         else:
             self.signal[i] = bt.random_split_signals(self.signal[i], length, n_segments)
-        self.meta[i]["siglen"] = length
 
     def _safe_fs_resample(self, index, fs):
         """Resample 2-D signal along axis 1 (signal axis) to given sampling
@@ -778,7 +785,6 @@ class EcgBatch(ds.Batch):
         self._check_2d(self.signal[i])
         new_len = max(1, int(fs * self.signal[i].shape[1] / self.meta[i]["fs"]))
         self.meta[i]["fs"] = fs
-        self.meta[i]["siglen"] = new_len
         self.signal[i] = bt.resample_signals(self.signal[i], new_len)
 
     @ds.action
@@ -1091,8 +1097,11 @@ class EcgBatch(ds.Batch):
         _, axes = plt.subplots(num_channels, 1, squeeze=False, figsize=figsize)
         for channel, (ax,) in enumerate(axes):
             ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
+            ax.set_title('Lead name: {}'.format("undefined" if meta["signame"][channel] == "None"
+                                                else meta["signame"][channel]))
             ax.set_xlabel("Time (sec)")
-            ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if "units" in meta else "mV"))
+            ax.set_ylabel("Amplitude ({})".format(meta["units"][channel] if ("units" in meta)
+                                                  and (meta["units"][channel] is not None) else "undefined"))
             ax.grid("on", which="major")
 
         if annotate:
