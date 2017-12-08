@@ -18,15 +18,15 @@ Input/output methods
 	.. automethod:: cardio.EcgBatch.dump
 	.. automethod:: cardio.EcgBatch.show_ecg
 
+Batch processing
+^^^^^^^^^^^^^^^^
+	.. automethod:: cardio.EcgBatch.deepcopy
+	.. automethod:: cardio.EcgBatch.merge
+
 Batch modifications
 ^^^^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.EcgBatch.apply_transform
 	.. automethod:: cardio.EcgBatch.apply_for_each_channel
-
-Batch processing
-^^^^^^^^^^^^^^^^
-	.. automethod:: cardio.EcgBatch.merge
-	.. automethod:: cardio.EcgBatch.deepcopy
 	
 Label processing
 ^^^^^^^^^^^^^^^^
