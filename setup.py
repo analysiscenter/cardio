@@ -33,7 +33,9 @@ setup(
         'pywavelets>=0.5.2',
         'scikit-learn>=0.19.0',
         'numba>=0.35.0',
-        'blosc>=1.5.0'
+        'blosc>=1.5.0',
+        'pydicom>=0.9.9',
+        'pyedflib>=0.1.11',
     ],
     extras_require={
         'tensorflow': ['tensorflow>=1.4'],
