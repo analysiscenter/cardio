@@ -23,8 +23,8 @@ Batch processing
 	.. automethod:: cardio.EcgBatch.deepcopy
 	.. automethod:: cardio.EcgBatch.merge
 
-Batch modifications
-^^^^^^^^^^^^^^^^^^^
+Versatile components processing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.EcgBatch.apply_transform
 	.. automethod:: cardio.EcgBatch.apply_for_each_channel
 	

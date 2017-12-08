@@ -406,27 +406,6 @@ class EcgBatch(ds.Batch):
 
     # Batch processing
 
-    def deepcopy(self):
-        """Return a deep copy of the batch.
-
-        Constructs a new ``EcgBatch`` instance and then recursively copies all
-        the objects found in the original batch, except the ``pipeline``,
-        which remains unchanged.
-
-        Returns
-        -------
-        batch : EcgBatch
-            A deep copy of the batch.
-        """
-        pipeline = self.pipeline  # pylint: disable=access-member-before-definition
-        self.pipeline = None  # pylint: disable=attribute-defined-outside-init
-        dump_batch = dill.dumps(self)
-        self.pipeline = pipeline  # pylint: disable=attribute-defined-outside-init
-
-        restored_batch = dill.loads(dump_batch)
-        restored_batch.pipeline = pipeline
-        return restored_batch
-
     @classmethod
     def merge(cls, batches, batch_size=None):
         """Concatenate a list of ``EcgBatch`` instances and split the result
@@ -482,7 +461,7 @@ class EcgBatch(ds.Batch):
             rest_batch._data = tuple(comp[batch_size:] for comp in data)  # pylint: disable=protected-access, attribute-defined-outside-init, line-too-long
         return new_batch, rest_batch
 
-    # Batch modifications
+    # Versatile components processing
 
     def _init_component(self, *args, **kwargs):
         """Create and preallocate a new attribute with the name ``dst`` if it
