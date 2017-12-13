@@ -606,6 +606,34 @@ class EcgBatch(ds.Batch):
 
     # Signal processing
 
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def _filter_channels(self, index, names=None, indices=None, invert_mask=False):
+        i = self.get_pos(None, "signal", index)
+        channels_names = np.asarray(self.meta[i]["signame"])
+        mask = np.zeros_like(channels_names, dtype=np.bool)
+        if names is None and indices is None:
+            raise ValueError("Both names and indices cannot be empty")
+        if names is not None:
+            names = np.asarray(names)
+            mask |= np.in1d(channels_names, names)
+        if indices is not None:
+            indices = np.asarray(indices)
+            mask |= np.array([i in indices for i in range(len(channels_names))])
+        if invert_mask:
+            mask = ~mask
+        if np.sum(mask) == 0:
+            raise ValueError("All channels cannot be dropped")
+        self.signal[i] = self.signal[i][mask]
+        self.meta[i]["signame"] = channels_names[mask]
+
+    @ds.action
+    def drop_channels(self, names=None, indices=None):
+        return self._filter_channels(names, indices, invert_mask=True)
+
+    @ds.action
+    def keep_channels(self, names=None, indices=None):
+        return self._filter_channels(names, indices, invert_mask=False)
+
     @ds.action
     def convolve_signals(self, kernel, padding_mode="edge", axis=-1, **kwargs):
         """Convolve signals with given ``kernel``.
