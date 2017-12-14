@@ -635,6 +635,14 @@ class EcgBatch(ds.Batch):
         return self._filter_channels(names, indices, invert_mask=False)
 
     @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def rename_channels(self, index, rename_dict):
+        i = self.get_pos(None, "signal", index)
+        old_names = self.meta[i]["signame"]
+        new_names = np.array([rename_dict.get(name, name) for name in old_names], dtype=object)
+        self.meta[i]["signame"] = new_names
+
+    @ds.action
     def convolve_signals(self, kernel, padding_mode="edge", axis=-1, **kwargs):
         """Convolve signals with given ``kernel``.
 
