@@ -608,6 +608,36 @@ class EcgBatch(ds.Batch):
 
     @ds.inbatch_parallel(init="indices", target="threads")
     def _filter_channels(self, index, names=None, indices=None, invert_mask=False):
+        """Build and apply a boolean mask for each channel of a signal based
+        on provided channels ``names`` and ``indices``.
+
+        Mask value for a channel is set to ``True`` if its name or index is
+        contained in ``names`` or ``indices`` respectively. The mask can be
+        inverted before its application if ``invert_mask`` flag is set to
+        ``True``.
+
+        Parameters
+        ----------
+        names : str or list or tuple, optional
+            Channels names used to construct the mask.
+        indices : int or list or tuple, optional
+            Channels indices used to construct the mask.
+        invert_mask : bool, optional
+            Specifies whether to invert the mask before its application.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with filtered channels. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If both ``names`` and ``indices`` are empty.
+        ValueError
+            If all channels should be dropped.
+        """
         i = self.get_pos(None, "signal", index)
         channels_names = np.asarray(self.meta[i]["signame"])
         mask = np.zeros_like(channels_names, dtype=np.bool)
@@ -628,10 +658,56 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     def drop_channels(self, names=None, indices=None):
+        """Drop channels whose names are in ``names`` or whose indices are in
+        ``indices``.
+
+        Parameters
+        ----------
+        names : str or list or tuple, optional
+            Names of channels to be dropped from a batch.
+        indices : int or list or tuple, optional
+            Indices of channels to be dropped from a batch.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with dropped channels. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If both ``names`` and ``indices`` are empty.
+        ValueError
+            If all channels should be dropped.
+        """
         return self._filter_channels(names, indices, invert_mask=True)
 
     @ds.action
     def keep_channels(self, names=None, indices=None):
+        """Drop channels whose names are not in ``names`` and whose indices
+        are not in ``indices``.
+
+        Parameters
+        ----------
+        names : str or list or tuple, optional
+            Names of channels to be kept in a batch.
+        indices : int or list or tuple, optional
+            Indices of channels to be kept in a batch.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with dropped channels. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If both ``names`` and ``indices`` are empty.
+        ValueError
+            If all channels should be dropped.
+        """
         return self._filter_channels(names, indices, invert_mask=False)
 
     @ds.action
