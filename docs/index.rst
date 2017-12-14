@@ -66,7 +66,7 @@ Here is an example of pipeline that loads ECG signals, makes preprocessing and t
         .load(components=["signal", "meta"], fmt="wfdb")
         .load(components="target", fmt="csv", src=LABELS_PATH)
         .drop_labels(["~"])
-        .replace_labels({"N": "NO", "O": "NO"})
+        .rename_labels({"N": "NO", "O": "NO"})
         .flip_signals()
         .random_resample_signals("normal", loc=300, scale=10)
         .random_split_signals(2048, {"A": 9, "NO": 3})

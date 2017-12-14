@@ -341,7 +341,7 @@ class TestEcgBatchPipelineMethods:
                 .drop_labels(["A"])
                 .flip_signals()
                 .split_signals(4500, 4499)
-                .replace_labels({"A":"A", "N":"NonA", "O":"NonA"}))
+                .rename_labels({"A":"A", "N":"NonA", "O":"NonA"}))
 
         batch = ppln.next_batch(len(ppln), shuffle=False)
         assert len(batch) == 4
