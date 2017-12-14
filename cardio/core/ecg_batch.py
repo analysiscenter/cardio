@@ -598,21 +598,21 @@ class EcgBatch(ds.Batch):
         return self._filter_batch(keep_mask)
 
     @ds.action
-    def replace_labels(self, replace_dict):
-        """Replace labels with corresponding values in ``replace_dict``.
+    def rename_labels(self, rename_dict):
+        """Rename labels with corresponding values from ``rename_dict``.
 
         Parameters
         ----------
-        replace_dict : dict
+        rename_dict : dict
             Dictionary containing ``(old label : new label)`` pairs.
 
         Returns
         -------
         batch : EcgBatch
-            Batch with replaced labels. Changes ``self.target`` inplace.
+            Batch with renamed labels. Changes ``self.target`` inplace.
         """
-        self.unique_labels = np.array(sorted({replace_dict.get(t, t) for t in self.unique_labels}))
-        self.target = np.array([replace_dict.get(t, t) for t in self.target])
+        self.unique_labels = np.array(sorted({rename_dict.get(t, t) for t in self.unique_labels}))
+        self.target = np.array([rename_dict.get(t, t) for t in self.target])
         return self
 
     @ds.action

@@ -32,7 +32,7 @@ Labels processing
 ^^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.EcgBatch.drop_labels
 	.. automethod:: cardio.EcgBatch.keep_labels
-	.. automethod:: cardio.EcgBatch.replace_labels
+	.. automethod:: cardio.EcgBatch.rename_labels
 	.. automethod:: cardio.EcgBatch.binarize_labels
 
 Channels processing
