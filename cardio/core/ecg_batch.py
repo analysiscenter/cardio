@@ -525,8 +525,9 @@ class EcgBatch(ds.Batch):
         Raises
         ------
         SkipBatchException
-            If all batch data was dropped. This exception is caught in the
-            ``pipeline``.
+            If all batch data was dropped. If the batch is created by a
+            ``pipeline``, its processing will be stopped and the ``pipeline``
+            will create the next batch.
         """
         indices = self.indices[keep_mask]
         if len(indices) == 0:
@@ -540,15 +541,26 @@ class EcgBatch(ds.Batch):
     def drop_labels(self, drop_list):
         """Drop elements whose labels are in ``drop_list``.
 
+        This method creates a new batch and updates only components and
+        ``unique_labels`` attribute. The information stored in other
+        attributes will be lost.
+
         Parameters
         ----------
         drop_list : list
-            Labels to be dropped from batch.
+            Labels to be dropped from a batch.
 
         Returns
         -------
         batch : EcgBatch
             Filtered batch. Creates a new ``EcgBatch`` instance.
+
+        Raises
+        ------
+        SkipBatchException
+            If all batch data was dropped. If the batch is created by a
+            ``pipeline``, its processing will be stopped and the ``pipeline``
+            will create the next batch.
         """
         drop_arr = np.asarray(drop_list)
         self.unique_labels = np.setdiff1d(self.unique_labels, drop_arr)
@@ -557,17 +569,28 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     def keep_labels(self, keep_list):
-        """Keep elements whose labels are in ``keep_list``.
+        """Drop elements whose labels are not in ``keep_list``.
+
+        This method creates a new batch and updates only components and
+        ``unique_labels`` attribute. The information stored in other
+        attributes will be lost.
 
         Parameters
         ----------
         keep_list : list
-            Labels to be kept in batch.
+            Labels to be kept in a batch.
 
         Returns
         -------
         batch : EcgBatch
             Filtered batch. Creates a new ``EcgBatch`` instance.
+
+        Raises
+        ------
+        SkipBatchException
+            If all batch data was dropped. If the batch is created by a
+            ``pipeline``, its processing will be stopped and the ``pipeline``
+            will create the next batch.
         """
         keep_arr = np.asarray(keep_list)
         self.unique_labels = np.intersect1d(self.unique_labels, keep_arr)
