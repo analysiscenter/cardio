@@ -637,6 +637,19 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def rename_channels(self, index, rename_dict):
+        """Rename channels with corresponding values from ``rename_dict``.
+
+        Parameters
+        ----------
+        rename_dict : dict
+            Dictionary containing ``(old channel name : new channel name)``
+            pairs.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with renamed channels. Changes ``self.meta`` inplace.
+        """
         i = self.get_pos(None, "signal", index)
         old_names = self.meta[i]["signame"]
         new_names = np.array([rename_dict.get(name, name) for name in old_names], dtype=object)
