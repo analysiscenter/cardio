@@ -502,7 +502,7 @@ class EcgBatch(ds.Batch):
         dst_data = np.array([func(slc, *args, **kwargs) for slc in src_data])
         getattr(self, dst)[i] = dst_data
 
-    # Label processing
+    # Labels processing
 
     def _filter_batch(self, keep_mask):
         """Drop elements from batch with corresponding ``False`` values in
@@ -604,7 +604,7 @@ class EcgBatch(ds.Batch):
         self.target = self.label_binarizer.transform(self.target)
         return self
 
-    # Signal processing
+    # Channels processing
 
     @ds.inbatch_parallel(init="indices", target="threads")
     def _filter_channels(self, index, names=None, indices=None, invert_mask=False):
@@ -730,6 +730,8 @@ class EcgBatch(ds.Batch):
         old_names = self.meta[i]["signame"]
         new_names = np.array([rename_dict.get(name, name) for name in old_names], dtype=object)
         self.meta[i]["signame"] = new_names
+
+    # Signal processing
 
     @ds.action
     def convolve_signals(self, kernel, padding_mode="edge", axis=-1, **kwargs):
