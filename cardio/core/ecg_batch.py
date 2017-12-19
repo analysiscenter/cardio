@@ -502,7 +502,7 @@ class EcgBatch(ds.Batch):
         dst_data = np.array([func(slc, *args, **kwargs) for slc in src_data])
         getattr(self, dst)[i] = dst_data
 
-    # Label processing
+    # Labels processing
 
     def _filter_batch(self, keep_mask):
         """Drop elements from batch with corresponding ``False`` values in
@@ -525,8 +525,9 @@ class EcgBatch(ds.Batch):
         Raises
         ------
         SkipBatchException
-            If all batch data was dropped. This exception is caught in the
-            ``pipeline``.
+            If all batch data was dropped. If the batch is created by a
+            ``pipeline``, its processing will be stopped and the ``pipeline``
+            will create the next batch.
         """
         indices = self.indices[keep_mask]
         if len(indices) == 0:
@@ -540,15 +541,26 @@ class EcgBatch(ds.Batch):
     def drop_labels(self, drop_list):
         """Drop elements whose labels are in ``drop_list``.
 
+        This method creates a new batch and updates only components and
+        ``unique_labels`` attribute. The information stored in other
+        attributes will be lost.
+
         Parameters
         ----------
         drop_list : list
-            Labels to be dropped from batch.
+            Labels to be dropped from a batch.
 
         Returns
         -------
         batch : EcgBatch
             Filtered batch. Creates a new ``EcgBatch`` instance.
+
+        Raises
+        ------
+        SkipBatchException
+            If all batch data was dropped. If the batch is created by a
+            ``pipeline``, its processing will be stopped and the ``pipeline``
+            will create the next batch.
         """
         drop_arr = np.asarray(drop_list)
         self.unique_labels = np.setdiff1d(self.unique_labels, drop_arr)
@@ -557,17 +569,28 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     def keep_labels(self, keep_list):
-        """Keep elements whose labels are in ``keep_list``.
+        """Drop elements whose labels are not in ``keep_list``.
+
+        This method creates a new batch and updates only components and
+        ``unique_labels`` attribute. The information stored in other
+        attributes will be lost.
 
         Parameters
         ----------
         keep_list : list
-            Labels to be kept in batch.
+            Labels to be kept in a batch.
 
         Returns
         -------
         batch : EcgBatch
             Filtered batch. Creates a new ``EcgBatch`` instance.
+
+        Raises
+        ------
+        SkipBatchException
+            If all batch data was dropped. If the batch is created by a
+            ``pipeline``, its processing will be stopped and the ``pipeline``
+            will create the next batch.
         """
         keep_arr = np.asarray(keep_list)
         self.unique_labels = np.intersect1d(self.unique_labels, keep_arr)
@@ -575,21 +598,21 @@ class EcgBatch(ds.Batch):
         return self._filter_batch(keep_mask)
 
     @ds.action
-    def replace_labels(self, replace_dict):
-        """Replace labels with corresponding values in ``replace_dict``.
+    def rename_labels(self, rename_dict):
+        """Rename labels with corresponding values from ``rename_dict``.
 
         Parameters
         ----------
-        replace_dict : dict
+        rename_dict : dict
             Dictionary containing ``(old label : new label)`` pairs.
 
         Returns
         -------
         batch : EcgBatch
-            Batch with replaced labels. Changes ``self.target`` inplace.
+            Batch with renamed labels. Changes ``self.target`` inplace.
         """
-        self.unique_labels = np.array(sorted({replace_dict.get(t, t) for t in self.unique_labels}))
-        self.target = np.array([replace_dict.get(t, t) for t in self.target])
+        self.unique_labels = np.array(sorted({rename_dict.get(t, t) for t in self.unique_labels}))
+        self.target = np.array([rename_dict.get(t, t) for t in self.target])
         return self
 
     @ds.action
@@ -603,6 +626,133 @@ class EcgBatch(ds.Batch):
         """
         self.target = self.label_binarizer.transform(self.target)
         return self
+
+    # Channels processing
+
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def _filter_channels(self, index, names=None, indices=None, invert_mask=False):
+        """Build and apply a boolean mask for each channel of a signal based
+        on provided channels ``names`` and ``indices``.
+
+        Mask value for a channel is set to ``True`` if its name or index is
+        contained in ``names`` or ``indices`` respectively. The mask can be
+        inverted before its application if ``invert_mask`` flag is set to
+        ``True``.
+
+        Parameters
+        ----------
+        names : str or list or tuple, optional
+            Channels names used to construct the mask.
+        indices : int or list or tuple, optional
+            Channels indices used to construct the mask.
+        invert_mask : bool, optional
+            Specifies whether to invert the mask before its application.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with filtered channels. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If both ``names`` and ``indices`` are empty.
+        ValueError
+            If all channels should be dropped.
+        """
+        i = self.get_pos(None, "signal", index)
+        channels_names = np.asarray(self.meta[i]["signame"])
+        mask = np.zeros_like(channels_names, dtype=np.bool)
+        if names is None and indices is None:
+            raise ValueError("Both names and indices cannot be empty")
+        if names is not None:
+            names = np.asarray(names)
+            mask |= np.in1d(channels_names, names)
+        if indices is not None:
+            indices = np.asarray(indices)
+            mask |= np.array([i in indices for i in range(len(channels_names))])
+        if invert_mask:
+            mask = ~mask
+        if np.sum(mask) == 0:
+            raise ValueError("All channels cannot be dropped")
+        self.signal[i] = self.signal[i][mask]
+        self.meta[i]["signame"] = channels_names[mask]
+
+    @ds.action
+    def drop_channels(self, names=None, indices=None):
+        """Drop channels whose names are in ``names`` or whose indices are in
+        ``indices``.
+
+        Parameters
+        ----------
+        names : str or list or tuple, optional
+            Names of channels to be dropped from a batch.
+        indices : int or list or tuple, optional
+            Indices of channels to be dropped from a batch.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with dropped channels. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If both ``names`` and ``indices`` are empty.
+        ValueError
+            If all channels should be dropped.
+        """
+        return self._filter_channels(names, indices, invert_mask=True)
+
+    @ds.action
+    def keep_channels(self, names=None, indices=None):
+        """Drop channels whose names are not in ``names`` and whose indices
+        are not in ``indices``.
+
+        Parameters
+        ----------
+        names : str or list or tuple, optional
+            Names of channels to be kept in a batch.
+        indices : int or list or tuple, optional
+            Indices of channels to be kept in a batch.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with dropped channels. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If both ``names`` and ``indices`` are empty.
+        ValueError
+            If all channels should be dropped.
+        """
+        return self._filter_channels(names, indices, invert_mask=False)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def rename_channels(self, index, rename_dict):
+        """Rename channels with corresponding values from ``rename_dict``.
+
+        Parameters
+        ----------
+        rename_dict : dict
+            Dictionary containing ``(old channel name : new channel name)``
+            pairs.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with renamed channels. Changes ``self.meta`` inplace.
+        """
+        i = self.get_pos(None, "signal", index)
+        old_names = self.meta[i]["signame"]
+        new_names = np.array([rename_dict.get(name, name) for name in old_names], dtype=object)
+        self.meta[i]["signame"] = new_names
 
     # Signal processing
 

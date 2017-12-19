@@ -28,12 +28,18 @@ Versatile components processing
 	.. automethod:: cardio.EcgBatch.apply_transform
 	.. automethod:: cardio.EcgBatch.apply_for_each_channel
 	
-Label processing
-^^^^^^^^^^^^^^^^
+Labels processing
+^^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.EcgBatch.drop_labels
 	.. automethod:: cardio.EcgBatch.keep_labels
-	.. automethod:: cardio.EcgBatch.replace_labels
+	.. automethod:: cardio.EcgBatch.rename_labels
 	.. automethod:: cardio.EcgBatch.binarize_labels
+
+Channels processing
+^^^^^^^^^^^^^^^^^^^
+	.. automethod:: cardio.EcgBatch.drop_channels
+	.. automethod:: cardio.EcgBatch.keep_channels
+	.. automethod:: cardio.EcgBatch.rename_channels
 
 Signal processing
 ^^^^^^^^^^^^^^^^^

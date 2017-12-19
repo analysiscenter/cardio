@@ -2,12 +2,11 @@
 
 import os
 import struct
+
 import numpy as np
-from scipy.io import wavfile
-
-import pywt
 from numba import njit
-
+from scipy.io import wavfile
+import pywt
 import wfdb
 import dicom
 import pyedflib

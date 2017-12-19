@@ -51,7 +51,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
             .load(components=["signal", "meta"], fmt="wfdb")
             .load(components="target", fmt="csv", src=labels_path)
             .drop_labels(["~"])
-            .replace_labels({"N": "NO", "O": "NO"})
+            .rename_labels({"N": "NO", "O": "NO"})
             .flip_signals()
             .random_resample_signals("normal", loc=300, scale=10)
             .random_split_signals(2048, {"A": 9, "NO": 3})
