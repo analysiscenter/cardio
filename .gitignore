@@ -1,6 +1,5 @@
 *.pyc
-.cache/*
-__pycache__
-__pycache__/*
-*/__pycache__/*
-.ipynb_checkpoints
+docs/_build/
+.cache/
+__pycache__/
+.ipynb_checkpoints/
