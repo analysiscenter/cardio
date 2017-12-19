@@ -7,9 +7,12 @@ import numpy as np
 from numba import njit
 from scipy.io import wavfile
 import pywt
-import wfdb
 import dicom
 import pyedflib
+try:
+    import wfdb
+except ImportError:
+    pass
 
 # Constants
 
