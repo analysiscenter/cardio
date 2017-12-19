@@ -226,6 +226,8 @@ class EcgBatch(ds.Batch):
         is not fulfilled, normal operation of the actions is not
         guaranteed.
 
+        This method supports loading from wfdb, DICOM, EDF, wav and blosc.
+
         Parameters
         ----------
         src : misc, optional
