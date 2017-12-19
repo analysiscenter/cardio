@@ -113,8 +113,8 @@ def load_wfdb(path, components, *args, **kwargs):
 
     if "annotation" in components and ann_ext is not None:
         annotation = wfdb.rdann(path, ann_ext)
-        annot = {"annsamp": annotation.annsamp,
-                 "anntype": annotation.anntype}
+        annot = {"annsamp": annotation.sample,
+                 "anntype": annotation.symbol}
     else:
         annot = {}
 
