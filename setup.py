@@ -35,7 +35,6 @@ setup(
         'pywavelets>=0.5.2',
         'matplotlib>=2.1.0',
         'dill>=0.2.7.1',
-        'blosc>=1.5.0',
         'pydicom>=0.9.9',
         'pyedflib>=0.1.11',
     ],
