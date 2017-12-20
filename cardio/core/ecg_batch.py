@@ -490,7 +490,7 @@ class EcgBatch(ds.Batch):
             Transformed batch. If ``dst`` is ``str``, the corresponding
             attribute or component is changed inplace.
         """
-        if dst is not None and not hasattr(self, dst):
+        if isinstance(dst, str) and not hasattr(self, dst):
             setattr(self, dst, np.array([None] * len(self.index)))
         return super().apply_transform(func, *args, src=src, dst=dst, **kwargs)
 
