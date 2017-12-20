@@ -72,6 +72,8 @@ train_pipeline = (
 
 > `CardIO` supports python 3.5 or higher.
 
+> If you need to work with ECG signals in `wfdb` format, please, install `wfdb` package on your own. This package is not included in the `install_requires` list because it cannot be installed if not all of its requirements are already satisfied due to its `setup.py` file.
+
 
 ### Installation as a python package
 
