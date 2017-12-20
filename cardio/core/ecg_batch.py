@@ -475,12 +475,38 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     def apply_transform(self, func, *args, src="signal", dst="signal", **kwargs):
+        """Apply a function to each item in the batch.
+
+        Parameters
+        ----------
+        func : callable
+            A function to apply. Must accept an item of ``src`` as its first
+            argument if ``src`` is not ``None``.
+        src : str, array-like or None, optional
+            The source to get the data from. If ``src`` is ``str``, it is
+            treated as the batch attribute or component name. Defaults to
+            signal component.
+        dst : str, writeable array-like or None, optional
+            The source to put the result in. If ``dst`` is ``str``, it is
+            treated as the batch attribute or component name. Defaults to
+            signal component.
+        args : misc
+            Any additional positional arguments to ``func``.
+        kwargs : misc
+            Any additional named arguments to ``func``.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Transformed batch. If ``dst`` is ``str``, the corresponding
+            attribute or component is changed inplace.
+        """
         return super().apply_transform(func, *args, src=src, dst=dst, **kwargs)
 
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
     def apply_for_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
-        """Apply a function for each slice of a signal over the axis 0
+        """Apply a function to each slice of a signal over the axis 0
         (typically the channel axis).
 
         Parameters
@@ -488,9 +514,11 @@ class EcgBatch(ds.Batch):
         func : callable
             A function to apply. Must accept a signal as its first argument.
         src : str, optional
-            Batch attribute or component name to get the data from.
+            Batch attribute or component name to get the data from. Defaults
+            to signal component.
         dst : str, optional
-            Batch attribute or component name to put the result in.
+            Batch attribute or component name to put the result in. Defaults
+            to signal component.
         args : misc
             Any additional positional arguments to ``func``.
         kwargs : misc
