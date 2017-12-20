@@ -462,17 +462,6 @@ class EcgBatch(ds.Batch):
 
     # Versatile components processing
 
-    def _init_component(self, *args, **kwargs):
-        """Create and preallocate a new attribute with the name ``dst`` if it
-        does not exist and return batch indices."""
-        _ = args
-        dst = kwargs.get("dst")
-        if dst is None:
-            raise KeyError("dst argument must be specified")
-        if not hasattr(self, dst):
-            setattr(self, dst, np.array([None] * len(self.index)))
-        return self.indices
-
     @ds.action
     def apply_transform(self, func, *args, src="signal", dst="signal", **kwargs):
         """Apply a function to each item in the batch.
@@ -501,7 +490,20 @@ class EcgBatch(ds.Batch):
             Transformed batch. If ``dst`` is ``str``, the corresponding
             attribute or component is changed inplace.
         """
+        if dst is not None and not hasattr(self, dst):
+            setattr(self, dst, np.array([None] * len(self.index)))
         return super().apply_transform(func, *args, src=src, dst=dst, **kwargs)
+
+    def _init_component(self, *args, **kwargs):
+        """Create and preallocate a new attribute with the name ``dst`` if it
+        does not exist and return batch indices."""
+        _ = args
+        dst = kwargs.get("dst")
+        if dst is None:
+            raise KeyError("dst argument must be specified")
+        if not hasattr(self, dst):
+            setattr(self, dst, np.array([None] * len(self.index)))
+        return self.indices
 
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
