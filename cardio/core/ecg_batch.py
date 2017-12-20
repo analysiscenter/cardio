@@ -474,6 +474,10 @@ class EcgBatch(ds.Batch):
         return self.indices
 
     @ds.action
+    def apply_transform(self, func, *args, src="signal", dst="signal", **kwargs):
+        return super().apply_transform(func, *args, src=src, dst=dst, **kwargs)
+
+    @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
     def apply_for_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
         """Apply a function for each slice of a signal over the axis 0
