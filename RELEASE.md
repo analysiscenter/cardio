@@ -1,6 +1,6 @@
 # Release 0.2.0
 
-## Major Features And Improvements
+## Major Features and Improvements
 * ``load`` method now supports new signal formats:
 	* DICOM
 	* EDF
