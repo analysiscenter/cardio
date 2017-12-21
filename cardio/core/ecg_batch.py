@@ -28,7 +28,7 @@ TEMPLATE_DOCSTRING = """
     Compute {description} for each slice of a signal over the axis 0
     (typically the channel axis).
 
-    This method simply wraps ``apply_for_each_channel`` method by setting the
+    This method simply wraps ``apply_to_each_channel`` method by setting the
     ``func`` argument to ``{full_name}``.
 
     Parameters
@@ -52,7 +52,7 @@ TEMPLATE_DOCSTRING = dedent(TEMPLATE_DOCSTRING).strip()
 
 def add_actions(actions_dict, template_docstring):
     """Add new actions in ``EcgBatch`` by setting ``func`` argument in
-    ``EcgBatch.apply_for_each_channel`` method to given callables.
+    ``EcgBatch.apply_to_each_channel`` method to given callables.
 
     Parameters
     ----------
@@ -73,7 +73,7 @@ def add_actions(actions_dict, template_docstring):
         """Returned decorator."""
         for method_name, (func, full_name, description) in actions_dict.items():
             docstring = template_docstring.format(full_name=full_name, description=description)
-            method = partialmethod(cls.apply_for_each_channel, func)
+            method = partialmethod(cls.apply_to_each_channel, func)
             method.__doc__ = docstring
             setattr(cls, method_name, method)
         return cls
@@ -507,7 +507,7 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
-    def apply_for_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
+    def apply_to_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
         """Apply a function to each slice of a signal over the axis 0
         (typically the channel axis).
 
