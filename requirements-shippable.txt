@@ -1,6 +1,2 @@
-dill
-wfdb
-PyWavelets
-hmmlearn
-Keras>=2.0.0
-pyedflib
+pytest>=3.3.0
+.

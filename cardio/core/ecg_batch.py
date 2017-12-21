@@ -38,7 +38,7 @@ TEMPLATE_DOCSTRING = """
     Compute {description} for each slice of a signal over the axis 0
     (typically the channel axis).
 
-    This method simply wraps ``apply_for_each_channel`` method by setting the
+    This method simply wraps ``apply_to_each_channel`` method by setting the
     ``func`` argument to ``{full_name}``.
 
     Parameters
@@ -62,7 +62,7 @@ TEMPLATE_DOCSTRING = dedent(TEMPLATE_DOCSTRING).strip()
 
 def add_actions(actions_dict, template_docstring):
     """Add new actions in ``EcgBatch`` by setting ``func`` argument in
-    ``EcgBatch.apply_for_each_channel`` method to given callables.
+    ``EcgBatch.apply_to_each_channel`` method to given callables.
 
     Parameters
     ----------
@@ -83,7 +83,7 @@ def add_actions(actions_dict, template_docstring):
         """Returned decorator."""
         for method_name, (func, full_name, description) in actions_dict.items():
             docstring = template_docstring.format(full_name=full_name, description=description)
-            method = partialmethod(cls.apply_for_each_channel, func)
+            method = partialmethod(cls.apply_to_each_channel, func)
             method.__doc__ = docstring
             setattr(cls, method_name, method)
         return cls
@@ -475,6 +475,38 @@ class EcgBatch(ds.Batch):
 
     # Versatile components processing
 
+    @ds.action
+    def apply_transform(self, func, *args, src="signal", dst="signal", **kwargs):
+        """Apply a function to each item in the batch.
+
+        Parameters
+        ----------
+        func : callable
+            A function to apply. Must accept an item of ``src`` as its first
+            argument if ``src`` is not ``None``.
+        src : str, array-like or None, optional
+            The source to get the data from. If ``src`` is ``str``, it is
+            treated as the batch attribute or component name. Defaults to
+            signal component.
+        dst : str, writeable array-like or None, optional
+            The source to put the result in. If ``dst`` is ``str``, it is
+            treated as the batch attribute or component name. Defaults to
+            signal component.
+        args : misc
+            Any additional positional arguments to ``func``.
+        kwargs : misc
+            Any additional named arguments to ``func``.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Transformed batch. If ``dst`` is ``str``, the corresponding
+            attribute or component is changed inplace.
+        """
+        if isinstance(dst, str) and not hasattr(self, dst):
+            setattr(self, dst, np.array([None] * len(self.index)))
+        return super().apply_transform(func, *args, src=src, dst=dst, **kwargs)
+
     def _init_component(self, *args, **kwargs):
         """Create and preallocate a new attribute with the name ``dst`` if it
         does not exist and return batch indices."""
@@ -488,8 +520,8 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
-    def apply_for_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
-        """Apply a function for each slice of a signal over the axis 0
+    def apply_to_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
+        """Apply a function to each slice of a signal over the axis 0
         (typically the channel axis).
 
         Parameters
@@ -497,9 +529,11 @@ class EcgBatch(ds.Batch):
         func : callable
             A function to apply. Must accept a signal as its first argument.
         src : str, optional
-            Batch attribute or component name to get the data from.
+            Batch attribute or component name to get the data from. Defaults
+            to signal component.
         dst : str, optional
-            Batch attribute or component name to put the result in.
+            Batch attribute or component name to put the result in. Defaults
+            to signal component.
         args : misc
             Any additional positional arguments to ``func``.
         kwargs : misc
@@ -1016,6 +1050,11 @@ class EcgBatch(ds.Batch):
         If signal length along axis 1 is less than ``length``, it is padded to
         the left with ``pad_value``.
 
+        Notice, that each resulting signal will be a 3-D ndarray of shape
+        ``[n_segments, n_channels, length]``. If you would like to get a
+        number of 2-D signals of shape ``[n_channels, length]`` as a result,
+        you need to apply ``unstack_signals`` method then.
+
         Parameters
         ----------
         length : positive int
@@ -1058,6 +1097,11 @@ class EcgBatch(ds.Batch):
 
         If signal length along axis 1 is less than ``length``, it is padded to
         the left with ``pad_value``.
+
+        Notice, that each resulting signal will be a 3-D ndarray of shape
+        ``[n_segments, n_channels, length]``. If you would like to get a
+        number of 2-D signals of shape ``[n_channels, length]`` as a result,
+        you need to apply ``unstack_signals`` method then.
 
         Parameters
         ----------

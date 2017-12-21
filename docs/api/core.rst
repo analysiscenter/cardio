@@ -26,7 +26,7 @@ Batch processing
 Versatile components processing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.EcgBatch.apply_transform
-	.. automethod:: cardio.EcgBatch.apply_for_each_channel
+	.. automethod:: cardio.EcgBatch.apply_to_each_channel
 	
 Labels processing
 ^^^^^^^^^^^^^^^^^
