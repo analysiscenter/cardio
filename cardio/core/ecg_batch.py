@@ -1037,6 +1037,11 @@ class EcgBatch(ds.Batch):
         If signal length along axis 1 is less than ``length``, it is padded to
         the left with ``pad_value``.
 
+        Notice, that each resulting signal will be a 3-D ndarray of shape
+        ``[n_segments, n_channels, length]``. If you would like to get a
+        number of 2-D signals of shape ``[n_channels, length]`` as a result,
+        you need to apply ``unstack_signals`` method then.
+
         Parameters
         ----------
         length : positive int
@@ -1079,6 +1084,11 @@ class EcgBatch(ds.Batch):
 
         If signal length along axis 1 is less than ``length``, it is padded to
         the left with ``pad_value``.
+
+        Notice, that each resulting signal will be a 3-D ndarray of shape
+        ``[n_segments, n_channels, length]``. If you would like to get a
+        number of 2-D signals of shape ``[n_channels, length]`` as a result,
+        you need to apply ``unstack_signals`` method then.
 
         Parameters
         ----------
