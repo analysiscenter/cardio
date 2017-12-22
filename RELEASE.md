@@ -18,6 +18,13 @@
 		* `EcgBatch.rfft`
 		* `EcgBatch.irfft`
 		* `EcgBatch.spectrogram`
+	* Wavelet-based transformations:
+		* `EcgBatch.dwt`
+		* `EcgBatch.idwt`
+		* `EcgBatch.wavedec`
+		* `EcgBatch.waverec`
+		* `EcgBatch.pdwt`
+		* `EcgBatch.cwt`
 
 ## Breaking Changes to the API
 * `apply_transform` method's signature has changed.

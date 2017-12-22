@@ -56,12 +56,26 @@ Signal processing
 
 Complex ECG processing
 ^^^^^^^^^^^^^^^^^^^^^^
+
+Fourier-based transformations
+"""""""""""""""""""""""""""""
 	.. automethod:: cardio.EcgBatch.fft
 	.. automethod:: cardio.EcgBatch.ifft
 	.. automethod:: cardio.EcgBatch.rfft
 	.. automethod:: cardio.EcgBatch.irfft
 	.. automethod:: cardio.EcgBatch.spectrogram
-	.. automethod:: cardio.EcgBatch.wavelet_transform_signal
+
+Wavelet-based transformations
+"""""""""""""""""""""""""""""
+	.. automethod:: cardio.EcgBatch.dwt
+	.. automethod:: cardio.EcgBatch.idwt
+	.. automethod:: cardio.EcgBatch.wavedec
+	.. automethod:: cardio.EcgBatch.waverec
+	.. automethod:: cardio.EcgBatch.pdwt
+	.. automethod:: cardio.EcgBatch.cwt
+
+Other methods
+"""""""""""""
 	.. automethod:: cardio.EcgBatch.calc_ecg_parameters
 
 

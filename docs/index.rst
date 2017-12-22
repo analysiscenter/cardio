@@ -5,7 +5,7 @@ Welcome to CardIO's documentation!
 
 Main features:
 
-* load and save signal in various formats (wfdb, blosc, etc)
+* load and save signal in various formats (wfdb, DICOM, EDF, etc)
 * resample, crop, flip and filter signals
 * detect PQ, QT, QRS segments
 * calculate heart rate and other ECG characteristics

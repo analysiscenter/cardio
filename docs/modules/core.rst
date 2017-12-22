@@ -21,7 +21,7 @@ Attributes of EcgBatch:
 
 Actions of EcgBatch allows to:
 
-* load ECG records from wfdb or blosc format
+* load ECG records from wfdb, DICOM, EDF, wav or blosc format
 * segment, flip and resample signals
 * filter signals 
 * allocate PQ, QT, QRS segments
