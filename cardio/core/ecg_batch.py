@@ -1314,13 +1314,30 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
-    def standartize(self, index, axis=None, *args, src="signal", dst="signal", **kwargs):
-        """
+    def standartize(self, index, axis=None, eps=1e-10, *args, src="signal", dst="signal", **kwargs):
+        """Standardize data along specified axes by removing the mean and scaling to unit variance.
+
+        Parameters
+        ----------
+        axis : None or int or tuple of ints, optional
+            Axis or axes along which standardization is performed. 
+            The default is to compute for the flattened array.
+        eps: float
+            Small addition to avoid devision by zero.
+        src : str, optional
+            Batch attribute or component name to get the data from.
+        dst : str, optional
+            Batch attribute or component name to put the result in.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Transformed batch. Changes ``dst`` attribute or component.
         """
         i = self.get_pos(None, src, index)
         src_data = getattr(self, src)[i]
         dst_data = ((src_data - np.mean(src_data, axis=axis, keepdims=True)) /
-                    np.std(src_data, axis=axis, keepdims=True))
+                    np.std(src_data, axis=axis, keepdims=True) + eps)
         getattr(self, dst)[i] = dst_data
 
     @ds.action
@@ -1331,11 +1348,22 @@ class EcgBatch(ds.Batch):
         Calculates PQ, QT, QRS intervals and heart rate value based on
         annotation and writes it in ``meta``. Also writes to ``meta``
         locations of the starts and ends of those intervals.
+        
+        Parameters
+        ----------
+        src : str
+            Batch attribute or component name to get annotation from.
 
         Returns
         -------
         batch : EcgBatch
             Batch with report parameters stored in ``meta`` component.
+
+        Raises
+        ------
+        ValueError
+            If src is None or is not an attribute of batch.
+
         """
         if not (src and hasattr(self, src)):
             raise ValueError("Batch does not have an attribute or component {}!".format(src))
