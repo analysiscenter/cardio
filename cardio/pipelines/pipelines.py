@@ -132,7 +132,7 @@ def hmm_preprocessing_pipeline(batch_size=20):
             .init_variable("anntypes", init_on_each_run=list)
             .init_variable("hmm_features", init_on_each_run=list)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
-            .cwt(src="signal", dst="hmm_features", scales=[4, 8 ,16], wavelet="mexh")
+            .cwt(src="signal", dst="hmm_features", scales=[4, 8, 16], wavelet="mexh")
             .standartize(axis=-1, src="hmm_features", dst="hmm_features")
             .update_variable("annsamps", ds.F(get_annsamples), mode='e')
             .update_variable("anntypes", ds.F(get_anntypes), mode='e')
