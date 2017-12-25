@@ -117,11 +117,6 @@ def hmm_preprocessing_pipeline(batch_size=20):
         Output pipeline.
     """
 
-    def get_wavelets(batch):
-        """Get wavelets from annotation
-        """
-        return [ann["wavelets"] for ann in batch.annotation]
-
     def get_annsamples(batch):
         """Get annsamples from annotation
         """
@@ -135,12 +130,13 @@ def hmm_preprocessing_pipeline(batch_size=20):
     return (ds.Pipeline()
             .init_variable("annsamps", init_on_each_run=list)
             .init_variable("anntypes", init_on_each_run=list)
-            .init_variable("wavelets", init_on_each_run=list)
+            .init_variable("hmm_features", init_on_each_run=list)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
-            .wavelet_transform_signal(cwt_scales=[4, 8, 16], cwt_wavelet="mexh")
+            .cwt(src="signal", dst="hmm_features", scales=[4,8,16], wavelet="mexh")
+            .standartize(axis=-1, src="hmm_features", dst="hmm_features")
             .update_variable("annsamps", ds.F(get_annsamples), mode='e')
             .update_variable("anntypes", ds.F(get_anntypes), mode='e')
-            .update_variable("wavelets", ds.F(get_wavelets), mode='e')
+            .update_variable("hmm_features", ds.B("hmm_features"), mode='e')
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
@@ -167,11 +163,11 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
         """Prepare data for training
         """
         _ = model
-        x = np.concatenate([ann["wavelets"] for ann in batch.annotation])
-        lengths = [ann["wavelets"].shape[0] for ann in batch.annotation]
+        x = np.concatenate([hmm_features[0,:,:].T for hmm_features in batch.hmm_features])
+        lengths = [hmm_features.shape[2] for hmm_features in batch.hmm_features]
         return {"X": x, "lengths": lengths}
 
-    def prepare_means_covars(wavelets, clustering, states=(3, 5, 11, 14, 17, 19), num_states=19, num_features=3):
+    def prepare_means_covars(hmm_features, clustering, states=(3, 5, 11, 14, 17, 19), num_states=19, num_features=3):
         """This function is specific to the task and the model configuration, thus contains hardcode.
         """
         means = np.zeros((num_states, num_features))
@@ -181,7 +177,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
         last_state = 0
         unique_clusters = len(np.unique(clustering)) - 1 # Excuding value -1, which represents undefined state
         for state, cluster in zip(states, np.arange(unique_clusters)):
-            value = wavelets[clustering == cluster, :]
+            value = hmm_features[clustering == cluster, :]
             means[last_state:state, :] = np.mean(value, axis=0)
             covariances[last_state:state, :, :] = value.T.dot(value) / np.sum(clustering == cluster)
             last_state = state
@@ -203,7 +199,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
 
         return transition_matrix, start_probabilities
 
-    def unravel_annotation(annsamp, anntype, length):
+    def expand_annotation(annsamp, anntype, length):
         """Unravel annotation
         """
         begin = -1
@@ -231,14 +227,14 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
 
         return annot
 
-    lengths = [wavelet.shape[0] for wavelet in hmm_preprocessed.get_variable("wavelets")]
-    wavelets = np.concatenate(hmm_preprocessed.get_variable("wavelets"))
+    lengths = [hmm_features.shape[2] for hmm_features in hmm_preprocessed.get_variable("hmm_features")]
+    hmm_features = np.concatenate([hmm_features[0,:,:].T for hmm_features in hmm_preprocessed.get_variable("hmm_features")])
     anntype = hmm_preprocessed.get_variable("anntypes")
     annsamp = hmm_preprocessed.get_variable("annsamps")
 
-    unravelled = np.concatenate([unravel_annotation(samp, types, length) for
+    expanded = np.concatenate([expand_annotation(samp, types, length) for
                                  samp, types, length in zip(annsamp, anntype, lengths)])
-    means, covariances = prepare_means_covars(wavelets, unravelled, states=[3, 5, 11, 14, 17, 19], num_features=3)
+    means, covariances = prepare_means_covars(hmm_features, expanded, states=[3, 5, 11, 14, 17, 19], num_features=3)
     transition_matrix, start_probabilities = prepare_transmat_startprob()
 
     config_train = {
@@ -252,11 +248,12 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
     return (ds.Pipeline()
             .init_model("dynamic", HMModel, "HMM", config=config_train)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
-            .wavelet_transform_signal(cwt_scales=[4, 8, 16], cwt_wavelet="mexh")
+            .cwt(src="signal", dst="hmm_features", scales=[4,8,16], wavelet="mexh")
+            .standartize(axis=-1, src="hmm_features", dst="hmm_features")
             .train_model("HMM", make_data=prepare_batch)
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
-def hmm_predict_pipeline(model_path, batch_size=20):
+def hmm_predict_pipeline(model_path, annot_dst="hmm_annotation", batch_size=20):
     """Pipeline for prediction with hmm model.
 
     This pipeline isolates QRS, PQ and QT segments.
@@ -266,6 +263,8 @@ def hmm_predict_pipeline(model_path, batch_size=20):
     ----------
     model_path : str
         Path to pretrained hmm model.
+    annot_dst: str
+        Specifies attribute of batch in which annotation will be stored.
     batch_size : int
         Number of samples in batch.
         Default value is 20.
@@ -277,11 +276,11 @@ def hmm_predict_pipeline(model_path, batch_size=20):
     """
 
     def prepare_batch(batch, model):
-        """Prepare data for train
+        """Prepare data for training
         """
         _ = model
-        x = np.concatenate([ann["wavelets"] for ann in batch.annotation])
-        lengths = [ann["wavelets"].shape[0] for ann in batch.annotation]
+        x = np.concatenate([hmm_features[0,:,:].T for hmm_features in batch.hmm_features])
+        lengths = [hmm_features.shape[2] for hmm_features in batch.hmm_features]
         return {"X": x, "lengths": lengths}
 
     def get_batch(batch):
@@ -298,9 +297,9 @@ def hmm_predict_pipeline(model_path, batch_size=20):
             .init_model("static", HMModel, "HMM", config=config_predict)
             .init_variable("batch", init_on_each_run=list)
             .load(fmt="wfdb", components=["signal", "meta"])
-            .wavelet_transform_signal(cwt_scales=[4, 8, 16], cwt_wavelet="mexh")
-            .predict_model("HMM", make_data=prepare_batch, save_to=ds.B("_temp"), mode='w')
-            .write_to_annotation("hmm_annotation", "_temp")
-            .calc_ecg_parameters()
+            .cwt(src="signal", dst="hmm_features", scales=[4,8,16], wavelet="mexh")
+            .standartize(axis=-1, src="hmm_features", dst="hmm_features")
+            .predict_model("HMM", make_data=prepare_batch, save_to=ds.B(annot_dst), mode='w')
+            .calc_ecg_parameters(src=annot_dst)
             .update_variable("batch", ds.F(get_batch), mode='e')
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
