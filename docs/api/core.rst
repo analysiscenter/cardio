@@ -77,6 +77,7 @@ Wavelet-based transformations
 Other methods
 """""""""""""
 	.. automethod:: cardio.EcgBatch.calc_ecg_parameters
+	.. automethod:: cardio.EcgBatch.standardize
 
 
 EcgDataset
