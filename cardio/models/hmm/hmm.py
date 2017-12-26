@@ -6,6 +6,16 @@ import dill
 from ...dataset.dataset.models.base import BaseModel
 
 
+def prepare_ecg_batch(batch, model, features_src, channel_ix):
+    """Prepare data for training
+    """
+    _ = model
+    hmm_features = getattr(batch, features_src)
+    x = np.concatenate([features[channel_ix].T for features in hmm_features])
+    lengths = [features.shape[2] for features in hmm_features]
+    return {"X": x, "lengths": lengths}
+
+
 class HMModel(BaseModel):
     """
     Hidden Markov Model.
