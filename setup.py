@@ -42,7 +42,7 @@ setup(
         'tensorflow': ['tensorflow>=1.4'],
         'tensorflow-gpu': ['tensorflow-gpu>=1.4'],
         'keras': ['keras>=2.0.0'],
-        'hmmlearn': ['hmmlearn>=0.2.0']
+        'hmmlearn': ['hmmlearn==0.2.0']
     },
     classifiers=[
         'Development Status :: 4 - Beta',
