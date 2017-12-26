@@ -1314,7 +1314,7 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
-    def standartize(self, index, axis=None, eps=1e-10, *args, src="signal", dst="signal"):
+    def standardize(self, index, axis=None, eps=1e-10, *args, src="signal", dst="signal"):
         """Standardize data along specified axes by removing the mean and scaling to unit variance.
 
         Parameters
