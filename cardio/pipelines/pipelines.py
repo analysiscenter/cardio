@@ -228,7 +228,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20):
         return annot
 
     lengths = [hmm_features.shape[2] for hmm_features in hmm_preprocessed.get_variable("hmm_features")]
-    hmm_features = np.concatenate([hmm_features[0, :, :].T for hmm_features 
+    hmm_features = np.concatenate([hmm_features[0, :, :].T for hmm_features
                                    in hmm_preprocessed.get_variable("hmm_features")])
     anntype = hmm_preprocessed.get_variable("anntypes")
     annsamp = hmm_preprocessed.get_variable("annsamps")
