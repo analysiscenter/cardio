@@ -100,7 +100,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_preprocessing_pipeline(batch_size=20, features_dst="hmm_features"):
-    """Pipeline for prediction with hmm model.
+    """Preprocessing pipeline for Hidden Markov Model.
 
     This pipeline prepares data for hmm_train_pipeline.
     It works with dataset that generates batches of class EcgBatch.
@@ -109,7 +109,9 @@ def hmm_preprocessing_pipeline(batch_size=20, features_dst="hmm_features"):
     ----------
     batch_size : int
         Number of samples in batch.
-        Default value is 100.
+        Default value is 20.
+    features_dst : str
+        Batch attribute to store calculated features.
 
     Returns
     -------
@@ -152,6 +154,14 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features_dst="hmm_featur
     batch_size : int
         Number of samples in batch.
         Default value is 20.
+    features_dst : str
+        Batch attribute to store calculated features.
+    channel_ix : int
+        Index of channel, which data should be used in training and predicting.
+    kwargs : misc
+        Additional named arguments for the estimator.
+        Possible arguments are ``n_iter`` and ``random_state``.
+
 
     Returns
     -------
@@ -249,9 +259,9 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features_dst="hmm_featur
             .train_model("HMM", make_data=partial(prepare_ecg_batch, features_src=features_dst, channel_ix=channel_ix))
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
-def hmm_predict_pipeline(model_path, batch_size=20, features_dst="hmm_features", 
+def hmm_predict_pipeline(model_path, batch_size=20, features_dst="hmm_features",
                          channel_ix=0, annot_dst="hmm_annotation"):
-    """Pipeline for prediction with hmm model.
+    """Prediction pipeline for Hidden Markov Model.
 
     This pipeline isolates QRS, PQ and QT segments.
     It works with dataset that generates batches of class EcgBatch.
@@ -260,11 +270,15 @@ def hmm_predict_pipeline(model_path, batch_size=20, features_dst="hmm_features",
     ----------
     model_path : str
         Path to pretrained hmm model.
-    annot_dst: str
-        Specifies attribute of batch in which annotation will be stored.
     batch_size : int
         Number of samples in batch.
         Default value is 20.
+    features_dst : str
+        Batch attribute to store calculated features.
+    channel_ix : int
+        Index of channel, which data should be used in training and predicting.
+    annot_dst: str
+        Specifies attribute of batch in which annotation will be stored.
 
     Returns
     -------
@@ -287,7 +301,8 @@ def hmm_predict_pipeline(model_path, batch_size=20, features_dst="hmm_features",
             .load(fmt="wfdb", components=["signal", "meta"])
             .cwt(src="signal", dst=features_dst, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features_dst, dst=features_dst)
-            .predict_model("HMM", make_data=partial(prepare_ecg_batch, features_src=features_dst, channel_ix=channel_ix),
+            .predict_model("HMM", make_data=partial(prepare_ecg_batch, features_src=features_dst, 
+                                                    channel_ix=channel_ix),
                            save_to=ds.B(annot_dst), mode='w')
             .calc_ecg_parameters(src=annot_dst)
             .update_variable("batch", ds.F(get_batch), mode='e')

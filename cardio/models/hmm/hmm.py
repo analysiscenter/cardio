@@ -7,7 +7,29 @@ from ...dataset.dataset.models.base import BaseModel
 
 
 def prepare_ecg_batch(batch, model, features_src, channel_ix):
-    """Prepare data for training
+    """Concatenate batch signals and (optionally) targets.
+
+    Parameters
+    ----------
+    batch : EcgBatch
+        Batch to concatenate.
+    model : BaseModel
+        A model to get the resulting arguments.
+    features_src : str
+        Specifies batch attribute that contains features for HMModel.
+    channel_ix : int
+        Index of channel, which data should be used in training and
+        predicting.
+
+    Returns
+    -------
+    kwargs : dict
+        Named argments for model's train or predict method. Has the
+        following structure:
+        "X" : 2-D ndarray
+            Features concatenated along -1 axis and transposed.
+        "lengths" : list
+            List of lengths of individual feature arrays along -1 axis.
     """
     _ = model
     hmm_features = getattr(batch, features_src)
