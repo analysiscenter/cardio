@@ -301,7 +301,7 @@ def hmm_predict_pipeline(model_path, batch_size=20, features_dst="hmm_features",
             .load(fmt="wfdb", components=["signal", "meta"])
             .cwt(src="signal", dst=features_dst, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features_dst, dst=features_dst)
-            .predict_model("HMM", make_data=partial(prepare_ecg_batch, features_src=features_dst, 
+            .predict_model("HMM", make_data=partial(prepare_ecg_batch, features_src=features_dst,
                                                     channel_ix=channel_ix),
                            save_to=ds.B(annot_dst), mode='w')
             .calc_ecg_parameters(src=annot_dst)
