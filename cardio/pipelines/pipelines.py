@@ -99,7 +99,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
                            fetches="predictions", save_to=V("predictions_list"), mode="e")
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
-def hmm_preprocessing_pipeline(batch_size=20, features_dst="hmm_features"):
+def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
     """Preprocessing pipeline for Hidden Markov Model.
 
     This pipeline prepares data for hmm_train_pipeline.
@@ -110,7 +110,7 @@ def hmm_preprocessing_pipeline(batch_size=20, features_dst="hmm_features"):
     batch_size : int
         Number of samples in batch.
         Default value is 20.
-    features_dst : str
+    features : str
         Batch attribute to store calculated features.
 
     Returns
@@ -132,16 +132,16 @@ def hmm_preprocessing_pipeline(batch_size=20, features_dst="hmm_features"):
     return (ds.Pipeline()
             .init_variable("annsamps", init_on_each_run=list)
             .init_variable("anntypes", init_on_each_run=list)
-            .init_variable(features_dst, init_on_each_run=list)
+            .init_variable(features, init_on_each_run=list)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
-            .cwt(src="signal", dst=features_dst, scales=[4, 8, 16], wavelet="mexh")
-            .standardize(axis=-1, src=features_dst, dst=features_dst)
+            .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
+            .standardize(axis=-1, src=features, dst=features)
             .update_variable("annsamps", ds.F(get_annsamples), mode='e')
             .update_variable("anntypes", ds.F(get_anntypes), mode='e')
-            .update_variable(features_dst, ds.B(features_dst), mode='e')
+            .update_variable(features, ds.B(features), mode='e')
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
-def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features_dst="hmm_features", channel_ix=0, **kwargs):
+def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0, **kwargs):
     """Train pipeline for Hidden Markov Model.
 
     This pipeline trains hmm model to isolate QRS, PQ and QT segments.
@@ -154,7 +154,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features_dst="hmm_featur
     batch_size : int
         Number of samples in batch.
         Default value is 20.
-    features_dst : str
+    features : str
         Batch attribute to store calculated features.
     channel_ix : int
         Index of channel, which data should be used in training and predicting.
@@ -208,30 +208,30 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features_dst="hmm_featur
         end = -1
         s = 'none'
         states = {'N':0, 'st':1, 't':2, 'iso':3, 'p':4, 'pq':5}
-        annot = -1 * np.ones(length)
+        annot_expand = -1 * np.ones(length)
 
         for j, samp in enumerate(annsamp):
             if anntype[j] == '(':
                 begin = samp
                 if (end > 0) & (s != 'none'):
                     if s == 'N':
-                        annot[end:begin] = states['st']
+                        annot_expand[end:begin] = states['st']
                     elif s == 't':
-                        annot[end:begin] = states['iso']
+                        annot_expand[end:begin] = states['iso']
                     elif s == 'p':
-                        annot[end:begin] = states['pq']
+                        annot_expand[end:begin] = states['pq']
             elif anntype[j] == ')':
                 end = samp
                 if (begin > 0) & (s != 'none'):
-                    annot[begin:end] = states[s]
+                    annot_expand[begin:end] = states[s]
             else:
                 s = anntype[j]
 
-        return annot
+        return annot_expand
 
-    lengths = [features.shape[2] for features in hmm_preprocessed.get_variable(features_dst)]
-    hmm_features = np.concatenate([features[channel_ix, :, :].T for features
-                                   in hmm_preprocessed.get_variable(features_dst)])
+    lengths = [features_iter.shape[2] for features_iter in hmm_preprocessed.get_variable(features)]
+    hmm_features = np.concatenate([features_iter[channel_ix, :, :].T for features_iter
+                                   in hmm_preprocessed.get_variable(features)])
     anntype = hmm_preprocessed.get_variable("anntypes")
     annsamp = hmm_preprocessed.get_variable("annsamps")
 
@@ -254,13 +254,13 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features_dst="hmm_featur
     return (ds.Pipeline()
             .init_model("dynamic", HMModel, "HMM", config=config_train)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
-            .cwt(src="signal", dst=features_dst, scales=[4, 8, 16], wavelet="mexh")
-            .standardize(axis=-1, src=features_dst, dst=features_dst)
-            .train_model("HMM", make_data=partial(prepare_ecg_batch, features_src=features_dst, channel_ix=channel_ix))
+            .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
+            .standardize(axis=-1, src=features, dst=features)
+            .train_model("HMM", make_data=partial(prepare_ecg_batch, features=features, channel_ix=channel_ix))
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
-def hmm_predict_pipeline(model_path, batch_size=20, features_dst="hmm_features",
-                         channel_ix=0, annot_dst="hmm_annotation"):
+def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
+                         channel_ix=0, annot="hmm_annotation"):
     """Prediction pipeline for Hidden Markov Model.
 
     This pipeline isolates QRS, PQ and QT segments.
@@ -273,11 +273,11 @@ def hmm_predict_pipeline(model_path, batch_size=20, features_dst="hmm_features",
     batch_size : int
         Number of samples in batch.
         Default value is 20.
-    features_dst : str
+    features : str
         Batch attribute to store calculated features.
     channel_ix : int
         Index of channel, which data should be used in training and predicting.
-    annot_dst: str
+    annot: str
         Specifies attribute of batch in which annotation will be stored.
 
     Returns
@@ -298,10 +298,10 @@ def hmm_predict_pipeline(model_path, batch_size=20, features_dst="hmm_features",
     return (ds.Pipeline()
             .init_model("static", HMModel, "HMM", config=config_predict)
             .load(fmt="wfdb", components=["signal", "meta"])
-            .cwt(src="signal", dst=features_dst, scales=[4, 8, 16], wavelet="mexh")
-            .standardize(axis=-1, src=features_dst, dst=features_dst)
-            .predict_model("HMM", make_data=partial(prepare_ecg_batch, features_src=features_dst,
+            .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
+            .standardize(axis=-1, src=features, dst=features)
+            .predict_model("HMM", make_data=partial(prepare_ecg_batch, features=features,
                                                     channel_ix=channel_ix),
-                           save_to=ds.B(annot_dst), mode='w')
-            .calc_ecg_parameters(src=annot_dst)
+                           save_to=ds.B(annot), mode='w')
+            .calc_ecg_parameters(src=annot)
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))

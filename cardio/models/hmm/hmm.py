@@ -6,7 +6,7 @@ import dill
 from ...dataset.dataset.models.base import BaseModel
 
 
-def prepare_ecg_batch(batch, model, features_src, channel_ix):
+def prepare_ecg_batch(batch, model, features, channel_ix):
     """Concatenate batch signals and (optionally) targets.
 
     Parameters
@@ -15,7 +15,7 @@ def prepare_ecg_batch(batch, model, features_src, channel_ix):
         Batch to concatenate.
     model : BaseModel
         A model to get the resulting arguments.
-    features_src : str
+    features : str
         Specifies batch attribute that contains features for HMModel.
     channel_ix : int
         Index of channel, which data should be used in training and
@@ -32,7 +32,7 @@ def prepare_ecg_batch(batch, model, features_src, channel_ix):
             List of lengths of individual feature arrays along -1 axis.
     """
     _ = model
-    hmm_features = getattr(batch, features_src)
+    hmm_features = getattr(batch, features)
     x = np.concatenate([features[channel_ix].T for features in hmm_features])
     lengths = [features.shape[2] for features in hmm_features]
     return {"X": x, "lengths": lengths}
