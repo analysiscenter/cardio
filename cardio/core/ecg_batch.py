@@ -356,7 +356,7 @@ class EcgBatch(ds.Batch):
             self.unique_labels = np.sort(src[ds_indices].unique())
         return self
 
-    def show_ecg(self, index=None, start=0, end=None, annot_src=None, subplot_size=(10, 4)):  # pylint: disable=too-many-locals, line-too-long
+    def show_ecg(self, index=None, start=0, end=None, annot=None, subplot_size=(10, 4)):  # pylint: disable=too-many-locals, line-too-long
         """Plot an ECG signal.
 
         Optionally highlight QRS complexes along with P and T waves. Each
@@ -371,7 +371,7 @@ class EcgBatch(ds.Batch):
             The start point of the displayed part of the signal (in seconds).
         end : int, optional
             The end point of the displayed part of the signal (in seconds).
-        annot_src : str, optional
+        annot : str, optional
             If not None, specifies attribute that stores annotation obtained
             from ``cardio.models.HMModel``.
         subplot_size : tuple
@@ -402,7 +402,7 @@ class EcgBatch(ds.Batch):
             ax.set_ylabel("Amplitude ({})".format(units))
             ax.grid("on", which="major")
 
-        if annot_src and hasattr(self, annot_src):
+        if annot and hasattr(self, annot):
             def fill_segments(segment_states, color):
                 """Fill ECG segments with a given color."""
                 starts, ends = bt.find_intervals_borders(signal_states, segment_states)
@@ -410,7 +410,7 @@ class EcgBatch(ds.Batch):
                     for (ax,) in axes:
                         ax.axvspan(start_t, end_t, color=color, alpha=0.3)
 
-            signal_states = getattr(self, annot_src)[i][start:end]
+            signal_states = getattr(self, annot)[i][start:end]
             fill_segments(bt.QRS_STATES, "red")
             fill_segments(bt.P_STATES, "green")
             fill_segments(bt.T_STATES, "blue")
