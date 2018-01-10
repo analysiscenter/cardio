@@ -290,10 +290,6 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
     pipeline : Pipeline
         Output pipeline.
     """
-    def get_batch(batch):
-        """Get batch list
-        """
-        return [batch]
 
     config_predict = {
         'build': False,
