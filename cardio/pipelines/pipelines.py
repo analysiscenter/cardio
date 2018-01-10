@@ -12,7 +12,8 @@ from ..models.dirichlet_model import DirichletModel, concatenate_ecg_batch
 from ..models.hmm import HMModel, prepare_ecg_batch
 
 
-def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_options=None):
+def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_options=None,
+                             loss_history='loss_history', ):
     """Train pipeline for Dirichlet model.
 
     This pipeline trains Dirichlet model to find propability of artrial fibrillation.
@@ -31,6 +32,8 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     gpu_options : GPUOptions
         Magic attribute generated for tf.ConfigProto "gpu_options" proto field.
         Default value is None.
+    loss_history : str
+        Name of pipeline variable to save loss values to.
 
     Returns
     -------
@@ -47,7 +50,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
 
     return (ds.Pipeline()
             .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
-            .init_variable("loss_history", init=list)
+            .init_variable(loss_history, init=list)
             .load(components=["signal", "meta"], fmt="wfdb")
             .load(components="target", fmt="csv", src=labels_path)
             .drop_labels(["~"])
@@ -57,10 +60,10 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
             .random_split_signals(2048, {"A": 9, "NO": 3})
             .binarize_labels()
             .train_model("dirichlet", make_data=concatenate_ecg_batch,
-                         fetches="loss", save_to=V("loss_history"), mode="a")
+                         fetches="loss", save_to=V(loss_history), mode="a")
             .run(batch_size=batch_size, shuffle=True, drop_last=True, n_epochs=n_epochs, lazy=True))
 
-def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
+def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None, predictions='predictions_list'):
     """Pipeline for prediction with Dirichlet model.
 
     This pipeline finds propability of artrial fibrillation according to Dirichlet model.
@@ -76,6 +79,8 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
     gpu_options : GPUOptions
         Magic attribute generated for tf.ConfigProto "gpu_options" proto field.
         Default value is None.
+    predictions: str
+        Name of pipeline variable to save predictions to.
 
     Returns
     -------
@@ -91,12 +96,12 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None):
 
     return (ds.Pipeline()
             .init_model("static", DirichletModel, name="dirichlet", config=model_config)
-            .init_variable("predictions_list", init_on_each_run=list)
+            .init_variable(predictions, init_on_each_run=list)
             .load(fmt="wfdb", components=["signal", "meta"])
             .flip_signals()
             .split_signals(2048, 2048)
             .predict_model("dirichlet", make_data=partial(concatenate_ecg_batch, return_targets=False),
-                           fetches="predictions", save_to=V("predictions_list"), mode="e")
+                           fetches="predictions", save_to=V(predictions), mode="e")
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
