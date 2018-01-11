@@ -49,8 +49,7 @@ Here is an example of pipeline that loads ECG signals, makes preprocessing and t
 train_pipeline = (
     dataset.train
         .pipeline
-        .init_model("dynamic", DirichletModel, name="dirichlet",
-                    config=model_config)
+        .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
         .init_variable("loss_history", init=list)
         .load(components=["signal", "meta"], fmt="wfdb")
         .load(components="target", fmt="csv", src=LABELS_PATH)
