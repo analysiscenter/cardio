@@ -6,8 +6,9 @@ import dill
 from ...dataset.dataset.models.base import BaseModel
 
 
-def prepare_ecg_batch(batch, model, features, channel_ix):
-    """Concatenate batch signals and (optionally) targets.
+def prepare_hmm_input(batch, model, features, channel_ix):
+    """Concatenate selected channel `channel_ix` of the batch attribute
+    `features`.
 
     Parameters
     ----------

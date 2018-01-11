@@ -9,7 +9,7 @@ from hmmlearn import hmm
 from .. import dataset as ds
 from ..dataset.dataset import F, V
 from ..models.dirichlet_model import DirichletModel, concatenate_ecg_batch
-from ..models.hmm import HMModel, prepare_ecg_batch
+from ..models.hmm import HMModel, prepare_hmm_input
 
 
 def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_options=None,
@@ -261,7 +261,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .train_model("HMM", make_data=partial(prepare_ecg_batch, features=features, channel_ix=channel_ix))
+            .train_model("HMM", make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix))
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
@@ -301,7 +301,7 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
             .load(fmt="wfdb", components=["signal", "meta"])
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .predict_model("HMM", make_data=partial(prepare_ecg_batch, features=features,
+            .predict_model("HMM", make_data=partial(prepare_hmm_input, features=features,
                                                     channel_ix=channel_ix),
                            save_to=ds.B(annot), mode='w')
             .calc_ecg_parameters(src=annot)
