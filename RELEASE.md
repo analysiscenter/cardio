@@ -28,9 +28,16 @@
 		* `EcgBatch.cwt`
 
 ## Breaking Changes to the API
-* `apply_transform` method's signature has changed.
-* `show_ecg` method's signature has changed.
-* `calc_ecg_parameters` method's signature has changed.
+* Changed signature of the following methods:
+	* `apply_transform` method's signature has changed.
+	* `show_ecg` method's signature has changed.
+	* `calc_ecg_parameters` method's signature has changed.
+* Changed signature of the following pipelines:
+	* dirichlet_train_pipeline
+	* dirichlet_predict_pipeline
+	* hmm_preprocessing_pipeline
+	* hmm_train_pipeline
+	* hmm_predict_pipeline
 * `wavelet_transform` method has been deleted.
 * `update` method has been deleted.
 * `replace_labels` method has been renamed to `rename_labels`.
