@@ -93,7 +93,7 @@ How to use
       .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
       .cwt(src="signal", dst="hmm_features", scales=[4,8,16], wavelet="mexh")
       .standardize(axis=-1, src="hmm_features", dst="hmm_features")
-      .train_model("HMM", make_data=prepare_hmm_input)
+      .train_model("HMM", make_data=partial(prepare_hmm_input, features=hmm_features, channel_ix=0)))
       .run(batch_size=20, shuffle=False, drop_last=False, n_epochs=1, lazy=True)
   )
 
