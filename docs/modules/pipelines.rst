@@ -24,7 +24,7 @@ is similar to running this
   
   from cardio import dataset as ds
   from cardio.dataset import F, V
-  from cardio.models import DirichletModel
+  from cardio.models import DirichletModel, concatenate_ecg_batch
 
   model_config = {
         "session": {"config": tf.ConfigProto(gpu_options=gpu_options)},
