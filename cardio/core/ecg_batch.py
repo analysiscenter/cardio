@@ -356,7 +356,7 @@ class EcgBatch(ds.Batch):
             self.unique_labels = np.sort(src[ds_indices].unique())
         return self
 
-    def show_ecg(self, index=None, start=0, end=None, annotate=False, subplot_size=(10, 4)):  # pylint: disable=too-many-locals, line-too-long
+    def show_ecg(self, index=None, start=0, end=None, annot=None, subplot_size=(10, 4)):  # pylint: disable=too-many-locals, line-too-long
         """Plot an ECG signal.
 
         Optionally highlight QRS complexes along with P and T waves. Each
@@ -371,8 +371,9 @@ class EcgBatch(ds.Batch):
             The start point of the displayed part of the signal (in seconds).
         end : int, optional
             The end point of the displayed part of the signal (in seconds).
-        annotate : bool, optional
-            Specifies whether to highlight ECG segments on the plot.
+        annot : str, optional
+            If not ``None``, specifies attribute that stores annotation obtained
+            from ``cardio.models.HMModel``.
         subplot_size : tuple
             Width and height of each subplot in inches.
 
@@ -382,7 +383,7 @@ class EcgBatch(ds.Batch):
             If the chosen signal is not two-dimensional.
         """
         i = 0 if index is None else self.get_pos(None, "signal", index)
-        signal, annotation, meta = self.signal[i], self.annotation[i], self.meta[i]
+        signal, meta = self.signal[i], self.meta[i]
         self._check_2d(signal)
 
         fs = meta["fs"]
@@ -401,7 +402,7 @@ class EcgBatch(ds.Batch):
             ax.set_ylabel("Amplitude ({})".format(units))
             ax.grid("on", which="major")
 
-        if annotate:
+        if annot and hasattr(self, annot):
             def fill_segments(segment_states, color):
                 """Fill ECG segments with a given color."""
                 starts, ends = bt.find_intervals_borders(signal_states, segment_states)
@@ -409,7 +410,7 @@ class EcgBatch(ds.Batch):
                     for (ax,) in axes:
                         ax.axvspan(start_t, end_t, color=color, alpha=0.3)
 
-            signal_states = annotation["hmm_annotation"][start:end]
+            signal_states = getattr(self, annot)[i][start:end]
             fill_segments(bt.QRS_STATES, "red")
             fill_segments(bt.P_STATES, "green")
             fill_segments(bt.T_STATES, "blue")
@@ -1312,106 +1313,92 @@ class EcgBatch(ds.Batch):
         getattr(self, dst)[i] = dst_data
 
     @ds.action
-    @ds.inbatch_parallel(init="indices", target='threads')
-    def wavelet_transform_signal(self, index, cwt_scales, cwt_wavelet):
-        """Generate wavelet transformation of signal and write to annotation.
+    @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
+    def standardize(self, index, axis=None, eps=1e-10, *, src="signal", dst="signal"):
+        """Standardize data along specified axes by removing the mean and scaling to unit variance.
 
         Parameters
         ----------
-        cwt_scales : array_like
-            Scales to use for Continuous Wavelet Transformation.
-        cwt_wavelet : Wavelet object or name
-            Wavelet to use in CWT.
+        axis : None or int or tuple of ints, optional
+            Axis or axes along which standardization is performed.
+            The default is to compute for the flattened array.
+        eps: float
+            Small addition to avoid division by zero.
+        src : str, optional
+            Batch attribute or component name to get the data from.
+        dst : str, optional
+            Batch attribute or component name to put the result in.
 
         Returns
         -------
         batch : EcgBatch
-            ``EcgBatch`` with wavelet transform of signals.
+            Transformed batch. Changes ``dst`` attribute or component.
         """
-        i = self.get_pos(None, "signal", index)
-        self._check_2d(self.signal[i])
-
-        self.annotation[i]["wavelets"] = bt.wavelet_transform(self.signal[i],
-                                                              cwt_scales,
-                                                              cwt_wavelet)
+        i = self.get_pos(None, src, index)
+        src_data = getattr(self, src)[i]
+        dst_data = ((src_data - np.mean(src_data, axis=axis, keepdims=True)) /
+                    np.std(src_data, axis=axis, keepdims=True) + eps)
+        getattr(self, dst)[i] = dst_data
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')
-    def calc_ecg_parameters(self, index):
+    def calc_ecg_parameters(self, index, src=None):
         """Calculate ECG report parameters and write it to meta component.
 
         Calculates PQ, QT, QRS intervals and heart rate value based on
         annotation and writes it in ``meta``. Also writes to ``meta``
         locations of the starts and ends of those intervals.
 
+        Parameters
+        ----------
+        src : str
+            Batch attribute or component name to get annotation from.
+
         Returns
         -------
         batch : EcgBatch
             Batch with report parameters stored in ``meta`` component.
+
+        Raises
+        ------
+        ValueError
+            If src is None or is not an attribute of batch.
+
         """
+        if not (src and hasattr(self, src)):
+            raise ValueError("Batch does not have an attribute or component {}!".format(src))
+
         i = self.get_pos(None, "signal", index)
+        src_data = getattr(self, src)[i]
 
         self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
-                                        self.annotation[i]['hmm_annotation'],
+                                        src_data,
                                         np.float64(self.meta[i]['fs']),
                                         bt.R_STATE)
 
-        self.meta[i]["pq"] = bt.calc_pq(self.annotation[i]['hmm_annotation'],
+        self.meta[i]["pq"] = bt.calc_pq(src_data,
                                         np.float64(self.meta[i]['fs']),
                                         bt.P_STATES,
                                         bt.Q_STATE,
                                         bt.R_STATE)
 
-        self.meta[i]["qt"] = bt.calc_qt(self.annotation[i]['hmm_annotation'],
+        self.meta[i]["qt"] = bt.calc_qt(src_data,
                                         np.float64(self.meta[i]['fs']),
                                         bt.T_STATES,
                                         bt.Q_STATE,
                                         bt.R_STATE)
 
-        self.meta[i]["qrs"] = bt.calc_qrs(self.annotation[i]['hmm_annotation'],
+        self.meta[i]["qrs"] = bt.calc_qrs(src_data,
                                           np.float64(self.meta[i]['fs']),
                                           bt.S_STATE,
                                           bt.Q_STATE,
                                           bt.R_STATE)
 
-        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+        self.meta[i]["qrs_segments"] = np.vstack(bt.find_intervals_borders(src_data,
                                                                            bt.QRS_STATES))
 
-        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+        self.meta[i]["p_segments"] = np.vstack(bt.find_intervals_borders(src_data,
                                                                          bt.P_STATES))
 
-        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(self.annotation[i]['hmm_annotation'],
+        self.meta[i]["t_segments"] = np.vstack(bt.find_intervals_borders(src_data,
                                                                          bt.T_STATES))
-
-    @ds.action
-    def write_to_annotation(self, key, value):
-        """
-        Writes values from value to annotation under defined key.
-
-        It is supposed that length of batch and value are the same.
-
-        Parameters
-        ----------
-        key: misc
-            Key of the annotation dict to save value under.
-        value: iterable
-            Source of the values to write to annotation dict.
-
-        Returns
-        -------
-        batch : EcgBatch
-            Batch with modified annotation component.
-
-        Raises
-        ------
-        ValueError
-            If length of the batch does not correspond to length of the value.
-        """
-        value = getattr(self, value)
-
-        if len(self) != len(value):
-            raise ValueError("Length of the value %i is not equal to batch length %i" % (len(value), len(self)))
-
-        for i in range(len(self)):
-            self.annotation[i][key] = value[i]
-        return self

@@ -27,6 +27,7 @@ Versatile components processing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 	.. automethod:: cardio.EcgBatch.apply_transform
 	.. automethod:: cardio.EcgBatch.apply_to_each_channel
+	.. automethod:: cardio.EcgBatch.standardize
 	
 Labels processing
 ^^^^^^^^^^^^^^^^^
@@ -77,7 +78,6 @@ Wavelet-based transformations
 Other methods
 """""""""""""
 	.. automethod:: cardio.EcgBatch.calc_ecg_parameters
-
 
 EcgDataset
 ==========

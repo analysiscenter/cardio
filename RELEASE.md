@@ -1,16 +1,17 @@
 # Release 0.2.0
 
 ## Major Features and Improvements
-* ``load`` method now supports new signal formats:
+* `load` method now supports new signal formats:
 	* DICOM
 	* EDF
 	* wav
-* ``meta`` component structure has changed - now it always contains a number of predefined keys.
+* `meta` component structure has changed - now it always contains a number of predefined keys.
 * Added channels processing methods:
 	* `EcgBatch.keep_channels`
 	* `EcgBatch.drop_channels`
 	* `EcgBatch.rename_channels`
 * Added `apply_to_each_channel` method.
+* Added `standardize` method.
 * Added complex ECG transformations:
 	* Fourier-based transformations:
 		* `EcgBatch.fft`
@@ -27,7 +28,17 @@
 		* `EcgBatch.cwt`
 
 ## Breaking Changes to the API
-* `apply_transform` method's signature has changed.
+* Changed signature of the following methods:
+	* `EcgBatch.apply_transform`
+	* `EcgBatch.show_ecg`
+	* `EcgBatch.calc_ecg_parameters`
+* Changed signature of the following pipelines:
+	* `dirichlet_train_pipeline`
+	* `dirichlet_predict_pipeline`
+	* `hmm_preprocessing_pipeline`
+	* `hmm_train_pipeline`
+	* `hmm_predict_pipeline`
+* `wavelet_transform` method has been deleted.
 * `update` method has been deleted.
 * `replace_labels` method has been renamed to `rename_labels`.
 * `slice_signal` method has been renamed to `slice_signals`.
