@@ -25,7 +25,7 @@ How to use
   import cardio.dataset as ds
   from cardio import EcgDataset
   from cardio.dataset import F, V
-  from cardio.models.dirichlet_model import DirichletModel
+  from cardio.models.dirichlet_model import DirichletModel, concatenate_ecg_batch
 
   eds = EcgDataset(path='./path/to/data/', no_ext=True, sort=True)
 
@@ -49,7 +49,7 @@ How to use
       .random_resample_signals("normal", loc=300, scale=10)
       .random_split_signals(2048, {"A": 9, "NO": 3})
       .binarize_labels()
-      .train_model("dirichlet", make_data=make_data, fetches="loss", save_to=V("loss_history"), mode="a")
+      .train_model("dirichlet", make_data=concatenate_ecg_batch, fetches="loss", save_to=V("loss_history"), mode="a")
       .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=100, lazy=True)
   )
 
@@ -78,7 +78,7 @@ How to use
   import cardio.dataset as ds
   from cardio import EcgBatch
   from cardio.dataset import B, V, F
-  from cardio.models.hmm import HMModel
+  from cardio.models.hmm import HMModel, prepare_hmm_input
 
   model_config = {
     'build': True,
@@ -93,7 +93,7 @@ How to use
       .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
       .cwt(src="signal", dst="hmm_features", scales=[4,8,16], wavelet="mexh")
       .standardize(axis=-1, src="hmm_features", dst="hmm_features")
-      .train_model("HMM", make_data=make_data)
+      .train_model("HMM", make_data=prepare_hmm_input)
       .run(batch_size=20, shuffle=False, drop_last=False, n_epochs=1, lazy=True)
   )
 
