@@ -16,7 +16,7 @@ Running this two lines of code
 .. code-block:: python
 
   from cardio.pipelines import dirichlet_train_pipeline
-  pipeline = dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000 gpu_options=gpu_options)
+  pipeline = dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_options=gpu_options)
 
 is similar to running this
 
@@ -30,8 +30,7 @@ is similar to running this
         "session": {"config": tf.ConfigProto(gpu_options=gpu_options)},
         "input_shape": F(lambda batch: batch.signal[0].shape[1:]),
         "class_names": F(lambda batch: batch.label_binarizer.classes_),
-        "loss": None,
-    }
+        "loss": None}
 
   pipeline = (
     ds.Pipeline()
@@ -70,11 +69,11 @@ Available pipelines
 -------------------
 At this moment the module contains following pipelines:
 
-* dirichlet_train_pipeline
-* dirichlet_predict_pipeline
-* hmm_preprocessing_pipeline
-* hmm_train_pipeline
-* hmm_predict_pipeline
+* :func:`~cardio.pipelines.dirichlet_train_pipeline`
+* :func:`~cardio.pipelines.dirichlet_predict_pipeline`
+* :func:`~cardio.pipelines.hmm_preprocessing_pipeline`
+* :func:`~cardio.pipelines.hmm_train_pipeline`
+* :func:`~cardio.pipelines.hmm_predict_pipeline`
 
 API
 ---
