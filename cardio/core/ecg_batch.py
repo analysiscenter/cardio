@@ -372,7 +372,7 @@ class EcgBatch(ds.Batch):
         end : int, optional
             The end point of the displayed part of the signal (in seconds).
         annot : str, optional
-            If not None, specifies attribute that stores annotation obtained
+            If not ``None``, specifies attribute that stores annotation obtained
             from ``cardio.models.HMModel``.
         subplot_size : tuple
             Width and height of each subplot in inches.
@@ -1314,7 +1314,7 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
-    def standardize(self, index, axis=None, eps=1e-10, *args, src="signal", dst="signal"):
+    def standardize(self, index, axis=None, eps=1e-10, *, src="signal", dst="signal"):
         """Standardize data along specified axes by removing the mean and scaling to unit variance.
 
         Parameters
@@ -1323,7 +1323,7 @@ class EcgBatch(ds.Batch):
             Axis or axes along which standardization is performed.
             The default is to compute for the flattened array.
         eps: float
-            Small addition to avoid devision by zero.
+            Small addition to avoid division by zero.
         src : str, optional
             Batch attribute or component name to get the data from.
         dst : str, optional
@@ -1334,7 +1334,6 @@ class EcgBatch(ds.Batch):
         batch : EcgBatch
             Transformed batch. Changes ``dst`` attribute or component.
         """
-        _ = args
         i = self.get_pos(None, src, index)
         src_data = getattr(self, src)[i]
         dst_data = ((src_data - np.mean(src_data, axis=axis, keepdims=True)) /
