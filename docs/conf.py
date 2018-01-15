@@ -81,7 +81,7 @@ todo_include_todos = False
 #
 html_theme = 'classic'
 #html_theme = 'nature'
-#html_theme = 'sphinx_rtd_theme'
+html_theme = 'bizstyle'
 
 #html_theme_options = {
 #    "rightsidebar": "false"
