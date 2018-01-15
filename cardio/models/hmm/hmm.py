@@ -103,11 +103,13 @@ class HMModel(BaseModel):
 
         Parameters
         ----------
-        X : array
+        X : array-like
             An array of observations to learn from. Also, it is expected
             that kwargs contain key "lenghts", which define lengths of
             sequences.
 
+        Notes
+        -----
         For more details and other parameters look at the documentation for the estimator used.
         """
         lengths = kwargs.get("lengths", None)
@@ -119,15 +121,17 @@ class HMModel(BaseModel):
 
         Parameters
         ----------
-        X : array
+        X : array-like
             An array of observations to make predictions from.
-
-        For more details and other parameters look at the documentation for the estimator used.
 
         Returns
         -------
         output: array
             Predicted value per observation.
+
+        Notes
+        -----
+        For more details and other parameters look at the documentation for the estimator used.
         """
         lengths = kwargs.get("lengths", None)
         preds = self.estimator.predict(X, lengths)
