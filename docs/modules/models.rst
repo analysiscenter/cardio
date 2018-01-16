@@ -4,7 +4,7 @@ Models
 
 This is a place where ECG models live. You can write your own model or exploit provided :doc:`models <../api/models>`. 
 
-We have two built-in model suited to classify whether ECG signal is normal or pathological, and a to annotate segments of ECG signal (e.g., P-wave).
+We have two built-in models suited to classify whether ECG signal is normal or pathological, and a model to annotate segments of ECG signal (e.g., P-wave).
 
 
 DirichletModel
@@ -13,7 +13,7 @@ DirichletModel
 About DirichletModel
 ~~~~~~~~~~~~~~~~~~~~
 
-This model is used to predcit probability of atrial fibrillation. It predicts Dirichlet distribution parameters from which class probabilities are sampled.
+This model is used to predict probability of atrial fibrillation. It predicts Dirichlet distribution parameters from which class probabilities are sampled.
 
 .. image:: dirichlet_model.png
 
@@ -61,8 +61,7 @@ HMModel
 About HMModel
 ~~~~~~~~~~~~~~~~~~~~
 
-Hidden Markov Model is used to annotate ECG signal. This allows to calculate number of
-important parameters, important for diagnosing.
+Hidden Markov Model is used to annotate ECG signal. This allows to calculate a number of parameters important for diagnosing.
 This model allows to detect P and T waves; Q, R, S peaks; PQ and ST segments. The model 
 has a total of 19 states, the mapping of them to the segments of ECG signal can  be found in ``cardio.batch.ecg_batch_tools`` submodule.
 
@@ -93,7 +92,7 @@ How to use
       .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
       .cwt(src="signal", dst="hmm_features", scales=[4,8,16], wavelet="mexh")
       .standardize(axis=-1, src="hmm_features", dst="hmm_features")
-      .train_model("HMM", make_data=partial(prepare_hmm_input, features=hmm_features, channel_ix=0)))
+      .train_model("HMM", make_data=partial(prepare_hmm_input, features="hmm_features", channel_ix=0)))
       .run(batch_size=20, shuffle=False, drop_last=False, n_epochs=1, lazy=True)
   )
 
@@ -138,7 +137,6 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
     ds.Pipeline()
       .init_model("dynamic", FFTModel, name="fft_model", config=model_config)
       .init_variable("loss_history", init=list)
-      .init_variable("true_targets", init=list)
       .load(fmt="wfdb", components=["signal", "meta"])
       .load(src='./path/to/taret/', fmt="csv", components="target")
       .drop_labels(["~"])
@@ -149,7 +147,6 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
       .binarize_labels()
       .apply(np.transpose , axes=[0, 2, 1])
       .unstack_signals()
-      .get_targets('true_targets')
       .train_model('fft_model', make_data=make_data, save_to=V("loss_history"), mode="a")
       .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=100, prefetch=0, lazy=True)
   )
@@ -161,17 +158,17 @@ How to build a model with Keras
 -------------------------------
 
 Any custom Keras model starts with base model :class:`KerasModel <dataset.KerasModel>`. In most cases you simply create
-a new class that inherit KerasModel and define a sequence of layers within the _build method.
-Once it is done you can include train and predict actions into pipeline.
+a new class that is inherited from ``KerasModel`` and define a sequence of layers within the ``_build`` method.
+Once it is done you can include ``train_model`` and ``predict_model`` actions into a pipeline.
 
-For example, let's build a simple fully-connected network. It will accept signal with shape (1000, ) and return shape (2, ).
-First, we import KerasModel:
+For example, let's build a simple fully-connected network. It will accept signal with shape (1000, ) and return a tensor with shape (2, ).
+First, we import ``KerasModel``:
 
 .. code-block :: python
 
   from ...dataset.dataset.models.keras import KerasModel
 
-Second, define our model architecture. Note that _build should return input and output layers.
+Second, define our model architecture. Note that ``_build`` should return input and output layers.
 
 .. code-block :: python
 
@@ -185,8 +182,7 @@ Second, define our model architecture. Note that _build should return input and 
           return x, out
 
 Third, we specify model configuration (loss and optimizer) and initialize model in pipeline.
-We suppose that batch has a component named 'signal' (this will be our input tensor) and a component
-named 'target' (this will be our output tensor).
+We suppose that batch has a component named ``signal`` (this will be our input tensor) and a component named ``target`` (this will be our output tensor).
 
 .. code-block :: python
 
@@ -210,7 +206,7 @@ named 'target' (this will be our output tensor).
 
 From now on ``train_pipeline`` contains compiled model and is ready for training.
 
-More details you can find in our :doc:`tutorials <../tutorials>`.
+You can find more details in our :doc:`tutorials <../tutorials>`.
 
 
 API

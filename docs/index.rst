@@ -101,7 +101,7 @@ After that just import `cardio`::
     import cardio
 
 
-Installation as a project repository:
+Installation as a project repository
 --------------------------------------
 
 When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Dataset`` submodule is also cloned::
