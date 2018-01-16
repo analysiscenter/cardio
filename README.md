@@ -59,7 +59,7 @@ train_pipeline = (
         .random_resample_signals("normal", loc=300, scale=10)
         .random_split_signals(2048, {"A": 9, "NO": 3})
         .binarize_labels()
-        .train_model("dirichlet", make_data=make_data, fetches="loss", save_to=V("loss_history"), mode="a")
+        .train_model("dirichlet", make_data=concatenate_ecg_batch, fetches="loss", save_to=V("loss_history"), mode="a")
         .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=50)
 )
 ```

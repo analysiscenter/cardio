@@ -8,7 +8,7 @@ The following tutorials will help you to explore CardIO framework from simple to
 	This notebook shows basic examples of how to use CardIO framework.
 
 * `CardIO <https://github.com/analysiscenter/cardio/blob/master/tutorials/I.CardIO.ipynb>`_
-	Explains where to get ECG data and how to start using CardIO. You will learn how to create a dataset with ECG's, how to generate batches, which actions you can apply to the data and how those actions affect batch and its components.
+	Explains where to get ECG data and how to start using CardIO. You will learn how to create a dataset with ECG's; how to generate batches; which actions you can apply to the data and how those actions affect batch and its components.
 
 * `Pipelines <https://github.com/analysiscenter/cardio/blob/master/tutorials/II.Pipelines.ipynb>`_
 	Tells you about pipelines, which are also called workflows. You will learn how to build pipelines; how to use pipeline variables; how to add custom actions to the pipelines. Also, you will learn about pipeline algebra and train an atrial fibrillation detection model with built-in pipeline.

@@ -11,7 +11,7 @@ Pre-defined pipelines were designed to make it easier to use our models and make
 
 Here is an example:
 
-Running this two lines of code
+Running these two lines of code
 
 .. code-block:: python
 
@@ -47,15 +47,15 @@ is similar to running this
       .train_model("dirichlet", make_data=concatenate_ecg_batch, fetches="loss", save_to=V("loss_history"), mode="a")
       .run(batch_size=256, shuffle=True, drop_last=True, n_epochs=1000, lazy=True))
 
-In both cases you obtain ``pipeline``, ready for training DirichletModel. The first example is short but only allows to vary some hyperparameters of the model, while the second example is more flexible in data preprocessing.
+In both cases you obtain ``pipeline``, ready for training ``DirichletModel``. The first example is short but only allows to vary some hyperparameters of the model, while the second example is more flexible in data preprocessing.
 
 How to use
 ----------
-Working with pipelines consists of 3 simple steps. First, we import desired pipeline, e.g. dirichlet_train_pipeline:
+Working with pipelines consists of 3 simple steps. First, we import desired pipeline, e.g. ``dirichlet_train_pipeline``:
 ::
   from cardio.pipelines import dirichlet_train_pipeline
 
-Second, we specify its parameters, e.g. path to file with labels:
+Second, we specify its parameters, e.g. path to a file with labels:
 ::
   pipeline = dirichlet_train_pipeline(labels_path='some_path')
 
