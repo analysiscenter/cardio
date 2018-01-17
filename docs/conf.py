@@ -80,11 +80,10 @@ todo_include_todos = False
 # a list of builtin themes.
 #
 
-html_theme = 'nature'
+html_theme = 'classic'
 #html_theme = 'bizstyle'
 
 html_theme_options = {
-#    "rightsidebar": "false"
     'sidebarwidth': 290
 }
 

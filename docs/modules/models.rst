@@ -13,7 +13,9 @@ DirichletModel
 About DirichletModel
 ~~~~~~~~~~~~~~~~~~~~
 
-This model is used to predict probability of atrial fibrillation. It predicts Dirichlet distribution parameters from which class probabilities are sampled.
+This model is used to perform ECG classification. However, instead of predicting class probabilities themselves, the model predicts parameters of the Dirichlet distribution over these probabilities. This is done in order to get model’s confidence in its prediction, which varies from 0 (absolutely sure) to 1 (absolutely unsure). You can read more about the model in this article (link).
+
+The high-level architecture of the network is shown in the figure below.
 
 .. image:: dirichlet_model.png
 

@@ -17,7 +17,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     """Train pipeline for Dirichlet model.
 
     This pipeline trains Dirichlet model to find propability of artrial fibrillation.
-    It works with dataset that generates batches of class EcgBatch.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
@@ -30,15 +30,15 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
         Number of times to iterate over the training data arrays.
         Default value is 1000.
     gpu_options : GPUOptions
-        Magic attribute generated for tf.ConfigProto "gpu_options" proto field.
-        Default value is None.
+        An argument for tf.ConfigProto "gpu_options" proto field.
+        Default value is ``None``.
     loss_history : str
         Name of pipeline variable to save loss values to.
 
     Returns
     -------
     pipeline : Pipeline
-        Output pipeline.
+        Output ``pipeline``.
     """
 
     model_config = {
@@ -67,25 +67,25 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None, pre
     """Pipeline for prediction with Dirichlet model.
 
     This pipeline finds propability of artrial fibrillation according to Dirichlet model.
-    It works with dataset that generates batches of class EcgBatch.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
     model_path : str
-        path to pretrained Dirichlet model
+        path to pretrained ``DirichletModel``
     batch_size : int
         Number of samples in batch.
         Default value is 100.
     gpu_options : GPUOptions
-        Magic attribute generated for tf.ConfigProto "gpu_options" proto field.
-        Default value is None.
+        An argument for tf.ConfigProto "gpu_options" proto field.
+        Default value is ``None``.
     predictions: str
         Name of pipeline variable to save predictions to.
 
     Returns
     -------
     pipeline : Pipeline
-        Output pipeline.
+        Output ``pipeline``.
     """
 
     model_config = {
@@ -107,8 +107,8 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None, pre
 def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
     """Preprocessing pipeline for Hidden Markov Model.
 
-    This pipeline prepares data for hmm_train_pipeline.
-    It works with dataset that generates batches of class EcgBatch.
+    This pipeline prepares data for ``hmm_train_pipeline``.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
@@ -121,7 +121,7 @@ def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
     Returns
     -------
     pipeline : Pipeline
-        Output pipeline.
+        Output ``pipeline``.
     """
 
     def get_annsamples(batch):
@@ -150,12 +150,12 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     """Train pipeline for Hidden Markov Model.
 
     This pipeline trains hmm model to isolate QRS, PQ and QT segments.
-    It works with dataset that generates batches of class EcgBatch.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
     hmm_preprocessed : Pipeline
-        Pipeline with precomputed hmm features through hmm_preprocessing_pipeline
+        ``pipeline`` with precomputed hmm features through ``hmm_preprocessing_pipeline``
     batch_size : int
         Number of samples in batch.
         Default value is 20.
@@ -171,7 +171,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     Returns
     -------
     pipeline : Pipeline
-        Output pipeline.
+        Output ``pipeline``.
     """
 
     def prepare_means_covars(hmm_features, clustering, states=(3, 5, 11, 14, 17, 19), num_states=19, num_features=3):
@@ -269,12 +269,12 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
     """Prediction pipeline for Hidden Markov Model.
 
     This pipeline isolates QRS, PQ and QT segments.
-    It works with dataset that generates batches of class EcgBatch.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
     model_path : str
-        Path to pretrained hmm model.
+        Path to pretrained ``HMModel``.
     batch_size : int
         Number of samples in batch.
         Default value is 20.
@@ -288,7 +288,7 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
     Returns
     -------
     pipeline : Pipeline
-        Output pipeline.
+        Output ``pipeline``.
     """
 
     config_predict = {
