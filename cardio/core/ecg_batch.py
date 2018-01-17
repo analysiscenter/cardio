@@ -224,8 +224,8 @@ class EcgBatch(ds.Batch):
     def load(self, src=None, fmt=None, components=None, ann_ext=None, *args, **kwargs):
         """Load given batch components from source.
 
-        Most of the EcgBatch actions work under assumption that both
-        signal and meta components were loaded. In case this assumption
+        Most of the ``EcgBatch`` actions work under assumption that both
+        ``signal`` and ``meta`` components were loaded. In case this assumption
         is not fulfilled, normal operation of the actions is not
         guaranteed.
 
@@ -485,14 +485,14 @@ class EcgBatch(ds.Batch):
         func : callable
             A function to apply. Must accept an item of ``src`` as its first
             argument if ``src`` is not ``None``.
-        src : str, array-like or None, optional
+        src : str, array-like or ``None``, optional
             The source to get the data from. If ``src`` is ``str``, it is
             treated as the batch attribute or component name. Defaults to
-            signal component.
-        dst : str, writeable array-like or None, optional
+            ``signal`` component.
+        dst : str, writeable array-like or ``None``, optional
             The source to put the result in. If ``dst`` is ``str``, it is
             treated as the batch attribute or component name. Defaults to
-            signal component.
+            ``signal`` component.
         args : misc
             Any additional positional arguments to ``func``.
         kwargs : misc
@@ -531,10 +531,10 @@ class EcgBatch(ds.Batch):
             A function to apply. Must accept a signal as its first argument.
         src : str, optional
             Batch attribute or component name to get the data from. Defaults
-            to signal component.
+            to ``signal`` component.
         dst : str, optional
             Batch attribute or component name to put the result in. Defaults
-            to signal component.
+            to ``signal`` component.
         args : misc
             Any additional positional arguments to ``func``.
         kwargs : misc
@@ -900,7 +900,7 @@ class EcgBatch(ds.Batch):
         Returns
         -------
         batch : EcgBatch
-            Batch with flipped signals.
+            Batch with flipped signals. Changes ``self.signal`` inplace.
 
         Raises
         ------
@@ -1232,7 +1232,7 @@ class EcgBatch(ds.Batch):
         ValueError
             If given signal is not two-dimensional.
         ValueError
-            If sampling rate is negative or non-numeric.
+            If ``fs`` is negative or non-numeric.
         """
         if fs <= 0:
             raise ValueError("Sampling rate must be a positive float")
@@ -1319,7 +1319,7 @@ class EcgBatch(ds.Batch):
 
         Parameters
         ----------
-        axis : None or int or tuple of ints, optional
+        axis : ``None`` or int or tuple of ints, optional
             Axis or axes along which standardization is performed.
             The default is to compute for the flattened array.
         eps: float
@@ -1343,7 +1343,7 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="indices", target='threads')
     def calc_ecg_parameters(self, index, src=None):
-        """Calculate ECG report parameters and write it to meta component.
+        """Calculate ECG report parameters and write it to ``meta`` component.
 
         Calculates PQ, QT, QRS intervals and heart rate value based on
         annotation and writes it in ``meta``. Also writes to ``meta``
@@ -1362,7 +1362,7 @@ class EcgBatch(ds.Batch):
         Raises
         ------
         ValueError
-            If src is None or is not an attribute of batch.
+            If src is ``None`` or is not an attribute of batch.
 
         """
         if not (src and hasattr(self, src)):
