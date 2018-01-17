@@ -10,17 +10,13 @@ We have two built-in models suited to classify whether ECG signal is normal or p
 DirichletModel
 --------------
 
-About DirichletModel
-~~~~~~~~~~~~~~~~~~~~
-
-This model is used to perform ECG classification. However, instead of predicting class probabilities themselves, the model predicts parameters of the Dirichlet distribution over these probabilities. This is done in order to get model’s confidence in its prediction, which varies from 0 (absolutely sure) to 1 (absolutely unsure). You can read more about the model in this article (link).
+This model is used to perform ECG classification. However, instead of predicting class probabilities themselves, the model predicts parameters of the Dirichlet distribution over these probabilities. This is done in order to get model’s confidence in its prediction, which varies from 0 (absolutely sure) to 1 (absolutely unsure). You can read more about the model in this `article <https://medium.com/data-analysis-center/atrial-fibrillation-detection-with-a-deep-probabilistic-model-1239f69eff6c>`_.
 
 The high-level architecture of the network is shown in the figure below.
 
 .. image:: dirichlet_model.png
 
-How to use
-~~~~~~~~~~
+.. rubric:: How to use
 
 .. code-block :: python
   
@@ -60,18 +56,16 @@ How to use
 HMModel
 -------
 
-About HMModel
-~~~~~~~~~~~~~~~~~~~~
-
 Hidden Markov Model is used to annotate ECG signal. This allows to calculate a number of parameters important for diagnosing.
 This model allows to detect P and T waves; Q, R, S peaks; PQ and ST segments. 
+
 It has a total of 19 states, which makes a good compromise on complexity versus performance of the model. There will be 3 states for the ISO, P-wave, and QRS-complex models; 2 states for the PQ and ST segment models; 6 states for the T-wave. The mapping of them to the segments of ECG signal can  be found in ``cardio.batch.ecg_batch_tools`` submodule.
+
 Also, as you can see in the picture below, we introduce direct transition from last ISO state to first PQ state, thus enabling possibility of absent P-wave.
 
 .. image:: hmmodel.png
 
-How to use
-~~~~~~~~~~
+.. rubric:: How to use
 
 .. code-block :: python
   
@@ -104,8 +98,6 @@ How to use
 FFTModel
 --------
 
-About FFTModel
-~~~~~~~~~~~~~~~~~~~~
 
 FFT model learns to classify ECG signals using signal spectrum. At first step it convolves signal with a number of 1D kernels.
 Then for each channel it applies fast fourier transform. 
@@ -114,8 +106,8 @@ to resulting output, which is a predicted class. See below the model architectur
 
 .. image:: fft_model.PNG
 
-How to use
-~~~~~~~~~~
+.. rubric:: How to use
+
 We applied this model to arrhythmia prediction from single-lead ECG. Train pipeline we used for the fft model looks as follows:
 
 .. code-block :: python
