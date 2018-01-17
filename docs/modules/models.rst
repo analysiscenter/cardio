@@ -64,8 +64,9 @@ About HMModel
 ~~~~~~~~~~~~~~~~~~~~
 
 Hidden Markov Model is used to annotate ECG signal. This allows to calculate a number of parameters important for diagnosing.
-This model allows to detect P and T waves; Q, R, S peaks; PQ and ST segments. The model 
-has a total of 19 states, the mapping of them to the segments of ECG signal can  be found in ``cardio.batch.ecg_batch_tools`` submodule.
+This model allows to detect P and T waves; Q, R, S peaks; PQ and ST segments. 
+It has a total of 19 states, which makes a good compromise on complexity versus performance of the model. There will be 3 states for the ISO, P-wave, and QRS-complex models; 2 states for the PQ and ST segment models; 6 states for the T-wave. The mapping of them to the segments of ECG signal can  be found in ``cardio.batch.ecg_batch_tools`` submodule.
+Also, as you can see in the picture below, we introduce direct transition from last ISO state to first PQ state, thus enabling possibility of absent P-wave.
 
 .. image:: hmmodel.png
 
