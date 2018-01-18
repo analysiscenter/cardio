@@ -16,7 +16,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
                              loss_history='loss_history', model_name='dirichlet'):
     """Train pipeline for Dirichlet model.
 
-    This pipeline trains Dirichlet model to find propability of artrial fibrillation.
+    This pipeline trains Dirichlet model to find propability of atrial fibrillation.
     It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
@@ -67,7 +67,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None,
                                predictions='predictions_list', model_name='dirichlet'):
     """Pipeline for prediction with Dirichlet model.
 
-    This pipeline finds propability of artrial fibrillation according to Dirichlet model.
+    This pipeline finds propability of atrial fibrillation according to Dirichlet model.
     It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
@@ -147,7 +147,8 @@ def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
             .update_variable(features, ds.B(features), mode='e')
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
-def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0, **kwargs):
+def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0, 
+                       n_iter=25, random_state=42, model_name='hmm'):
     """Train pipeline for Hidden Markov Model.
 
     This pipeline trains hmm model to isolate QRS, PQ and QT segments.
@@ -163,11 +164,11 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     features : str
         Batch attribute to store calculated features.
     channel_ix : int
-        Index of channel, which data should be used in training and predicting.
-    kwargs : misc
-        Additional named arguments for the estimator.
-        Possible arguments are ``n_iter`` and ``random_state``.
-
+        Index of signal's channel, which should be used in training and predicting.
+    n_iter : int
+        Number of learning iterations for ``HMModel``.
+    random_state: int
+        Random state for ``HMModel``.
 
     Returns
     -------
@@ -246,9 +247,6 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     means, covariances = prepare_means_covars(hmm_features, expanded, states=[3, 5, 11, 14, 17, 19], num_features=3)
     transition_matrix, start_probabilities = prepare_transmat_startprob()
 
-    n_iter = kwargs.get("n_iter", 25)
-    random_state = kwargs.get("random_state", 42)
-
     config_train = {
         'build': True,
         'estimator': hmm.GaussianHMM(n_components=19, n_iter=n_iter, covariance_type="full", random_state=random_state,
@@ -258,15 +256,15 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     }
 
     return (ds.Pipeline()
-            .init_model("dynamic", HMModel, "HMM", config=config_train)
+            .init_model("dynamic", HMModel, model_name, config=config_train)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .train_model("HMM", make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix))
+            .train_model(model_name , make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix))
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
-                         channel_ix=0, annot="hmm_annotation"):
+                         channel_ix=0, annot="hmm_annotation", model_name='hmm'):
     """Prediction pipeline for Hidden Markov Model.
 
     This pipeline isolates QRS, PQ and QT segments.
@@ -298,11 +296,11 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
     }
 
     return (ds.Pipeline()
-            .init_model("static", HMModel, "HMM", config=config_predict)
+            .init_model("static", HMModel, model_name, config=config_predict)
             .load(fmt="wfdb", components=["signal", "meta"])
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .predict_model("HMM", make_data=partial(prepare_hmm_input, features=features,
+            .predict_model(model_name, make_data=partial(prepare_hmm_input, features=features,
                                                     channel_ix=channel_ix),
                            save_to=ds.B(annot), mode='w')
             .calc_ecg_parameters(src=annot)
