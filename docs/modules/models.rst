@@ -149,60 +149,10 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
   train_ppl = (eds >> fft_train_ppl).run()
 
 
-How to build a model with Keras
+Learn more
 -------------------------------
 
-Any custom Keras model starts with base model :class:`KerasModel <dataset.KerasModel>`. In most cases you simply create
-a new class that is inherited from ``KerasModel`` and define a sequence of layers within the ``_build`` method.
-Once it is done you can include ``train_model`` and ``predict_model`` actions into a pipeline.
-
-For example, let's build a simple fully-connected network. It will accept signal with shape (1000, ) and return a tensor with shape (2, ).
-First, we import ``KerasModel``:
-
-.. code-block :: python
-
-  from ...dataset.dataset.models.keras import KerasModel
-
-Second, define our model architecture. Note that ``_build`` should return input and output layers.
-
-.. code-block :: python
-
-  class SimpleModel(KerasModel):
-      def _build(self, **kwargs):
-          '''
-          Build model
-          '''
-          x = Input(1000)
-          out = Dense(2)(x)
-          return x, out
-
-Third, we specify model configuration (loss and optimizer) and initialize model in pipeline.
-We suppose that batch has a component named ``signal`` (this will be our input tensor) and a component named ``target`` (this will be our output tensor).
-
-.. code-block :: python
-
-  model_config = {
-      "loss": "binary_crossentropy",
-      "optimizer": "adam"
-      }
-
-  template_simplemodel_train = (
-  ds.Pipeline()
-    .init_model("static", SimpleModel, name="simple_model", config=model_config)
-    .init_variable("loss_history", init=list)
-    ...
-    some data preprocessing
-    ...
-    .train_model('simple_model', x=B('signal'), y=B('target'),
-                 save_to=V("loss_history"), mode="a")
-    .run(batch_size=100, shuffle=True,
-           drop_last=True, n_epochs=100, prefetch=0, lazy=True)
-  )
-
-From now on ``train_pipeline`` contains compiled model and is ready for training.
-
-You can find more details in our :doc:`tutorials <../tutorials>`.
-
+To learn more about existing models and building new ones, refer to the `tutorial <https://github.com/analysiscenter/cardio/blob/master/tutorials/III.Models.ipynb>`_.
 
 API
 ---

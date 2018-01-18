@@ -40,6 +40,9 @@ data and flips ECGs whose R-peaks are directed downwards:
         .flip_signals()
   )
 
+.. rubric:: Learn more
+
+To learn more about actions refer to the `tutorial <https://github.com/analysiscenter/cardio/blob/master/tutorials/I.CardIO.ipynb>`_.
 
 EcgDataset
 ----------
