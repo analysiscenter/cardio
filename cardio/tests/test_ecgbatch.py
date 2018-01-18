@@ -372,7 +372,7 @@ class TestEcgBatchPipelineMethods:
         """
         # Arrange
         ppln = (ds.Pipeline()
-                .init_variable(name="signal", init_on_each_run=list())
+                .init_variable(name="signal", init_on_each_run=list)
                 .load(fmt='wfdb', components=["signal", "meta"])
                 .flip_signals()
                 .update_variable("signal", ds.B("signal"), mode='a')
@@ -382,8 +382,8 @@ class TestEcgBatchPipelineMethods:
         dtst = EcgDataset(setup_module_load[0])
 
         # Act
-        (dtst >> ppln).run()
-        signal_var = ppln.get_variable("signal")
+        ppln_run = (dtst >> ppln).run()
+        signal_var = ppln_run.get_variable("signal")
 
         # Assert
         assert len(signal_var) == 3
