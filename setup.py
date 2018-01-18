@@ -16,7 +16,7 @@ with open('docs/index.rst', 'r') as f:
 
 setup(
     name='cardio',
-    packages=find_packages(exclude=['tutorials']),
+    packages=find_packages(exclude=['tutorials', 'examples', 'docs']),
     version=version,
     url='https://github.com/analysiscenter/cardio',
     license='Apache License 2.0',
