@@ -75,7 +75,7 @@ At this moment the module contains following pipelines:
 * :func:`~cardio.pipelines.hmm_train_pipeline`
 * :func:`~cardio.pipelines.hmm_predict_pipeline`
 
-To learn more about using these pipelines and building new ones see the `tutorial <https://github.com/analysiscenter/cardio/blob/master/tutorials/I.CardIO.ipynb>`_. 
+To learn more about using these pipelines and building new ones see the `tutorial <https://github.com/analysiscenter/cardio/blob/master/tutorials/II.Pipelines.ipynb>`_. 
 
 API
 ---
