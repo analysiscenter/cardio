@@ -63,7 +63,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
                          fetches="loss", save_to=V(loss_history), mode="a")
             .run(batch_size=batch_size, shuffle=True, drop_last=True, n_epochs=n_epochs, lazy=True))
 
-def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None, 
+def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None,
                                predictions='predictions_list', model_name='dirichlet'):
     """Pipeline for prediction with Dirichlet model.
 
@@ -147,7 +147,7 @@ def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
             .update_variable(features, ds.B(features), mode='e')
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
-def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0, 
+def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0,
                        n_iter=25, random_state=42, model_name='hmm'):
     """Train pipeline for Hidden Markov Model.
 
@@ -260,7 +260,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .train_model(model_name , make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix))
+            .train_model(model_name, make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix))
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
@@ -300,8 +300,7 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
             .load(fmt="wfdb", components=["signal", "meta"])
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .predict_model(model_name, make_data=partial(prepare_hmm_input, features=features,
-                                                    channel_ix=channel_ix),
+            .predict_model(model_name, make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix),
                            save_to=ds.B(annot), mode='w')
             .calc_ecg_parameters(src=annot)
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
