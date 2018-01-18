@@ -50,7 +50,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
 
     return (ds.Pipeline()
             .init_model("dynamic", DirichletModel, name=model_name, config=model_config)
-            .init_variable(loss_history, init=list)
+            .init_variable(loss_history, init_on_each_run=list)
             .load(components=["signal", "meta"], fmt="wfdb")
             .load(components="target", fmt="csv", src=labels_path)
             .drop_labels(["~"])
@@ -148,7 +148,7 @@ def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0,
-                       n_iter=25, random_state=42, model_name='hmm'):
+                       n_iter=25, random_state=42, model_name='HMM'):
     """Train pipeline for Hidden Markov Model.
 
     This pipeline trains hmm model to isolate QRS, PQ and QT segments.
@@ -264,7 +264,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
-                         channel_ix=0, annot="hmm_annotation", model_name='hmm'):
+                         channel_ix=0, annot="hmm_annotation", model_name='HMM'):
     """Prediction pipeline for Hidden Markov Model.
 
     This pipeline isolates QRS, PQ and QT segments.
