@@ -38,7 +38,7 @@ The high-level architecture of the network is shown in the figure below.
   dirichlet_train_ppl = (
     ds.Pipeline()
       .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
-      .init_variable("loss_history", init=list)
+      .init_variable("loss_history", init_on_each_run=list)
       .load(components=["signal", "meta"], fmt="wfdb")
       .load(src='./path/to/taret/', fmt="csv", components="target")
       .drop_labels(["~"])
@@ -131,7 +131,7 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
   fft_train_ppl = (
     ds.Pipeline()
       .init_model("dynamic", FFTModel, name="fft_model", config=model_config)
-      .init_variable("loss_history", init=list)
+      .init_variable("loss_history", init_on_each_run=list)
       .load(fmt="wfdb", components=["signal", "meta"])
       .load(src='./path/to/taret/', fmt="csv", components="target")
       .drop_labels(["~"])

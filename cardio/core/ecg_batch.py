@@ -127,9 +127,9 @@ class EcgBatch(ds.Batch):
     ----
     Some batch methods take ``index`` as their first argument after ``self``.
     You should not specify it in your code, it will be passed automatically by
-    ``inbatch_parallel`` decorator. For example, ``resample_signal`` method
+    ``inbatch_parallel`` decorator. For example, ``resample_signals`` method
     with ``index`` and ``fs`` arguments should be called as
-    ``batch.resample_signal(fs)``.
+    ``batch.resample_signals(fs)``.
     """
 
     def __init__(self, index, preloaded=None, unique_labels=None):

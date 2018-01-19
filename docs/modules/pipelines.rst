@@ -35,7 +35,7 @@ is similar to running this
   pipeline = (
     ds.Pipeline()
       .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
-      .init_variable("loss_history", init=list)
+      .init_variable("loss_history", init_on_each_run=list)
       .load(components=["signal", "meta"], fmt="wfdb")
       .load(components="target", fmt="csv", src=labels_path)
       .drop_labels(["~"])
