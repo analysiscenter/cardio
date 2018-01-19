@@ -19,28 +19,13 @@ Attributes of ``EcgBatch``:
 * ``target``, array of labels assigned to ECG records
 * ``unique_labels``, array of all possible target labels in dataset
 
-Actions of ``EcgBatch`` allows to:
+Actions of ``EcgBatch`` allow to:
 
 * load ECG records from wfdb, DICOM, EDF, wav or blosc format
 * segment, flip and resample signals
 * filter signals 
 * detect PQ, QT, QRS segments
 * dump results
-
-Actions can be arranged in a single workflow like the following one which loads
-data and flips ECGs whose R-peaks are directed downwards:
-
-.. code-block:: python
-
-  import cardio.dataset as ds
-
-  example_workflow = (
-      ds.Pipeline()
-        .load(fmt="wfdb", components=["signal", "meta"])
-        .flip_signals()
-  )
-
-.. rubric:: Learn more
 
 To learn more about actions refer to the `tutorial <https://github.com/analysiscenter/cardio/blob/master/tutorials/I.CardIO.ipynb>`_.
 
@@ -71,20 +56,7 @@ Then we specify type of batches we want to generate, e.g. ``EcgBatch``:
   from cardio import EcgDataset
   eds = EcgDataset(path="../cardio/tests/data/*.hea", no_ext=True, sort=True)
 
-Now we can call ``eds.next_batch(batch_size=3)`` to generate batches manually and apply any action of ``EcgBatch`` to them. But it is more convenient to define the 
-workflow (sequence of actions we want to apply) first and then run automatic batch generation and processing once for the whole dataset:
-
-.. code-block:: python
-
-  import cardio.dataset as ds
-
-  example_workflow = (
-      ds.Pipeline()
-        .load(fmt="wfdb", components=["signal", "meta"])
-        .flip_signals()
-  )
-
-  (eds >> example_workflow).run(batch_size=2, n_epochs=1)
+Now we can call ``EcgDataset.next_batch`` with specified ``batch_size`` argument to generate batches and process them using actions of ``EcgBatch``. 
 
 
 API
