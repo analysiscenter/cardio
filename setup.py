@@ -37,6 +37,7 @@ setup(
         'dill>=0.2.7.1',
         'pydicom>=0.9.9',
         'pyedflib>=0.1.11',
+        'wfdb==1.3.9'
     ],
     extras_require={
         'tensorflow': ['tensorflow>=1.4'],
