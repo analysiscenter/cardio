@@ -4,9 +4,6 @@ Tutorials
 
 The following tutorials will help you to explore CardIO framework from simple to complex notions. Tutorials are organized as IPython Notebook, so you can run the code cells and see the result. 
 
-* `Getting_started <https://github.com/analysiscenter/cardio/blob/master/tutorials/Getting_started.ipynb>`_
-	This notebook shows basic examples of how to use CardIO framework.
-
 * `CardIO <https://github.com/analysiscenter/cardio/blob/master/tutorials/I.CardIO.ipynb>`_
 	Explains where to get ECG data and how to start using CardIO. You will learn how to create a dataset with ECG's; how to generate batches; which actions you can apply to the data and how those actions affect batch and its components.
 

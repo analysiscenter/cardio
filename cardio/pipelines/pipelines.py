@@ -30,7 +30,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
         Number of times to iterate over the training data arrays.
         Default value is 1000.
     gpu_options : GPUOptions
-        An argument for tf.ConfigProto "gpu_options" proto field.
+        An argument for tf.ConfigProto ``gpu_options`` proto field.
         Default value is ``None``.
     loss_history : str
         Name of pipeline variable to save loss values to.
@@ -78,7 +78,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None,
         Number of samples in batch.
         Default value is 100.
     gpu_options : GPUOptions
-        An argument for tf.ConfigProto "gpu_options" proto field.
+        An argument for tf.ConfigProto ``gpu_options`` proto field.
         Default value is ``None``.
     predictions: str
         Name of pipeline variable to save predictions to.
