@@ -38,7 +38,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     Returns
     -------
     pipeline : Pipeline
-        Output ``pipeline``.
+        Output pipeline.
     """
 
     model_config = {
@@ -86,7 +86,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None,
     Returns
     -------
     pipeline : Pipeline
-        Output ``pipeline``.
+        Output pipeline.
     """
 
     model_config = {
@@ -122,7 +122,7 @@ def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
     Returns
     -------
     pipeline : Pipeline
-        Output ``pipeline``.
+        Output pipeline.
     """
 
     def get_annsamples(batch):
@@ -157,7 +157,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     Parameters
     ----------
     hmm_preprocessed : Pipeline
-        ``pipeline`` with precomputed hmm features through ``hmm_preprocessing_pipeline``
+        Pipeline with precomputed hmm features through ``hmm_preprocessing_pipeline``
     batch_size : int
         Number of samples in batch.
         Default value is 20.
@@ -173,7 +173,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     Returns
     -------
     pipeline : Pipeline
-        Output ``pipeline``.
+        Output pipeline.
     """
 
     def prepare_means_covars(hmm_features, clustering, states=(3, 5, 11, 14, 17, 19), num_states=19, num_features=3):
@@ -287,7 +287,7 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
     Returns
     -------
     pipeline : Pipeline
-        Output ``pipeline``.
+        Output pipeline.
     """
 
     config_predict = {

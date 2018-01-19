@@ -11,4 +11,4 @@ The following tutorials will help you to explore CardIO framework from simple to
 	Tells you about pipelines, which are also called workflows. You will learn how to build pipelines; how to use pipeline variables; how to add custom actions to the pipelines. Also, you will learn about pipeline algebra and train an atrial fibrillation detection model with built-in pipeline.
 
 * `Models <https://github.com/analysiscenter/cardio/blob/master/tutorials/III.Models.ipynb>`_
-	Shows how you can train various models with CardIO. You will train built-in CardIO models; build and train simple convolutional neural network using layers and blocks provided in Dataset, Tensorflow and keras; build and train custom logistic regression model.
+	Shows how you can train various models with CardIO. You will train built-in CardIO models; build and train simple convolutional neural network using layers and blocks provided in `Dataset <https://github.com/analysiscenter/dataset>`_, Tensorflow and Keras; build and train custom logistic regression model.
