@@ -37,8 +37,6 @@ CardIO has three modules: :doc:`core <./modules/core>`, :doc:`models <./modules/
 * train a model and perform an inference to detect PQ, QT, QRS segments and calculate heart rate
 * train a model and perform an inference to find probabilities of heart diseases, in particular, atrial fibrillation
 
-Under the hood these workflows contain actions that load signals, filter them and do complex calculations.
-
 Contents
 ========
 .. toctree::
