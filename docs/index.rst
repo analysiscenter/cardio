@@ -107,6 +107,22 @@ When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Datas
 
 Citing CardIO
 ==============
-Please cite CardIO in your publications if it helps your research.::
 
-    Khudorozhkov R., Illarionov E., Kuvaev A., Podvyaznikov D. CardIO library for data science research of heart signals. 2017.
+Please cite CardIO in your publications if it helps your research.
+
+.. image:: https://zenodo.org/badge/109618565.svg
+    :target: https://zenodo.org/badge/latestdoi/109618565
+
+::
+
+    Khudorozhkov R., Illarionov E., Kuvaev A., Podvyaznikov D. CardIO library for deep research of heart signals. 2017.
+
+::
+
+    @misc{cardio_2017_1156085,
+      author       = {Khudorozhkov R., Illarionov E., Kuvaev A., Podvyaznikov D.},
+      title        = {CardIO library for deep research of heart signals},
+      year         = 2017,
+      doi          = {10.5281/zenodo.1156085},
+      url          = {https://doi.org/10.5281/zenodo.1156085}
+    }
