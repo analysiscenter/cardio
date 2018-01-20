@@ -9,14 +9,15 @@ Main features:
 * resample, crop, flip and filter signals
 * detect PQ, QT, QRS segments
 * calculate heart rate and other ECG characteristics
-* apply complex transformations like fft and wavelets, as well as custom functions
+* perform complex processing like fourier and wavelet transformations
+* applpy custom functions to the data
 * recognize heart diseases (e.g. atrial fibrillation)
 * efficiently work with large datasets that do not even fit into memory
 * perform end-to-end ECG processing
-* build, train and test neural networks and other machine learning models.
+* build, train and test neural networks and other machine learning models
 
 About CardIO
-------------
+============
 
 .. note:: CardIO is based on `Dataset <https://github.com/analysiscenter/dataset>`_. You might benefit from reading `its documentation <https://analysiscenter.github.io/dataset>`_. However, it is not required, especially at the beginning.
 
@@ -28,16 +29,13 @@ CardIO has three modules: :doc:`core <./modules/core>`, :doc:`models <./modules/
 
 ``models`` module provides several ready to use models for important problems in ECG analysis:
 
-* how to detect specific features of ECG like R-peaks, P-wave, T-wave, etc;
-* how to recognize heart diseases from ECG, for example, atrial fibrillation.
+* how to detect specific features of ECG like R-peaks, P-wave, T-wave, etc
+* how to recognize heart diseases from ECG, for example, atrial fibrillation
 
 ``pipelines`` module contains predefined workflows to
 
-* train a model to detect PQ, QT, QRS segments
-* calculate heart rate
-* train a model to find probabilities of heart diseases, in particular, atrial fibrillation.
-
-Under the hood these workflows contain actions that load signals, filter them and do complex calculations.
+* train a model and perform an inference to detect PQ, QT, QRS segments and calculate heart rate
+* train a model and perform an inference to find probabilities of heart diseases, in particular, atrial fibrillation
 
 Contents
 ========
@@ -58,10 +56,9 @@ Here is an example of pipeline that loads ECG signals, makes preprocessing and t
 .. code-block:: python
 
   train_pipeline = (
-    dataset.train
-        .pipeline
+      ds.Pipeline()
         .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
-        .init_variable("loss_history", init=list)
+        .init_variable("loss_history", init_on_each_run=list)
         .load(components=["signal", "meta"], fmt="wfdb")
         .load(components="target", fmt="csv", src=LABELS_PATH)
         .drop_labels(["~"])
@@ -70,8 +67,7 @@ Here is an example of pipeline that loads ECG signals, makes preprocessing and t
         .random_resample_signals("normal", loc=300, scale=10)
         .random_split_signals(2048, {"A": 9, "NO": 3})
         .binarize_labels()
-        .train_model("dirichlet", make_data=make_data,
-                     fetches="loss", save_to=V("loss_history"), mode="a")
+        .train_model("dirichlet", make_data=concatenate_ecg_batch, fetches="loss", save_to=V("loss_history"), mode="a")
         .run(batch_size=100, shuffle=True, drop_last=True, n_epochs=50)
   )
 
@@ -82,8 +78,6 @@ Installation
 .. note:: `CardIO` module is in the beta stage. Your suggestions and improvements are very welcome.
 
 .. note:: `CardIO` supports python 3.5 or higher.
-
-.. note:: If you need to work with ECG signals in `wfdb` format, please, install `wfdb` package on your own. This package is not included in the `install_requires` list because it cannot be installed if not all of its requirements are already satisfied due to its `setup.py` file.
 
 
 Installation as a python package
@@ -103,7 +97,7 @@ After that just import `cardio`::
     import cardio
 
 
-Installation as a project repository:
+Installation as a project repository
 --------------------------------------
 
 When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Dataset`` submodule is also cloned::

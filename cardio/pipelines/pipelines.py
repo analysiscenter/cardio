@@ -13,11 +13,11 @@ from ..models.hmm import HMModel, prepare_hmm_input
 
 
 def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_options=None,
-                             loss_history='loss_history', ):
+                             loss_history='loss_history', model_name='dirichlet'):
     """Train pipeline for Dirichlet model.
 
-    This pipeline trains Dirichlet model to find propability of artrial fibrillation.
-    It works with dataset that generates batches of class EcgBatch.
+    This pipeline trains Dirichlet model to find propability of atrial fibrillation.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
@@ -30,8 +30,8 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
         Number of times to iterate over the training data arrays.
         Default value is 1000.
     gpu_options : GPUOptions
-        Magic attribute generated for tf.ConfigProto "gpu_options" proto field.
-        Default value is None.
+        An argument for tf.ConfigProto ``gpu_options`` proto field.
+        Default value is ``None``.
     loss_history : str
         Name of pipeline variable to save loss values to.
 
@@ -49,8 +49,8 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
     }
 
     return (ds.Pipeline()
-            .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
-            .init_variable(loss_history, init=list)
+            .init_model("dynamic", DirichletModel, name=model_name, config=model_config)
+            .init_variable(loss_history, init_on_each_run=list)
             .load(components=["signal", "meta"], fmt="wfdb")
             .load(components="target", fmt="csv", src=labels_path)
             .drop_labels(["~"])
@@ -59,26 +59,27 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
             .random_resample_signals("normal", loc=300, scale=10)
             .random_split_signals(2048, {"A": 9, "NO": 3})
             .binarize_labels()
-            .train_model("dirichlet", make_data=concatenate_ecg_batch,
+            .train_model(model_name, make_data=concatenate_ecg_batch,
                          fetches="loss", save_to=V(loss_history), mode="a")
             .run(batch_size=batch_size, shuffle=True, drop_last=True, n_epochs=n_epochs, lazy=True))
 
-def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None, predictions='predictions_list'):
+def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None,
+                               predictions='predictions_list', model_name='dirichlet'):
     """Pipeline for prediction with Dirichlet model.
 
-    This pipeline finds propability of artrial fibrillation according to Dirichlet model.
-    It works with dataset that generates batches of class EcgBatch.
+    This pipeline finds propability of atrial fibrillation according to Dirichlet model.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
     model_path : str
-        path to pretrained Dirichlet model
+        path to pretrained ``DirichletModel``
     batch_size : int
         Number of samples in batch.
         Default value is 100.
     gpu_options : GPUOptions
-        Magic attribute generated for tf.ConfigProto "gpu_options" proto field.
-        Default value is None.
+        An argument for tf.ConfigProto ``gpu_options`` proto field.
+        Default value is ``None``.
     predictions: str
         Name of pipeline variable to save predictions to.
 
@@ -95,20 +96,20 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None, pre
     }
 
     return (ds.Pipeline()
-            .init_model("static", DirichletModel, name="dirichlet", config=model_config)
+            .init_model("static", DirichletModel, name=model_name, config=model_config)
             .init_variable(predictions, init_on_each_run=list)
             .load(fmt="wfdb", components=["signal", "meta"])
             .flip_signals()
             .split_signals(2048, 2048)
-            .predict_model("dirichlet", make_data=partial(concatenate_ecg_batch, return_targets=False),
+            .predict_model(model_name, make_data=partial(concatenate_ecg_batch, return_targets=False),
                            fetches="predictions", save_to=V(predictions), mode="e")
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
     """Preprocessing pipeline for Hidden Markov Model.
 
-    This pipeline prepares data for hmm_train_pipeline.
-    It works with dataset that generates batches of class EcgBatch.
+    This pipeline prepares data for ``hmm_train_pipeline``.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
@@ -146,27 +147,28 @@ def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
             .update_variable(features, ds.B(features), mode='e')
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
-def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0, **kwargs):
+def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0,
+                       n_iter=25, random_state=42, model_name='HMM'):
     """Train pipeline for Hidden Markov Model.
 
     This pipeline trains hmm model to isolate QRS, PQ and QT segments.
-    It works with dataset that generates batches of class EcgBatch.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
     hmm_preprocessed : Pipeline
-        Pipeline with precomputed hmm features through hmm_preprocessing_pipeline
+        Pipeline with precomputed hmm features through ``hmm_preprocessing_pipeline``
     batch_size : int
         Number of samples in batch.
         Default value is 20.
     features : str
         Batch attribute to store calculated features.
     channel_ix : int
-        Index of channel, which data should be used in training and predicting.
-    kwargs : misc
-        Additional named arguments for the estimator.
-        Possible arguments are ``n_iter`` and ``random_state``.
-
+        Index of signal's channel, which should be used in training and predicting.
+    n_iter : int
+        Number of learning iterations for ``HMModel``.
+    random_state: int
+        Random state for ``HMModel``.
 
     Returns
     -------
@@ -245,9 +247,6 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     means, covariances = prepare_means_covars(hmm_features, expanded, states=[3, 5, 11, 14, 17, 19], num_features=3)
     transition_matrix, start_probabilities = prepare_transmat_startprob()
 
-    n_iter = kwargs.get("n_iter", 25)
-    random_state = kwargs.get("random_state", 42)
-
     config_train = {
         'build': True,
         'estimator': hmm.GaussianHMM(n_components=19, n_iter=n_iter, covariance_type="full", random_state=random_state,
@@ -257,24 +256,24 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
     }
 
     return (ds.Pipeline()
-            .init_model("dynamic", HMModel, "HMM", config=config_train)
+            .init_model("dynamic", HMModel, model_name, config=config_train)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .train_model("HMM", make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix))
+            .train_model(model_name, make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix))
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
-                         channel_ix=0, annot="hmm_annotation"):
+                         channel_ix=0, annot="hmm_annotation", model_name='HMM'):
     """Prediction pipeline for Hidden Markov Model.
 
     This pipeline isolates QRS, PQ and QT segments.
-    It works with dataset that generates batches of class EcgBatch.
+    It works with dataset that generates batches of class ``EcgBatch``.
 
     Parameters
     ----------
     model_path : str
-        Path to pretrained hmm model.
+        Path to pretrained ``HMModel``.
     batch_size : int
         Number of samples in batch.
         Default value is 20.
@@ -297,12 +296,11 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
     }
 
     return (ds.Pipeline()
-            .init_model("static", HMModel, "HMM", config=config_predict)
+            .init_model("static", HMModel, model_name, config=config_predict)
             .load(fmt="wfdb", components=["signal", "meta"])
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .predict_model("HMM", make_data=partial(prepare_hmm_input, features=features,
-                                                    channel_ix=channel_ix),
+            .predict_model(model_name, make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix),
                            save_to=ds.B(annot), mode='w')
             .calc_ecg_parameters(src=annot)
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))

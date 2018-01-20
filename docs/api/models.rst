@@ -23,8 +23,12 @@ HMModel
 -------
 
 .. autoclass:: cardio.models.HMModel
-    :members:
     :show-inheritance:
+
+    .. automethod:: cardio.models.HMModel.train
+    .. automethod:: cardio.models.HMModel.predict
+    .. automethod:: cardio.models.HMModel.load
+    .. automethod:: cardio.models.HMModel.save
 
 ---------
 FFTModel

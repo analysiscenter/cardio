@@ -16,7 +16,7 @@ with open('docs/index.rst', 'r') as f:
 
 setup(
     name='cardio',
-    packages=find_packages(exclude=['tutorials']),
+    packages=find_packages(exclude=['tutorials', 'examples', 'docs']),
     version=version,
     url='https://github.com/analysiscenter/cardio',
     license='Apache License 2.0',
@@ -37,6 +37,7 @@ setup(
         'dill>=0.2.7.1',
         'pydicom>=0.9.9',
         'pyedflib>=0.1.11',
+        'wfdb==1.3.9'
     ],
     extras_require={
         'tensorflow': ['tensorflow>=1.4'],

@@ -8,10 +8,7 @@ from numba import njit
 from scipy.io import wavfile
 import dicom
 import pyedflib
-try:
-    import wfdb
-except ImportError:
-    pass
+import wfdb
 
 # Constants
 

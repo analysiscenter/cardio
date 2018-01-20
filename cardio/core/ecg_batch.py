@@ -100,7 +100,7 @@ class EcgBatch(ds.Batch):
     Parameters
     ----------
     index : DatasetIndex
-        Unique identifiers of ECGs in a dataset.
+        Unique identifiers of ECGs in the batch.
     preloaded : tuple, optional
         Data to put in the batch if given. Defaults to ``None``.
     unique_labels : 1-D ndarray, optional
@@ -109,7 +109,7 @@ class EcgBatch(ds.Batch):
     Attributes
     ----------
     index : DatasetIndex
-        Unique identifiers of ECGs in a dataset.
+        Unique identifiers of ECGs in the batch.
     signal : 1-D ndarray
         Array of 2-D ndarrays with ECG signals in channels first format.
     annotation : 1-D ndarray
@@ -125,11 +125,11 @@ class EcgBatch(ds.Batch):
 
     Note
     ----
-    Some batch methods take ``index`` as the first argument after self. You
-    should not specify it in your code, it will be passed automatically by
-    ``inbatch_parallel`` decorator. For example, ``resample_signal`` method
+    Some batch methods take ``index`` as their first argument after ``self``.
+    You should not specify it in your code, it will be passed automatically by
+    ``inbatch_parallel`` decorator. For example, ``resample_signals`` method
     with ``index`` and ``fs`` arguments should be called as
-    ``batch.resample_signal(fs)``.
+    ``batch.resample_signals(fs)``.
     """
 
     def __init__(self, index, preloaded=None, unique_labels=None):
@@ -224,13 +224,12 @@ class EcgBatch(ds.Batch):
     def load(self, src=None, fmt=None, components=None, ann_ext=None, *args, **kwargs):
         """Load given batch components from source.
 
-        Most of the EcgBatch actions work under assumption that both
-        signal and meta components were loaded. In case this assumption
-        is not fulfilled, normal operation of the actions is not
-        guaranteed.
+        Most of the ``EcgBatch`` actions work under the assumption that both
+        ``signal`` and ``meta`` components are loaded. In case this assumption
+        is not fulfilled, normal operation of the actions is not guaranteed.
 
-        This method supports loading of signals from wfdb, DICOM, EDF,
-        wav and blosc formats.
+        This method supports loading of signals from wfdb, DICOM, EDF, wav and
+        blosc formats.
 
         Parameters
         ----------
@@ -260,7 +259,7 @@ class EcgBatch(ds.Batch):
 
     @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
     def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
-        """Load given components from wfdb files.
+        """Load given components from wfdb, DICOM, EDF or wav files.
 
         Parameters
         ----------
@@ -297,7 +296,7 @@ class EcgBatch(ds.Batch):
         return loaders[fmt](path, components, *args, **kwargs)
 
     def _assemble_load(self, results, *args, **kwargs):
-        """Concatenate results of different workers and update self.
+        """Concatenate results of different workers and update ``self``.
 
         Parameters
         ----------
@@ -323,7 +322,7 @@ class EcgBatch(ds.Batch):
         return self
 
     def _load_labels(self, src):
-        """Load labels from csv file or ``pandas.Series``.
+        """Load labels from a csv file or ``pandas.Series``.
 
         Parameters
         ----------
@@ -339,10 +338,10 @@ class EcgBatch(ds.Batch):
         Raises
         ------
         TypeError
-            If src is not a string or ``Series``.
+            If ``src`` is not a string or ``pandas.Series``.
         RuntimeError
-            If ``unique_labels`` was undefined and the batch was not created
-            by a ``Pipeline``.
+            If ``unique_labels`` has not been defined and the batch was not
+            created by a ``Pipeline``.
         """
         if not isinstance(src, (str, pd.Series)):
             raise TypeError("Unsupported type of source")
@@ -372,8 +371,8 @@ class EcgBatch(ds.Batch):
         end : int, optional
             The end point of the displayed part of the signal (in seconds).
         annot : str, optional
-            If not ``None``, specifies attribute that stores annotation obtained
-            from ``cardio.models.HMModel``.
+            If not ``None``, specifies attribute that stores annotation
+            obtained from ``cardio.models.HMModel``.
         subplot_size : tuple
             Width and height of each subplot in inches.
 
@@ -397,7 +396,7 @@ class EcgBatch(ds.Batch):
             lead_name = "undefined" if meta["signame"][channel] == "None" else meta["signame"][channel]
             units = "undefined" if meta["units"][channel] is None else meta["units"][channel]
             ax.plot((np.arange(start, end) / fs), signal[channel, start:end])
-            ax.set_title('Lead name: {}'.format(lead_name))
+            ax.set_title("Lead name: {}".format(lead_name))
             ax.set_xlabel("Time (sec)")
             ax.set_ylabel("Amplitude ({})".format(units))
             ax.grid("on", which="major")
@@ -485,14 +484,14 @@ class EcgBatch(ds.Batch):
         func : callable
             A function to apply. Must accept an item of ``src`` as its first
             argument if ``src`` is not ``None``.
-        src : str, array-like or None, optional
+        src : str, array-like or ``None``, optional
             The source to get the data from. If ``src`` is ``str``, it is
             treated as the batch attribute or component name. Defaults to
-            signal component.
-        dst : str, writeable array-like or None, optional
+            ``signal`` component.
+        dst : str, writeable array-like or ``None``, optional
             The source to put the result in. If ``dst`` is ``str``, it is
             treated as the batch attribute or component name. Defaults to
-            signal component.
+            ``signal`` component.
         args : misc
             Any additional positional arguments to ``func``.
         kwargs : misc
@@ -531,10 +530,10 @@ class EcgBatch(ds.Batch):
             A function to apply. Must accept a signal as its first argument.
         src : str, optional
             Batch attribute or component name to get the data from. Defaults
-            to signal component.
+            to ``signal`` component.
         dst : str, optional
             Batch attribute or component name to put the result in. Defaults
-            to signal component.
+            to ``signal`` component.
         args : misc
             Any additional positional arguments to ``func``.
         kwargs : misc
@@ -553,7 +552,7 @@ class EcgBatch(ds.Batch):
     # Labels processing
 
     def _filter_batch(self, keep_mask):
-        """Drop elements from batch with corresponding ``False`` values in
+        """Drop elements from a batch with corresponding ``False`` values in
         ``keep_mask``.
 
         This method creates a new batch and updates only components and
@@ -665,7 +664,7 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     def binarize_labels(self):
-        """Binarize labels in batch in a one-vs-all fashion.
+        """Binarize labels in a batch in a one-vs-all fashion.
 
         Returns
         -------
@@ -836,7 +835,7 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def band_pass_signals(self, index, low=None, high=None, axis=-1):
-        """Reject frequencies outside given range.
+        """Reject frequencies outside a given range.
 
         Parameters
         ----------
@@ -857,7 +856,7 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     def drop_short_signals(self, min_length, axis=-1):
-        """Drop short signals from batch.
+        """Drop short signals from a batch.
 
         Parameters
         ----------
@@ -900,7 +899,7 @@ class EcgBatch(ds.Batch):
         Returns
         -------
         batch : EcgBatch
-            Batch with flipped signals.
+            Batch with flipped signals. Changes ``self.signal`` inplace.
 
         Raises
         ------
@@ -1145,9 +1144,9 @@ class EcgBatch(ds.Batch):
         considered as a separate signal.
 
         This method creates a new batch and updates only components and
-        ``unique_labels`` attribute. Signal's data from non-signal components
-        is duplicated using a deep copy for each of the resulting signals. The
-        information stored in other attributes will be lost.
+        ``unique_labels`` attribute. Signal's data from non-``signal``
+        components is duplicated using a deep copy for each of the resulting
+        signals. The information stored in other attributes will be lost.
 
         Returns
         -------
@@ -1232,7 +1231,7 @@ class EcgBatch(ds.Batch):
         ValueError
             If given signal is not two-dimensional.
         ValueError
-            If sampling rate is negative or non-numeric.
+            If ``fs`` is negative or non-numeric.
         """
         if fs <= 0:
             raise ValueError("Sampling rate must be a positive float")
@@ -1242,15 +1241,16 @@ class EcgBatch(ds.Batch):
     @ds.inbatch_parallel(init="indices", target="threads")
     def random_resample_signals(self, index, distr, **kwargs):
         """Resample 2-D signals along axis 1 (signal axis) to a new sampling
-        rate, sampled from given distribution.
+        rate, sampled from a given distribution.
+
+        If new sampling rate is negative, the signal is left unchanged.
 
         Parameters
         ----------
         distr : str or callable
-            ``NumPy`` distribution name or callable to sample from.
+            ``NumPy`` distribution name or a callable to sample from.
         kwargs : misc
-            Distribution parameters. If new sampling rate is negative, the
-            signal is left unchanged.
+            Distribution parameters.
 
         Returns
         -------
@@ -1315,13 +1315,14 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
     def standardize(self, index, axis=None, eps=1e-10, *, src="signal", dst="signal"):
-        """Standardize data along specified axes by removing the mean and scaling to unit variance.
+        """Standardize data along specified axes by removing the mean and
+        scaling to unit variance.
 
         Parameters
         ----------
-        axis : None or int or tuple of ints, optional
-            Axis or axes along which standardization is performed.
-            The default is to compute for the flattened array.
+        axis : ``None`` or int or tuple of ints, optional
+            Axis or axes along which standardization is performed. The default
+            is to compute for the flattened array.
         eps: float
             Small addition to avoid division by zero.
         src : str, optional
@@ -1341,29 +1342,29 @@ class EcgBatch(ds.Batch):
         getattr(self, dst)[i] = dst_data
 
     @ds.action
-    @ds.inbatch_parallel(init="indices", target='threads')
+    @ds.inbatch_parallel(init="indices", target="threads")
     def calc_ecg_parameters(self, index, src=None):
-        """Calculate ECG report parameters and write it to meta component.
+        """Calculate ECG report parameters and write them to the ``meta``
+        component.
 
-        Calculates PQ, QT, QRS intervals and heart rate value based on
-        annotation and writes it in ``meta``. Also writes to ``meta``
-        locations of the starts and ends of those intervals.
+        Calculates PQ, QT, QRS intervals along with their borders and the
+        heart rate value based on the annotation and writes them to the
+        ``meta`` component.
 
         Parameters
         ----------
         src : str
-            Batch attribute or component name to get annotation from.
+            Batch attribute or component name to get the annotation from.
 
         Returns
         -------
         batch : EcgBatch
-            Batch with report parameters stored in ``meta`` component.
+            Batch with report parameters stored in the ``meta`` component.
 
         Raises
         ------
         ValueError
-            If src is None or is not an attribute of batch.
-
+            If ``src`` is ``None`` or is not an attribute of a batch.
         """
         if not (src and hasattr(self, src)):
             raise ValueError("Batch does not have an attribute or component {}!".format(src))
@@ -1373,23 +1374,23 @@ class EcgBatch(ds.Batch):
 
         self.meta[i]["hr"] = bt.calc_hr(self.signal[i],
                                         src_data,
-                                        np.float64(self.meta[i]['fs']),
+                                        np.float64(self.meta[i]["fs"]),
                                         bt.R_STATE)
 
         self.meta[i]["pq"] = bt.calc_pq(src_data,
-                                        np.float64(self.meta[i]['fs']),
+                                        np.float64(self.meta[i]["fs"]),
                                         bt.P_STATES,
                                         bt.Q_STATE,
                                         bt.R_STATE)
 
         self.meta[i]["qt"] = bt.calc_qt(src_data,
-                                        np.float64(self.meta[i]['fs']),
+                                        np.float64(self.meta[i]["fs"]),
                                         bt.T_STATES,
                                         bt.Q_STATE,
                                         bt.R_STATE)
 
         self.meta[i]["qrs"] = bt.calc_qrs(src_data,
-                                          np.float64(self.meta[i]['fs']),
+                                          np.float64(self.meta[i]["fs"]),
                                           bt.S_STATE,
                                           bt.Q_STATE,
                                           bt.R_STATE)
