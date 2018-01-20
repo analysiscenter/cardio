@@ -50,14 +50,17 @@ class DirichletModelBase(TFModel):
     The model predicts Dirichlet distribution parameters from which class
     probabilities are sampled.
 
-    Configuration
-    -------------
+    Notes
+    -----
+    **Configuration**
+
     Model config must contain the following keys:
-    "input_shape" : tuple
+
+    * input_shape : tuple
         Input signals's shape without the batch dimension.
-    "class_names" : array_like
+    * class_names : array_like
         Class names.
-    "loss" : None
+    * loss : ``None``
         The model has a predefined loss, so you should leave it ``None``.
     """
 
@@ -123,11 +126,12 @@ class DirichletModelBase(TFModel):
 class DirichletModel(DirichletModelBase):
     """Dirichlet model with overloaded train and predict methods.
 
-    ``train`` method is identical to ``DirichletModelBase.train``, but also
-    accepts ``args`` and ``kwargs``.
-    ``predict`` method splits the resulting tensor for ``parameters`` fetch
-    using ``split_indices``. It also splits and aggregates results for
-    ``predictions`` fetch to get class probabilities.
+    * ``train`` method is identical to ``DirichletModelBase.train``, but also
+      accepts ``args`` and ``kwargs``.
+
+    * ``predict`` method splits the resulting tensor for ``parameters`` fetch
+      using ``split_indices``. It also splits and aggregates results for
+      ``predictions`` fetch to get class probabilities.
     """
 
     @staticmethod
