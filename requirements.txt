@@ -1,9 +1,2 @@
-numba
-blosc
-dill
-wfdb
-pytest
-PyWavelets
-hmmlearn
-tf
-Keras>=2.0.0
+pytest>=3.3.0
+.

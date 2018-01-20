@@ -16,7 +16,7 @@ with open('docs/index.rst', 'r') as f:
 
 setup(
     name='cardio',
-    packages=find_packages(exclude=['tutorials']),
+    packages=find_packages(exclude=['tutorials', 'examples', 'docs']),
     version=version,
     url='https://github.com/analysiscenter/cardio',
     license='Apache License 2.0',
@@ -27,19 +27,23 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
-        'numpy>=1.10',
-        'wfdb>=1.2.2.',
-        'dill>=0.2.7.1',
-        'pywavelets>=0.5.2',
-        'scikit-learn>=0.19.0',
+        'numpy>=1.13.1',
+        'scipy>=0.19.1',
+        'pandas>=0.21.1',
+        'scikit-learn>=0.19.1',
         'numba>=0.35.0',
-        'blosc>=1.5.0'
+        'pywavelets>=0.5.2',
+        'matplotlib>=2.1.0',
+        'dill>=0.2.7.1',
+        'pydicom>=0.9.9',
+        'pyedflib>=0.1.11',
+        'wfdb==1.3.9'
     ],
     extras_require={
         'tensorflow': ['tensorflow>=1.4'],
         'tensorflow-gpu': ['tensorflow-gpu>=1.4'],
         'keras': ['keras>=2.0.0'],
-        'hmmlearn': ['hmmlearn>=0.2.0']
+        'hmmlearn': ['hmmlearn==0.2.0']
     },
     classifiers=[
         'Development Status :: 4 - Beta',

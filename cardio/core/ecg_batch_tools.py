@@ -1,14 +1,28 @@
 """Сontains ECG processing tools."""
 
 import os
+import struct
+
 import numpy as np
-
-import pywt
 from numba import njit
-
+from scipy.io import wavfile
+import dicom
+import pyedflib
 import wfdb
 
 # Constants
+
+# This is the predefined keys of the meta component.
+# Each key is initialized with None.
+META_KEYS = [
+    "age",
+    "sex",
+    "timestamp",
+    "comments",
+    "fs",
+    "signame",
+    "units",
+]
 
 # This is the mapping from inner HMM states to human-understandable
 # cardiological terms.
@@ -20,7 +34,56 @@ R_STATE = np.array([1], np.int64)
 S_STATE = np.array([2], np.int64)
 
 
-def load_wfdb(path, components, ann_ext=None):
+def check_signames(signame, nsig):
+    """Check that signame is in proper format.
+
+    Check if signame is a list of values that can be casted
+    to string, othervise generate new signame list with numbers
+    0 to `nsig`-1 as strings.
+
+    Parameters
+    ----------
+    signame : misc
+        Signal names from file.
+    nsig : int
+        Number of signals / channels.
+
+    Returns
+    -------
+    signame : list
+        List of string names of signals / channels.
+    """
+    if isinstance(signame, (tuple, list)) and len(signame) == nsig:
+        signame = [str(name) for name in signame]
+    else:
+        signame = [str(number) for number in range(nsig)]
+    return np.array(signame)
+
+
+def check_units(units, nsig):
+    """Check that units are in proper format.
+
+    Check if units is a list of values with lenght
+    equal to number of channels.
+
+    Parameters
+    ----------
+    units : misc
+        Units from file.
+    nsig : int
+        Number of signals / channels.
+
+    Returns
+    -------
+    units : list
+        List of units of signal / channel.
+    """
+    if not (isinstance(units, (tuple, list)) and len(units) == nsig):
+        units = [None for number in range(nsig)]
+    return np.array(units)
+
+
+def load_wfdb(path, components, *args, **kwargs):
     """Load given components from wfdb file.
 
     Parameters
@@ -37,16 +100,213 @@ def load_wfdb(path, components, ann_ext=None):
     ecg_data : list
         List of ecg data components.
     """
+    _ = args
+
+    ann_ext = kwargs.get("ann_ext")
+
     path = os.path.splitext(path)[0]
     record = wfdb.rdsamp(path)
     signal = record.__dict__.pop("p_signals").T
-    meta = record.__dict__
+    record_meta = record.__dict__
+    nsig = record_meta["nsig"]
+
     if "annotation" in components and ann_ext is not None:
         annotation = wfdb.rdann(path, ann_ext)
-        annot = {"annsamp": annotation.annsamp,
-                 "anntype": annotation.anntype}
+        annot = {"annsamp": annotation.sample,
+                 "anntype": annotation.symbol}
     else:
         annot = {}
+
+    # Initialize meta with defined keys, load values from record
+    # meta and preprocess to our format.
+    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+    meta.update(record_meta)
+
+    meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["units"] = check_units(meta["units"], nsig)
+
+    data = {"signal": signal,
+            "annotation": annot,
+            "meta": meta}
+    return [data[comp] for comp in components]
+
+
+def load_dicom(path, components, *args, **kwargs):
+    """
+    Load given components from DICOM file.
+
+    Parameters
+    ----------
+    path : str
+        Path to .hea file.
+    components : iterable
+        Components to load.
+
+    Returns
+    -------
+    ecg_data : list
+        List of ecg data components.
+    """
+
+    def signal_decoder(record, nsig):
+        """
+        Helper function to decode signal from binaries when reading from dicom.
+        """
+        definition = record.WaveformSequence[0].ChannelDefinitionSequence
+        data = record.WaveformSequence[0].WaveformData
+
+        unpack_fmt = "<{}h".format(int(len(data) / 2))
+        factor = np.ones(nsig)
+        baseline = np.zeros(nsig)
+
+        for i in range(nsig):
+
+            assert definition[i].WaveformBitsStored == 16
+
+            channel_sens = definition[i].get("ChannelSensitivity")
+            channel_sens_cf = definition[i].get("ChannelSensitivityCorrectionFactor")
+            if channel_sens is not None and channel_sens_cf is not None:
+                factor[i] = float(channel_sens) * float(channel_sens_cf)
+
+            channel_bl = definition[i].get("ChannelBaseline")
+            if channel_bl is not None:
+                baseline[i] = float(channel_bl)
+
+        unpacked_data = struct.unpack(unpack_fmt, data)
+
+        signals = np.asarray(unpacked_data, dtype=np.float32).reshape(-1, nsig)
+        signals = ((signals + baseline) * factor).T
+
+        return signals
+
+    _ = args, kwargs
+
+    record = dicom.read_file(path)
+
+    sequence = record.WaveformSequence[0]
+
+    assert sequence.WaveformSampleInterpretation == 'SS'
+    assert sequence.WaveformBitsAllocated == 16
+
+    nsig = sequence.NumberOfWaveformChannels
+
+    annot = {}
+
+    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+
+    if record.PatientAge[-1] == "Y":
+        age = np.int(record.PatientAge[:-1])
+    else:
+        age = np.int(record.PatientAge[:-1]) / 12.0
+
+    meta["age"] = age
+    meta["sex"] = record.PatientSex
+    meta["timestamp"] = record.AcquisitionDateTime
+    meta["comments"] = [section.UnformattedTextValue for section in
+                        record.WaveformAnnotationSequence if section.AnnotationGroupNumber == 0]
+    meta["fs"] = sequence.SamplingFrequency
+    meta["signame"] = [section.ChannelSourceSequence[0].CodeMeaning for section in
+                       sequence.ChannelDefinitionSequence]
+    meta["units"] = [section.ChannelSensitivityUnitsSequence[0].CodeValue for section in
+                     sequence.ChannelDefinitionSequence]
+
+    meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["units"] = check_units(meta["units"], nsig)
+
+    signal = signal_decoder(record, nsig)
+
+    data = {"signal": signal,
+            "annotation": annot,
+            "meta": meta}
+    return [data[comp] for comp in components]
+
+
+def load_edf(path, components, *args, **kwargs):
+    """
+    Load given components from EDF file.
+
+    Parameters
+    ----------
+    path : str
+        Path to .hea file.
+    components : iterable
+        Components to load.
+
+    Returns
+    -------
+    ecg_data : list
+        List of ecg data components.
+    """
+    _ = args, kwargs
+
+    record = pyedflib.EdfReader(path)
+
+    annot = {}
+    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+
+    meta["sex"] = record.getGender() if record.getGender() != '' else None
+    meta["timestamp"] = record.getStartdatetime().strftime("%Y%m%d%H%M%S")
+    nsig = record.signals_in_file
+
+    if len(np.unique(record.getNSamples())) != 1:
+        raise ValueError("Different signal lenghts are not supported!")
+
+    if len(np.unique(record.getSampleFrequencies())) == 1:
+        meta["fs"] = record.getSampleFrequencies()[0]
+    else:
+        raise ValueError("Different sampling rates are not supported!")
+
+    meta["signame"] = record.getSignalLabels()
+    meta["units"] = [record.getSignalHeader(sig)["dimension"] for sig in range(nsig)]
+
+    meta.update(record.getHeader())
+
+    meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["units"] = check_units(meta["units"], nsig)
+
+    signal = np.array([record.readSignal(i) for i in range(nsig)])
+
+    data = {"signal": signal,
+            "annotation": annot,
+            "meta": meta}
+    return [data[comp] for comp in components]
+
+
+def load_wav(path, components, *args, **kwargs):
+    """
+    Load given components from wav file.
+
+    Parameters
+    ----------
+    path : str
+        Path to .hea file.
+    components : iterable
+        Components to load.
+
+    Returns
+    -------
+    ecg_data : list
+        List of ecg data components.
+    """
+    _ = args, kwargs
+
+    fs, signal = wavfile.read(path)
+    if signal.ndim == 1:
+        nsig = 1
+        signal = signal.reshape([-1, 1])
+    elif signal.ndim == 2:
+        nsig = signal.shape[1]
+    else:
+        raise ValueError("Unexpected number of dimensions in signal array: {}".format(signal.ndim))
+
+    signal = signal.T
+
+    annot = {}
+    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+
+    meta["fs"] = fs
+    meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["units"] = check_units(meta["units"], nsig)
 
     data = {"signal": signal,
             "annotation": annot,
@@ -218,33 +478,6 @@ def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
     return np.fft.irfft(sig_rfft, n=signals.shape[axis], axis=axis)
 
 
-def wavelet_transform(signal, cwt_scales, cwt_wavelet):
-    """Generate wavelet transformation from the signal.
-
-    Parameters
-    ----------
-    signal : numpy.array
-        Ecg signal.
-    cwt_scales : array_like
-        Scales to use for Continuous Wavele Transformation.
-    cwt_wavelet : Wavelet object or name
-        Wavelet to use in CWT.
-
-    Returns
-    -------
-    features : numpy.array
-        Features generated by wavelet from the signal.
-    """
-    # NOTE: Currently works on first lead signal only
-    sig = signal[0, :]
-
-    cwtmatr = pywt.cwt(sig, np.array(cwt_scales), cwt_wavelet)[0]
-    wavelets = ((cwtmatr - np.mean(cwtmatr, axis=1).reshape(-1, 1)) /
-                np.std(cwtmatr, axis=1).reshape(-1, 1)).T
-
-    return wavelets
-
-
 @njit(nogil=True)
 def find_intervals_borders(hmm_annotation, inter_val):
     """Find starts and ends of the intervals.
@@ -305,7 +538,6 @@ def find_maxes(signal, starts, ends):
     maxes = np.empty(starts.shape, dtype=np.float64)
     for i in range(maxes.shape[0]):
         maxes[i] = starts[i] + np.argmax(signal[0][starts[i]:ends[i]])
-
     return maxes
 
 
@@ -336,7 +568,6 @@ def calc_hr(signal, hmm_annotation, fs, r_state=R_STATE):
     maxes = find_maxes(signal, starts, ends)
     diff = maxes[1:] - maxes[:-1]
     hr_val = (np.median(diff / fs) ** -1) * 60
-
     return hr_val
 
 
@@ -398,7 +629,6 @@ def calc_pq(hmm_annotation, fs, p_states=P_STATES, q_state=Q_STATE, r_state=R_ST
     q_final = q_final[q_final > -1]
 
     intervals = q_final - p_final
-
     return np.median(intervals) / fs
 
 
@@ -460,7 +690,6 @@ def calc_qt(hmm_annotation, fs, t_states=T_STATES, q_state=Q_STATE, r_state=R_ST
     q_final = q_final[q_final > -1][:-1]
 
     intervals = t_final - q_final
-
     return np.median(intervals) / fs
 
 
@@ -521,5 +750,4 @@ def calc_qrs(hmm_annotation, fs, s_state=S_STATE, q_state=Q_STATE, r_state=R_STA
     q_final = q_final[q_final > -1][:-1]
 
     intervals = s_final - q_final
-
     return np.median(intervals) / fs
