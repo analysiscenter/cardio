@@ -5,13 +5,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>cardio.pipelines.pipelines &#8212; CardIO 0.1.0 documentation</title>
+    <title>cardio.pipelines.pipelines &#8212; CardIO 0.2.0 documentation</title>
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     '0.1.0',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -32,7 +32,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>  
@@ -51,17 +51,18 @@
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 <span class="kn">from</span> <span class="nn">hmmlearn</span> <span class="k">import</span> <span class="n">hmm</span>
 
-<span class="kn">import</span> <span class="nn">cardio.dataset</span> <span class="k">as</span> <span class="nn">ds</span>
-<span class="kn">from</span> <span class="nn">cardio.dataset</span> <span class="k">import</span> <span class="n">F</span><span class="p">,</span> <span class="n">V</span>
-<span class="kn">from</span> <span class="nn">cardio.models.dirichlet_model</span> <span class="k">import</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">concatenate_ecg_batch</span>
-<span class="kn">from</span> <span class="nn">cardio.models.hmm</span> <span class="k">import</span> <span class="n">HMModel</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="k">import</span> <span class="n">dataset</span> <span class="k">as</span> <span class="n">ds</span>
+<span class="kn">from</span> <span class="nn">..dataset.dataset</span> <span class="k">import</span> <span class="n">F</span><span class="p">,</span> <span class="n">V</span>
+<span class="kn">from</span> <span class="nn">..models.dirichlet_model</span> <span class="k">import</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">concatenate_ecg_batch</span>
+<span class="kn">from</span> <span class="nn">..models.hmm</span> <span class="k">import</span> <span class="n">HMModel</span><span class="p">,</span> <span class="n">prepare_hmm_input</span>
 
 
-<div class="viewcode-block" id="dirichlet_train_pipeline"><a class="viewcode-back" href="../../../api/cardio.pipelines.html#cardio.pipelines.dirichlet_train_pipeline">[docs]</a><span class="k">def</span> <span class="nf">dirichlet_train_pipeline</span><span class="p">(</span><span class="n">labels_path</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">gpu_options</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="dirichlet_train_pipeline"><a class="viewcode-back" href="../../../api/pipelines.html#cardio.pipelines.dirichlet_train_pipeline">[docs]</a><span class="k">def</span> <span class="nf">dirichlet_train_pipeline</span><span class="p">(</span><span class="n">labels_path</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">gpu_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                             <span class="n">loss_history</span><span class="o">=</span><span class="s1">&#39;loss_history&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;dirichlet&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Train pipeline for Dirichlet model.</span>
 
-<span class="sd">    This pipeline trains Dirichlet model to find propability of artrial fibrillation.</span>
-<span class="sd">    It works with dataset that generates bathes of class EcgBatch.</span>
+<span class="sd">    This pipeline trains Dirichlet model to find propability of atrial fibrillation.</span>
+<span class="sd">    It works with dataset that generates batches of class ``EcgBatch``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -74,8 +75,10 @@
 <span class="sd">        Number of times to iterate over the training data arrays.</span>
 <span class="sd">        Default value is 1000.</span>
 <span class="sd">    gpu_options : GPUOptions</span>
-<span class="sd">        Magic attribute generated for tf.ConfigProto &quot;gpu_options&quot; proto field.</span>
-<span class="sd">        Default value is None.</span>
+<span class="sd">        An argument for tf.ConfigProto ``gpu_options`` proto field.</span>
+<span class="sd">        Default value is ``None``.</span>
+<span class="sd">    loss_history : str</span>
+<span class="sd">        Name of pipeline variable to save loss values to.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -91,36 +94,39 @@
     <span class="p">}</span>
 
     <span class="k">return</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
-            <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="n">loss_history</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
             <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;wfdb&quot;</span><span class="p">)</span>
             <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">components</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">labels_path</span><span class="p">)</span>
             <span class="o">.</span><span class="n">drop_labels</span><span class="p">([</span><span class="s2">&quot;~&quot;</span><span class="p">])</span>
-            <span class="o">.</span><span class="n">replace_labels</span><span class="p">({</span><span class="s2">&quot;N&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">})</span>
+            <span class="o">.</span><span class="n">rename_labels</span><span class="p">({</span><span class="s2">&quot;N&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">})</span>
             <span class="o">.</span><span class="n">flip_signals</span><span class="p">()</span>
             <span class="o">.</span><span class="n">random_resample_signals</span><span class="p">(</span><span class="s2">&quot;normal&quot;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
             <span class="o">.</span><span class="n">random_split_signals</span><span class="p">(</span><span class="mi">2048</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s2">&quot;NO&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">})</span>
             <span class="o">.</span><span class="n">binarize_labels</span><span class="p">()</span>
-            <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">concatenate_ecg_batch</span><span class="p">,</span>
-                         <span class="n">fetches</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">V</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">concatenate_ecg_batch</span><span class="p">,</span>
+                         <span class="n">fetches</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">V</span><span class="p">(</span><span class="n">loss_history</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
             <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="n">n_epochs</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="dirichlet_predict_pipeline"><a class="viewcode-back" href="../../../api/cardio.pipelines.html#cardio.pipelines.dirichlet_predict_pipeline">[docs]</a><span class="k">def</span> <span class="nf">dirichlet_predict_pipeline</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">gpu_options</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="dirichlet_predict_pipeline"><a class="viewcode-back" href="../../../api/pipelines.html#cardio.pipelines.dirichlet_predict_pipeline">[docs]</a><span class="k">def</span> <span class="nf">dirichlet_predict_pipeline</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">gpu_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                               <span class="n">predictions</span><span class="o">=</span><span class="s1">&#39;predictions_list&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;dirichlet&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Pipeline for prediction with Dirichlet model.</span>
 
-<span class="sd">    This pipeline finds propability of artrial fibrillation according to Dirichlet model.</span>
-<span class="sd">    It works with dataset that generates bathes of class EcgBatch.</span>
+<span class="sd">    This pipeline finds propability of atrial fibrillation according to Dirichlet model.</span>
+<span class="sd">    It works with dataset that generates batches of class ``EcgBatch``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    model_path : str</span>
-<span class="sd">        path to pretrained Dirichlet model</span>
+<span class="sd">        path to pretrained ``DirichletModel``</span>
 <span class="sd">    batch_size : int</span>
 <span class="sd">        Number of samples in batch.</span>
 <span class="sd">        Default value is 100.</span>
 <span class="sd">    gpu_options : GPUOptions</span>
-<span class="sd">        Magic attribute generated for tf.ConfigProto &quot;gpu_options&quot; proto field.</span>
-<span class="sd">        Default value is None.</span>
+<span class="sd">        An argument for tf.ConfigProto ``gpu_options`` proto field.</span>
+<span class="sd">        Default value is ``None``.</span>
+<span class="sd">    predictions: str</span>
+<span class="sd">        Name of pipeline variable to save predictions to.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -135,37 +141,34 @@
     <span class="p">}</span>
 
     <span class="k">return</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
-            <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">,</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;predictions_list&quot;</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">,</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
             <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;wfdb&quot;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">])</span>
             <span class="o">.</span><span class="n">flip_signals</span><span class="p">()</span>
             <span class="o">.</span><span class="n">split_signals</span><span class="p">(</span><span class="mi">2048</span><span class="p">,</span> <span class="mi">2048</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">predict_model</span><span class="p">(</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">concatenate_ecg_batch</span><span class="p">,</span> <span class="n">return_targets</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
-                           <span class="n">fetches</span><span class="o">=</span><span class="s2">&quot;predictions&quot;</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">V</span><span class="p">(</span><span class="s2">&quot;predictions_list&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;e&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">predict_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">concatenate_ecg_batch</span><span class="p">,</span> <span class="n">return_targets</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+                           <span class="n">fetches</span><span class="o">=</span><span class="s2">&quot;predictions&quot;</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">V</span><span class="p">(</span><span class="n">predictions</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;e&quot;</span><span class="p">)</span>
             <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="hmm_preprocessing_pipeline"><a class="viewcode-back" href="../../../api/cardio.pipelines.html#cardio.pipelines.hmm_preprocessing_pipeline">[docs]</a><span class="k">def</span> <span class="nf">hmm_preprocessing_pipeline</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Pipeline for prediction with hmm model.</span>
+<div class="viewcode-block" id="hmm_preprocessing_pipeline"><a class="viewcode-back" href="../../../api/pipelines.html#cardio.pipelines.hmm_preprocessing_pipeline">[docs]</a><span class="k">def</span> <span class="nf">hmm_preprocessing_pipeline</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="s2">&quot;hmm_features&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Preprocessing pipeline for Hidden Markov Model.</span>
 
-<span class="sd">    This pipeline prepares data for hmm_train_pipeline.</span>
-<span class="sd">    It works with dataset that generates bathes of class EcgBatch.</span>
+<span class="sd">    This pipeline prepares data for ``hmm_train_pipeline``.</span>
+<span class="sd">    It works with dataset that generates batches of class ``EcgBatch``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    batch_size : int</span>
 <span class="sd">        Number of samples in batch.</span>
-<span class="sd">        Default value is 100.</span>
+<span class="sd">        Default value is 20.</span>
+<span class="sd">    features : str</span>
+<span class="sd">        Batch attribute to store calculated features.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pipeline : Pipeline</span>
 <span class="sd">        Output pipeline.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="nf">get_wavelets</span><span class="p">(</span><span class="n">batch</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get wavelets from annotation</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">ann</span><span class="p">[</span><span class="s2">&quot;wavelets&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">annotation</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">get_annsamples</span><span class="p">(</span><span class="n">batch</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get annsamples from annotation</span>
@@ -180,27 +183,37 @@
     <span class="k">return</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
             <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;annsamps&quot;</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
             <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;anntypes&quot;</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;wavelets&quot;</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
             <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;wfdb&#39;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;annotation&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">],</span> <span class="n">ann_ext</span><span class="o">=</span><span class="s1">&#39;pu1&#39;</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">wavelet_transform_signal</span><span class="p">(</span><span class="n">cwt_scales</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">cwt_wavelet</span><span class="o">=</span><span class="s2">&quot;mexh&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">cwt</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">wavelet</span><span class="o">=</span><span class="s2">&quot;mexh&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">standardize</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">features</span><span class="p">)</span>
             <span class="o">.</span><span class="n">update_variable</span><span class="p">(</span><span class="s2">&quot;annsamps&quot;</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">F</span><span class="p">(</span><span class="n">get_annsamples</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;e&#39;</span><span class="p">)</span>
             <span class="o">.</span><span class="n">update_variable</span><span class="p">(</span><span class="s2">&quot;anntypes&quot;</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">F</span><span class="p">(</span><span class="n">get_anntypes</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;e&#39;</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">update_variable</span><span class="p">(</span><span class="s2">&quot;wavelets&quot;</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">F</span><span class="p">(</span><span class="n">get_wavelets</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;e&#39;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">update_variable</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">B</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;e&#39;</span><span class="p">)</span>
             <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="hmm_train_pipeline"><a class="viewcode-back" href="../../../api/cardio.pipelines.html#cardio.pipelines.hmm_train_pipeline">[docs]</a><span class="k">def</span> <span class="nf">hmm_train_pipeline</span><span class="p">(</span><span class="n">hmm_preprocessed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+<div class="viewcode-block" id="hmm_train_pipeline"><a class="viewcode-back" href="../../../api/pipelines.html#cardio.pipelines.hmm_train_pipeline">[docs]</a><span class="k">def</span> <span class="nf">hmm_train_pipeline</span><span class="p">(</span><span class="n">hmm_preprocessed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="s2">&quot;hmm_features&quot;</span><span class="p">,</span> <span class="n">channel_ix</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                       <span class="n">n_iter</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;HMM&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Train pipeline for Hidden Markov Model.</span>
 
 <span class="sd">    This pipeline trains hmm model to isolate QRS, PQ and QT segments.</span>
-<span class="sd">    It works with dataset that generates bathes of class EcgBatch.</span>
+<span class="sd">    It works with dataset that generates batches of class ``EcgBatch``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    hmm_preprocessed : Pipeline</span>
-<span class="sd">        Pipeline with precomputed hmm features through hmm_preprocessing_pipeline</span>
+<span class="sd">        Pipeline with precomputed hmm features through ``hmm_preprocessing_pipeline``</span>
 <span class="sd">    batch_size : int</span>
 <span class="sd">        Number of samples in batch.</span>
 <span class="sd">        Default value is 20.</span>
+<span class="sd">    features : str</span>
+<span class="sd">        Batch attribute to store calculated features.</span>
+<span class="sd">    channel_ix : int</span>
+<span class="sd">        Index of signal&#39;s channel, which should be used in training and predicting.</span>
+<span class="sd">    n_iter : int</span>
+<span class="sd">        Number of learning iterations for ``HMModel``.</span>
+<span class="sd">    random_state: int</span>
+<span class="sd">        Random state for ``HMModel``.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -208,15 +221,7 @@
 <span class="sd">        Output pipeline.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">prepare_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Prepare data for training</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">_</span> <span class="o">=</span> <span class="n">model</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ann</span><span class="p">[</span><span class="s2">&quot;wavelets&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">annotation</span><span class="p">])</span>
-        <span class="n">lengths</span> <span class="o">=</span> <span class="p">[</span><span class="n">ann</span><span class="p">[</span><span class="s2">&quot;wavelets&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">annotation</span><span class="p">]</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;X&quot;</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="s2">&quot;lengths&quot;</span><span class="p">:</span> <span class="n">lengths</span><span class="p">}</span>
-
-    <span class="k">def</span> <span class="nf">prepare_means_covars</span><span class="p">(</span><span class="n">wavelets</span><span class="p">,</span> <span class="n">clustering</span><span class="p">,</span> <span class="n">states</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="mi">19</span><span class="p">],</span> <span class="n">num_states</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span> <span class="n">num_features</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span><span class="c1">#pylint: disable=dangerous-default-value</span>
+    <span class="k">def</span> <span class="nf">prepare_means_covars</span><span class="p">(</span><span class="n">hmm_features</span><span class="p">,</span> <span class="n">clustering</span><span class="p">,</span> <span class="n">states</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="mi">19</span><span class="p">),</span> <span class="n">num_states</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span> <span class="n">num_features</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;This function is specific to the task and the model configuration, thus contains hardcode.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_states</span><span class="p">,</span> <span class="n">num_features</span><span class="p">))</span>
@@ -226,7 +231,7 @@
         <span class="n">last_state</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">unique_clusters</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">clustering</span><span class="p">))</span> <span class="o">-</span> <span class="mi">1</span> <span class="c1"># Excuding value -1, which represents undefined state</span>
         <span class="k">for</span> <span class="n">state</span><span class="p">,</span> <span class="n">cluster</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">states</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">unique_clusters</span><span class="p">)):</span>
-            <span class="n">value</span> <span class="o">=</span> <span class="n">wavelets</span><span class="p">[</span><span class="n">clustering</span> <span class="o">==</span> <span class="n">cluster</span><span class="p">,</span> <span class="p">:]</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">hmm_features</span><span class="p">[</span><span class="n">clustering</span> <span class="o">==</span> <span class="n">cluster</span><span class="p">,</span> <span class="p">:]</span>
             <span class="n">means</span><span class="p">[</span><span class="n">last_state</span><span class="p">:</span><span class="n">state</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
             <span class="n">covariances</span><span class="p">[</span><span class="n">last_state</span><span class="p">:</span><span class="n">state</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">clustering</span> <span class="o">==</span> <span class="n">cluster</span><span class="p">)</span>
             <span class="n">last_state</span> <span class="o">=</span> <span class="n">state</span>
@@ -248,72 +253,81 @@
 
         <span class="k">return</span> <span class="n">transition_matrix</span><span class="p">,</span> <span class="n">start_probabilities</span>
 
-    <span class="k">def</span> <span class="nf">unravel_annotation</span><span class="p">(</span><span class="n">annsamp</span><span class="p">,</span> <span class="n">anntype</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">expand_annotation</span><span class="p">(</span><span class="n">annsamp</span><span class="p">,</span> <span class="n">anntype</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Unravel annotation</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">begin</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
         <span class="n">end</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
         <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
         <span class="n">states</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;N&#39;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;st&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;t&#39;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;iso&#39;</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;pq&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">}</span>
-        <span class="n">annot</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+        <span class="n">annot_expand</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">samp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">annsamp</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">anntype</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;(&#39;</span><span class="p">:</span>
                 <span class="n">begin</span> <span class="o">=</span> <span class="n">samp</span>
                 <span class="k">if</span> <span class="p">(</span><span class="n">end</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">s</span> <span class="o">!=</span> <span class="s1">&#39;none&#39;</span><span class="p">):</span>
                     <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="s1">&#39;N&#39;</span><span class="p">:</span>
-                        <span class="n">annot</span><span class="p">[</span><span class="n">end</span><span class="p">:</span><span class="n">begin</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s1">&#39;st&#39;</span><span class="p">]</span>
+                        <span class="n">annot_expand</span><span class="p">[</span><span class="n">end</span><span class="p">:</span><span class="n">begin</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s1">&#39;st&#39;</span><span class="p">]</span>
                     <span class="k">elif</span> <span class="n">s</span> <span class="o">==</span> <span class="s1">&#39;t&#39;</span><span class="p">:</span>
-                        <span class="n">annot</span><span class="p">[</span><span class="n">end</span><span class="p">:</span><span class="n">begin</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s1">&#39;iso&#39;</span><span class="p">]</span>
+                        <span class="n">annot_expand</span><span class="p">[</span><span class="n">end</span><span class="p">:</span><span class="n">begin</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s1">&#39;iso&#39;</span><span class="p">]</span>
                     <span class="k">elif</span> <span class="n">s</span> <span class="o">==</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span>
-                        <span class="n">annot</span><span class="p">[</span><span class="n">end</span><span class="p">:</span><span class="n">begin</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s1">&#39;pq&#39;</span><span class="p">]</span>
+                        <span class="n">annot_expand</span><span class="p">[</span><span class="n">end</span><span class="p">:</span><span class="n">begin</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s1">&#39;pq&#39;</span><span class="p">]</span>
             <span class="k">elif</span> <span class="n">anntype</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;)&#39;</span><span class="p">:</span>
                 <span class="n">end</span> <span class="o">=</span> <span class="n">samp</span>
                 <span class="k">if</span> <span class="p">(</span><span class="n">begin</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">s</span> <span class="o">!=</span> <span class="s1">&#39;none&#39;</span><span class="p">):</span>
-                    <span class="n">annot</span><span class="p">[</span><span class="n">begin</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+                    <span class="n">annot_expand</span><span class="p">[</span><span class="n">begin</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">s</span> <span class="o">=</span> <span class="n">anntype</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="n">annot</span>
+        <span class="k">return</span> <span class="n">annot_expand</span>
 
-    <span class="n">lengths</span> <span class="o">=</span> <span class="p">[</span><span class="n">wavelet</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">wavelet</span> <span class="ow">in</span> <span class="n">hmm_preprocessed</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;wavelets&quot;</span><span class="p">)]</span>
-    <span class="n">wavelets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">hmm_preprocessed</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;wavelets&quot;</span><span class="p">))</span>
+    <span class="n">lengths</span> <span class="o">=</span> <span class="p">[</span><span class="n">features_iter</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">features_iter</span> <span class="ow">in</span> <span class="n">hmm_preprocessed</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">features</span><span class="p">)]</span>
+    <span class="n">hmm_features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">features_iter</span><span class="p">[</span><span class="n">channel_ix</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span> <span class="k">for</span> <span class="n">features_iter</span>
+                                   <span class="ow">in</span> <span class="n">hmm_preprocessed</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">features</span><span class="p">)])</span>
     <span class="n">anntype</span> <span class="o">=</span> <span class="n">hmm_preprocessed</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;anntypes&quot;</span><span class="p">)</span>
     <span class="n">annsamp</span> <span class="o">=</span> <span class="n">hmm_preprocessed</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;annsamps&quot;</span><span class="p">)</span>
 
-    <span class="n">unravelled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">unravel_annotation</span><span class="p">(</span><span class="n">samp</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span> <span class="k">for</span>
-                                 <span class="n">samp</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">annsamp</span><span class="p">,</span> <span class="n">anntype</span><span class="p">,</span> <span class="n">lengths</span><span class="p">)])</span>
-    <span class="n">means</span><span class="p">,</span> <span class="n">covariances</span> <span class="o">=</span> <span class="n">prepare_means_covars</span><span class="p">(</span><span class="n">wavelets</span><span class="p">,</span> <span class="n">unravelled</span><span class="p">,</span> <span class="n">states</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="mi">19</span><span class="p">],</span> <span class="n">num_features</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">expanded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">expand_annotation</span><span class="p">(</span><span class="n">samp</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span> <span class="k">for</span>
+                               <span class="n">samp</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">annsamp</span><span class="p">,</span> <span class="n">anntype</span><span class="p">,</span> <span class="n">lengths</span><span class="p">)])</span>
+    <span class="n">means</span><span class="p">,</span> <span class="n">covariances</span> <span class="o">=</span> <span class="n">prepare_means_covars</span><span class="p">(</span><span class="n">hmm_features</span><span class="p">,</span> <span class="n">expanded</span><span class="p">,</span> <span class="n">states</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="mi">19</span><span class="p">],</span> <span class="n">num_features</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
     <span class="n">transition_matrix</span><span class="p">,</span> <span class="n">start_probabilities</span> <span class="o">=</span> <span class="n">prepare_transmat_startprob</span><span class="p">()</span>
 
     <span class="n">config_train</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;build&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s1">&#39;estimator&#39;</span><span class="p">:</span> <span class="n">hmm</span><span class="o">.</span><span class="n">GaussianHMM</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">covariance_type</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+        <span class="s1">&#39;estimator&#39;</span><span class="p">:</span> <span class="n">hmm</span><span class="o">.</span><span class="n">GaussianHMM</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="n">n_iter</span><span class="p">,</span> <span class="n">covariance_type</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span>
                                      <span class="n">init_params</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
         <span class="s1">&#39;init_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;means_&#39;</span><span class="p">:</span> <span class="n">means</span><span class="p">,</span> <span class="s1">&#39;covars_&#39;</span><span class="p">:</span> <span class="n">covariances</span><span class="p">,</span> <span class="s1">&#39;transmat_&#39;</span><span class="p">:</span> <span class="n">transition_matrix</span><span class="p">,</span>
                         <span class="s1">&#39;startprob_&#39;</span><span class="p">:</span> <span class="n">start_probabilities</span><span class="p">}</span>
     <span class="p">}</span>
 
     <span class="k">return</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
-            <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">HMModel</span><span class="p">,</span> <span class="s2">&quot;HMM&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config_train</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">HMModel</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config_train</span><span class="p">)</span>
             <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;wfdb&#39;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;annotation&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">],</span> <span class="n">ann_ext</span><span class="o">=</span><span class="s1">&#39;pu1&#39;</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">wavelet_transform_signal</span><span class="p">(</span><span class="n">cwt_scales</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">cwt_wavelet</span><span class="o">=</span><span class="s2">&quot;mexh&quot;</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="s2">&quot;HMM&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">prepare_batch</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">cwt</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">wavelet</span><span class="o">=</span><span class="s2">&quot;mexh&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">standardize</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">features</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">prepare_hmm_input</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">channel_ix</span><span class="o">=</span><span class="n">channel_ix</span><span class="p">))</span>
             <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="hmm_predict_pipeline"><a class="viewcode-back" href="../../../api/cardio.pipelines.html#cardio.pipelines.hmm_predict_pipeline">[docs]</a><span class="k">def</span> <span class="nf">hmm_predict_pipeline</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Pipeline for prediction with hmm model.</span>
+<div class="viewcode-block" id="hmm_predict_pipeline"><a class="viewcode-back" href="../../../api/pipelines.html#cardio.pipelines.hmm_predict_pipeline">[docs]</a><span class="k">def</span> <span class="nf">hmm_predict_pipeline</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="s2">&quot;hmm_features&quot;</span><span class="p">,</span>
+                         <span class="n">channel_ix</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">annot</span><span class="o">=</span><span class="s2">&quot;hmm_annotation&quot;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;HMM&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Prediction pipeline for Hidden Markov Model.</span>
 
 <span class="sd">    This pipeline isolates QRS, PQ and QT segments.</span>
-<span class="sd">    It works with dataset that generates bathes of class EcgBatch.</span>
+<span class="sd">    It works with dataset that generates batches of class ``EcgBatch``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    model_path : str</span>
-<span class="sd">        Path to pretrained hmm model.</span>
+<span class="sd">        Path to pretrained ``HMModel``.</span>
 <span class="sd">    batch_size : int</span>
 <span class="sd">        Number of samples in batch.</span>
 <span class="sd">        Default value is 20.</span>
+<span class="sd">    features : str</span>
+<span class="sd">        Batch attribute to store calculated features.</span>
+<span class="sd">    channel_ix : int</span>
+<span class="sd">        Index of channel, which data should be used in training and predicting.</span>
+<span class="sd">    annot: str</span>
+<span class="sd">        Specifies attribute of batch in which annotation will be stored.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -321,33 +335,19 @@
 <span class="sd">        Output pipeline.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">prepare_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Prepare data for train</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">_</span> <span class="o">=</span> <span class="n">model</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ann</span><span class="p">[</span><span class="s2">&quot;wavelets&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">annotation</span><span class="p">])</span>
-        <span class="n">lengths</span> <span class="o">=</span> <span class="p">[</span><span class="n">ann</span><span class="p">[</span><span class="s2">&quot;wavelets&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">annotation</span><span class="p">]</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;X&quot;</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="s2">&quot;lengths&quot;</span><span class="p">:</span> <span class="n">lengths</span><span class="p">}</span>
-
-    <span class="k">def</span> <span class="nf">get_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get batch list</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">batch</span><span class="p">]</span>
-
     <span class="n">config_predict</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;build&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="s1">&#39;load&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;path&#39;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">}</span>
     <span class="p">}</span>
 
     <span class="k">return</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
-            <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">,</span> <span class="n">HMModel</span><span class="p">,</span> <span class="s2">&quot;HMM&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config_predict</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;batch&quot;</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">,</span> <span class="n">HMModel</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config_predict</span><span class="p">)</span>
             <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;wfdb&quot;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">])</span>
-            <span class="o">.</span><span class="n">wavelet_transform_signal</span><span class="p">(</span><span class="n">cwt_scales</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">cwt_wavelet</span><span class="o">=</span><span class="s2">&quot;mexh&quot;</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">predict_model</span><span class="p">(</span><span class="s2">&quot;HMM&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">prepare_batch</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">B</span><span class="p">(</span><span class="s2">&quot;_temp&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">write_to_annotation</span><span class="p">(</span><span class="s2">&quot;hmm_annotation&quot;</span><span class="p">,</span> <span class="s2">&quot;_temp&quot;</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">calc_ecg_parameters</span><span class="p">()</span>
-            <span class="o">.</span><span class="n">update_variable</span><span class="p">(</span><span class="s2">&quot;batch&quot;</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">F</span><span class="p">(</span><span class="n">get_batch</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;e&#39;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">cwt</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">wavelet</span><span class="o">=</span><span class="s2">&quot;mexh&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">standardize</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">features</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">predict_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">prepare_hmm_input</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">channel_ix</span><span class="o">=</span><span class="n">channel_ix</span><span class="p">),</span>
+                           <span class="n">save_to</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">B</span><span class="p">(</span><span class="n">annot</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">calc_ecg_parameters</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="n">annot</span><span class="p">)</span>
             <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
 </pre></div>
 
@@ -376,7 +376,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../genindex.html" title="General Index"
              >index</a></li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

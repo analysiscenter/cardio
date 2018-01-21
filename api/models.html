@@ -1,0 +1,327 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Models &#8212; CardIO 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Pipelines" href="pipelines.html" />
+    <link rel="prev" title="Core" href="core.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="pipelines.html" title="Pipelines"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="core.html" title="Core"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="models">
+<h1>Models<a class="headerlink" href="#models" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="dirichletmodel">
+<h2>DirichletModel<a class="headerlink" href="#dirichletmodel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cardio.models.DirichletModel">
+<em class="property">class </em><code class="descname">DirichletModel</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/dirichlet_model/dirichlet_model.html#DirichletModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.DirichletModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cardio.models.dirichlet_model.dirichlet_model.DirichletModelBase" title="cardio.models.dirichlet_model.dirichlet_model.DirichletModelBase"><code class="xref py py-class docutils literal"><span class="pre">cardio.models.dirichlet_model.dirichlet_model.DirichletModelBase</span></code></a></p>
+<p>Dirichlet model with overloaded train and predict methods.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">train</span></code> method is identical to <code class="docutils literal"><span class="pre">DirichletModelBase.train</span></code>, but also
+accepts <code class="docutils literal"><span class="pre">args</span></code> and <code class="docutils literal"><span class="pre">kwargs</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">predict</span></code> method splits the resulting tensor for <code class="docutils literal"><span class="pre">parameters</span></code> fetch
+using <code class="docutils literal"><span class="pre">split_indices</span></code>. It also splits and aggregates results for
+<code class="docutils literal"><span class="pre">predictions</span></code> fetch to get class probabilities.</li>
+</ul>
+<dl class="method">
+<dt id="cardio.models.DirichletModel.predict">
+<code class="descname">predict</code><span class="sig-paren">(</span><em>fetches=None</em>, <em>feed_dict=None</em>, <em>split_indices=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/dirichlet_model/dirichlet_model.html#DirichletModel.predict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.DirichletModel.predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get predictions on the data provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fetches</strong> (<em>tf.Operation</em><em> or </em><em>tf.Tensor</em><em> or </em><em>array-like sequence of them</em>) – Graph element to evaluate.
+If <code class="docutils literal"><span class="pre">fetches</span></code> contains <code class="docutils literal"><span class="pre">parameters</span></code> tensor, the corresponding
+output is split using <code class="docutils literal"><span class="pre">split_indices</span></code>.
+If <code class="docutils literal"><span class="pre">fetches</span></code> contains <code class="docutils literal"><span class="pre">predictions</span></code> tensor, the corresponding
+output is split using <code class="docutils literal"><span class="pre">split_indices</span></code> and then aggregated to get
+class probabilities.</li>
+<li><strong>feed_dict</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – A dictionary that maps graph elements to values.</li>
+<li><strong>split_indices</strong> (<em>1-D ndarray</em>) – Indices used to split <code class="docutils literal"><span class="pre">parameters</span></code> and <code class="docutils literal"><span class="pre">predictions</span></code> tensors.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>output</strong> (same structure as <code class="docutils literal"><span class="pre">fetches</span></code>) – Calculated values for each element in <code class="docutils literal"><span class="pre">fetches</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.DirichletModel.train">
+<code class="descname">train</code><span class="sig-paren">(</span><em>fetches=None</em>, <em>feed_dict=None</em>, <em>use_lock=False</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/dirichlet_model/dirichlet_model.html#DirichletModel.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.DirichletModel.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train the model with the data provided.</p>
+<p>The only difference between <code class="docutils literal"><span class="pre">DirichletModel.train</span></code> and
+<code class="docutils literal"><span class="pre">TFModel.train</span></code> is that the former also accepts <code class="docutils literal"><span class="pre">args</span></code> and
+<code class="docutils literal"><span class="pre">kwargs</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fetches</strong> (<em>tf.Operation</em><em> or </em><em>tf.Tensor</em><em> or </em><em>array-like sequence of them</em>) – Graph element to evaluate in addition to <code class="docutils literal"><span class="pre">train_step</span></code>.</li>
+<li><strong>feed_dict</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – A dictionary that maps graph elements to values.</li>
+<li><strong>use_lock</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)"><em>bool</em></a>) – If <code class="docutils literal"><span class="pre">True</span></code>, the whole train step is locked, thus allowing for
+multithreading.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>output</strong> (same structure as <code class="docutils literal"><span class="pre">fetches</span></code>) – Calculated values for each element in <code class="docutils literal"><span class="pre">fetches</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="dirichletmodelbase">
+<h2>DirichletModelBase<a class="headerlink" href="#dirichletmodelbase" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cardio.models.dirichlet_model.dirichlet_model.DirichletModelBase">
+<em class="property">class </em><code class="descname">DirichletModelBase</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/dirichlet_model/dirichlet_model.html#DirichletModelBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.dirichlet_model.dirichlet_model.DirichletModelBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">cardio.dataset.dataset.models.tf.base.TFModel</span></code></p>
+<p>Dirichlet model class.</p>
+<p>The model predicts Dirichlet distribution parameters from which class
+probabilities are sampled.</p>
+<p class="rubric">Notes</p>
+<p><strong>Configuration</strong></p>
+<p>Model config must contain the following keys:</p>
+<ul>
+<li><dl class="first docutils">
+<dt>input_shape <span class="classifier-delimiter">:</span> <span class="classifier">tuple</span></dt>
+<dd><p class="first last">Input signals’s shape without the batch dimension.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>class_names <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Class names.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>loss <span class="classifier-delimiter">:</span> <span class="classifier"><code class="docutils literal"><span class="pre">None</span></code></span></dt>
+<dd><p class="first last">The model has a predefined loss, so you should leave it <code class="docutils literal"><span class="pre">None</span></code>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd></dl>
+
+</div>
+<div class="section" id="hmmodel">
+<h2>HMModel<a class="headerlink" href="#hmmodel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cardio.models.HMModel">
+<em class="property">class </em><code class="descname">HMModel</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">cardio.dataset.dataset.models.base.BaseModel</span></code></p>
+<p>Hidden Markov Model.</p>
+<p>This implementation is based on <code class="docutils literal"><span class="pre">hmmlearn</span></code> API. It is supposed
+that estimators of <code class="docutils literal"><span class="pre">HMModel</span></code> are model classes of <code class="docutils literal"><span class="pre">hmmlearn</span></code>.</p>
+<dl class="method">
+<dt id="cardio.models.HMModel.train">
+<code class="descname">train</code><span class="sig-paren">(</span><em>X</em>, <em>lengths=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train the model using data provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>X</strong> (<em>array-like</em>) – A matrix of observations.
+Should be of shape (n_samples, n_features).</li>
+<li><strong>lengths</strong> (<em>array-like of integers optional</em>) – If present, should be of shape (n_sequences, ).
+Lengths of the individual sequences in <code class="docutils literal"><span class="pre">X</span></code>. The sum of
+these should be <code class="docutils literal"><span class="pre">n_samples</span></code>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>For more details and other parameters look at the documentation for the estimator used.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.HMModel.predict">
+<code class="descname">predict</code><span class="sig-paren">(</span><em>X</em>, <em>lengths=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.predict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make prediction with the data provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>X</strong> (<em>array-like</em>) – A matrix of observations.
+Should be of shape (n_samples, n_features).</li>
+<li><strong>lengths</strong> (<em>array-like of integers optional</em>) – If present, should be of shape (n_sequences, ).
+Lengths of the individual sequences in <code class="docutils literal"><span class="pre">X</span></code>. The sum of
+these should be <code class="docutils literal"><span class="pre">n_samples</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>output</strong> (<em>array</em>) – Labels for each sample of X.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>For more details and other parameters look at the documentation for the estimator used.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.HMModel.load">
+<code class="descname">load</code><span class="sig-paren">(</span><em>path</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load <code class="docutils literal"><span class="pre">HMModel</span></code> from file with <code class="docutils literal"><span class="pre">dill</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Path to the model.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cardio.models.HMModel.save">
+<code class="descname">save</code><span class="sig-paren">(</span><em>path</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/hmm/hmm.html#HMModel.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.HMModel.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save <code class="docutils literal"><span class="pre">HMModel</span></code> with <code class="docutils literal"><span class="pre">dill</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Path to the file to save model to.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="fftmodel">
+<h2>FFTModel<a class="headerlink" href="#fftmodel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cardio.models.FFTModel">
+<em class="property">class </em><code class="descname">FFTModel</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cardio/models/fft_model/fft_model.html#FFTModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cardio.models.FFTModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">cardio.dataset.dataset.models.keras.keras_model.KerasModel</span></code></p>
+<p>FFT inception model. Includes initial convolution layers, then FFT transform, then
+a series of inception blocks.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Models</a><ul>
+<li><a class="reference internal" href="#dirichletmodel">DirichletModel</a></li>
+<li><a class="reference internal" href="#dirichletmodelbase">DirichletModelBase</a></li>
+<li><a class="reference internal" href="#hmmodel">HMModel</a></li>
+<li><a class="reference internal" href="#fftmodel">FFTModel</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="core.html"
+                        title="previous chapter">Core</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="pipelines.html"
+                        title="next chapter">Pipelines</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/models.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="pipelines.html" title="Pipelines"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="core.html" title="Core"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Analysis Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>

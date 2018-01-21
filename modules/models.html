@@ -1,0 +1,257 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Models &#8212; CardIO 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Pipelines" href="pipelines.html" />
+    <link rel="prev" title="Core" href="core.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="pipelines.html" title="Pipelines"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="core.html" title="Core"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" accesskey="U">Modules</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="models">
+<h1>Models<a class="headerlink" href="#models" title="Permalink to this headline">¶</a></h1>
+<p>This is a place where ECG models live. You can write your own model or exploit provided <a class="reference internal" href="../api/models.html"><span class="doc">models</span></a>.</p>
+<p>We have two built-in models suited to classify whether ECG signal is normal or pathological, and a model to annotate segments of ECG signal (e.g., P-wave).</p>
+<div class="section" id="dirichletmodel">
+<h2>DirichletModel<a class="headerlink" href="#dirichletmodel" title="Permalink to this headline">¶</a></h2>
+<p>This model is used to perform ECG classification. However, instead of predicting class probabilities themselves, the model predicts parameters of the Dirichlet distribution over these probabilities. This is done in order to get model’s confidence in its prediction, which varies from 0 (absolutely sure) to 1 (absolutely unsure). You can read more about the model in this <a class="reference external" href="https://medium.com/data-analysis-center/atrial-fibrillation-detection-with-a-deep-probabilistic-model-1239f69eff6c">article</a>.</p>
+<p>The high-level architecture of the network is shown in the figure below.</p>
+<img alt="../_images/dirichlet_model.png" src="../_images/dirichlet_model.png" />
+<p class="rubric">How to use</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cardio.dataset</span> <span class="kn">as</span> <span class="nn">ds</span>
+<span class="kn">from</span> <span class="nn">cardio</span> <span class="kn">import</span> <span class="n">EcgDataset</span>
+<span class="kn">from</span> <span class="nn">cardio.dataset</span> <span class="kn">import</span> <span class="n">F</span><span class="p">,</span> <span class="n">V</span>
+<span class="kn">from</span> <span class="nn">cardio.models.dirichlet_model</span> <span class="kn">import</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">concatenate_ecg_batch</span>
+
+<span class="n">eds</span> <span class="o">=</span> <span class="n">EcgDataset</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s1">&#39;./path/to/data/&#39;</span><span class="p">,</span> <span class="n">no_ext</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">gpu_options</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">GPUOptions</span><span class="p">(</span><span class="n">per_process_gpu_memory_fraction</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">allow_growth</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">gpu_options</span><span class="o">=</span><span class="n">gpu_options</span><span class="p">)},</span>
+  <span class="s2">&quot;input_shape&quot;</span><span class="p">:</span> <span class="n">F</span><span class="p">(</span><span class="k">lambda</span> <span class="n">batch</span><span class="p">:</span> <span class="n">batch</span><span class="o">.</span><span class="n">signal</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]),</span>
+  <span class="s2">&quot;class_names&quot;</span><span class="p">:</span> <span class="n">F</span><span class="p">(</span><span class="k">lambda</span> <span class="n">batch</span><span class="p">:</span> <span class="n">batch</span><span class="o">.</span><span class="n">label_binarizer</span><span class="o">.</span><span class="n">classes_</span><span class="p">),</span>
+  <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">dirichlet_train_ppl</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">DirichletModel</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;wfdb&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="s1">&#39;./path/to/taret/&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">drop_labels</span><span class="p">([</span><span class="s2">&quot;~&quot;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">rename_labels</span><span class="p">({</span><span class="s2">&quot;N&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">})</span>
+    <span class="o">.</span><span class="n">flip_signals</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">random_resample_signals</span><span class="p">(</span><span class="s2">&quot;normal&quot;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">random_split_signals</span><span class="p">(</span><span class="mi">2048</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s2">&quot;NO&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">})</span>
+    <span class="o">.</span><span class="n">binarize_labels</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="s2">&quot;dirichlet&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">concatenate_ecg_batch</span><span class="p">,</span> <span class="n">fetches</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">V</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">train_ppl</span> <span class="o">=</span> <span class="p">(</span><span class="n">eds</span> <span class="o">&gt;&gt;</span> <span class="n">dirichlet_train_ppl</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="hmmodel">
+<h2>HMModel<a class="headerlink" href="#hmmodel" title="Permalink to this headline">¶</a></h2>
+<p>Hidden Markov Model is used to annotate ECG signal. This allows to calculate a number of parameters important for diagnosing.
+This model allows to detect P and T waves; Q, R, S peaks; PQ and ST segments.</p>
+<p>It has a total of 19 states, which makes a good compromise on complexity versus performance of the model. There will be 3 states for the ISO, P-wave, and QRS-complex models; 2 states for the PQ and ST segment models; 6 states for the T-wave. The mapping of them to the segments of ECG signal can  be found in <code class="docutils literal"><span class="pre">cardio.batch.ecg_batch_tools</span></code> submodule.</p>
+<p>Also, as you can see in the picture below, we introduce direct transition from last ISO state to first PQ state, thus enabling possibility of absent P-wave.</p>
+<img alt="../_images/hmmodel.png" src="../_images/hmmodel.png" />
+<p class="rubric">How to use</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">hmmlearn</span> <span class="kn">import</span> <span class="n">hmm</span>
+
+<span class="kn">import</span> <span class="nn">cardio.dataset</span> <span class="kn">as</span> <span class="nn">ds</span>
+<span class="kn">from</span> <span class="nn">cardio</span> <span class="kn">import</span> <span class="n">EcgBatch</span>
+<span class="kn">from</span> <span class="nn">cardio.dataset</span> <span class="kn">import</span> <span class="n">B</span><span class="p">,</span> <span class="n">V</span><span class="p">,</span> <span class="n">F</span>
+<span class="kn">from</span> <span class="nn">cardio.models.hmm</span> <span class="kn">import</span> <span class="n">HMModel</span><span class="p">,</span> <span class="n">prepare_hmm_input</span>
+
+<span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s1">&#39;build&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+  <span class="s1">&#39;estimator&#39;</span><span class="p">:</span> <span class="n">hmm</span><span class="o">.</span><span class="n">GaussianHMM</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">covariance_type</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">init_params</span><span class="o">=</span><span class="s1">&#39;mstc&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="n">eds</span> <span class="o">=</span> <span class="n">EcgDataset</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s1">&#39;./path/to/data/&#39;</span><span class="p">,</span> <span class="n">no_ext</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">hmm_train_ppl</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">HMModel</span><span class="p">,</span> <span class="s2">&quot;HMM&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;wfdb&#39;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;annotation&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">],</span> <span class="n">ann_ext</span><span class="o">=</span><span class="s1">&#39;pu1&#39;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">cwt</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="s2">&quot;hmm_features&quot;</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">16</span><span class="p">],</span> <span class="n">wavelet</span><span class="o">=</span><span class="s2">&quot;mexh&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">standardize</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="s2">&quot;hmm_features&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="s2">&quot;hmm_features&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="s2">&quot;HMM&quot;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">prepare_hmm_input</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="s2">&quot;hmm_features&quot;</span><span class="p">,</span> <span class="n">channel_ix</span><span class="o">=</span><span class="mi">0</span><span class="p">)))</span>
+    <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="p">)</span>
+
+  <span class="n">train_ppl</span> <span class="o">=</span> <span class="p">(</span><span class="n">eds</span> <span class="o">&gt;&gt;</span> <span class="n">hmm_train_ppl</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="fftmodel">
+<h2>FFTModel<a class="headerlink" href="#fftmodel" title="Permalink to this headline">¶</a></h2>
+<p>FFT model learns to classify ECG signals using signal spectrum. At first step it convolves signal with a number of 1D kernels.
+Then for each channel it applies fast fourier transform.
+The result is considered as 2D image and is processed with a number of Inception2 blocks
+to resulting output, which is a predicted class. See below the model architecture:</p>
+<img alt="../_images/fft_model.PNG" src="../_images/fft_model.PNG" />
+<p class="rubric">How to use</p>
+<p>We applied this model to arrhythmia prediction from single-lead ECG. Train pipeline we used for the fft model looks as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cardio.dataset</span> <span class="kn">as</span> <span class="nn">ds</span>
+<span class="kn">from</span> <span class="nn">cardio</span> <span class="kn">import</span> <span class="n">EcgDataset</span>
+<span class="kn">from</span> <span class="nn">cardio.dataset</span> <span class="kn">import</span> <span class="n">F</span><span class="p">,</span> <span class="n">V</span>
+<span class="kn">from</span> <span class="nn">cardio.models.fft_model</span> <span class="kn">import</span> <span class="n">FFTModel</span>
+
+<span class="k">def</span> <span class="nf">make_data</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="o">**</span><span class="n">kwagrs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">signal</span><span class="p">)),</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="n">batch</span><span class="o">.</span><span class="n">target</span><span class="p">}</span>
+
+<span class="n">eds</span> <span class="o">=</span> <span class="n">EcgDataset</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s1">&#39;./path/to/data/&#39;</span><span class="p">,</span> <span class="n">no_ext</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s2">&quot;input_shape&quot;</span><span class="p">:</span> <span class="n">F</span><span class="p">(</span><span class="k">lambda</span> <span class="n">batch</span><span class="p">:</span> <span class="n">batch</span><span class="o">.</span><span class="n">signal</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span>
+  <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="s2">&quot;binary_crossentropy&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="s2">&quot;adam&quot;</span>
+<span class="p">}</span>
+
+<span class="n">fft_train_ppl</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="n">ds</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">init_model</span><span class="p">(</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="n">FFTModel</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;fft_model&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">model_config</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">init_variable</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">,</span> <span class="n">init_on_each_run</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;wfdb&quot;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;signal&quot;</span><span class="p">,</span> <span class="s2">&quot;meta&quot;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="s1">&#39;./path/to/taret/&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">drop_labels</span><span class="p">([</span><span class="s2">&quot;~&quot;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">rename_labels</span><span class="p">({</span><span class="s2">&quot;N&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">:</span> <span class="s2">&quot;NO&quot;</span><span class="p">})</span>
+    <span class="o">.</span><span class="n">random_resample_signals</span><span class="p">(</span><span class="s2">&quot;normal&quot;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">drop_short_signals</span><span class="p">(</span><span class="mi">4000</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">split_signals</span><span class="p">(</span><span class="mi">3000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">binarize_labels</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span> <span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">unstack_signals</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="s1">&#39;fft_model&#39;</span><span class="p">,</span> <span class="n">make_data</span><span class="o">=</span><span class="n">make_data</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="n">V</span><span class="p">(</span><span class="s2">&quot;loss_history&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">train_ppl</span> <span class="o">=</span> <span class="p">(</span><span class="n">eds</span> <span class="o">&gt;&gt;</span> <span class="n">fft_train_ppl</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="learn-more">
+<h2>Learn more<a class="headerlink" href="#learn-more" title="Permalink to this headline">¶</a></h2>
+<p>To learn more about existing models and building new ones, refer to the <a class="reference external" href="https://github.com/analysiscenter/cardio/blob/master/tutorials/III.Models.ipynb">tutorial</a>.</p>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="../api/models.html"><span class="doc">Models API</span></a></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Models</a><ul>
+<li><a class="reference internal" href="#dirichletmodel">DirichletModel</a></li>
+<li><a class="reference internal" href="#hmmodel">HMModel</a></li>
+<li><a class="reference internal" href="#fftmodel">FFTModel</a></li>
+<li><a class="reference internal" href="#learn-more">Learn more</a></li>
+<li><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="core.html"
+                        title="previous chapter">Core</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="pipelines.html"
+                        title="next chapter">Pipelines</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/modules/models.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="pipelines.html" title="Pipelines"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="core.html" title="Core"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >Modules</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Analysis Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>

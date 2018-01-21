@@ -5,13 +5,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>API &#8212; CardIO 0.1.0 documentation</title>
+    <title>API &#8212; CardIO 0.2.0 documentation</title>
     <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1.0',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -24,8 +24,8 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Batch" href="cardio.batch.html" />
-    <link rel="prev" title="Pipelines" href="../intro/pipelines.html" /> 
+    <link rel="next" title="Core" href="core.html" />
+    <link rel="prev" title="Tutorials" href="../tutorials.html" /> 
   </head>
   <body>
     <div class="related" role="navigation" aria-label="related navigation">
@@ -35,12 +35,12 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="cardio.batch.html" title="Batch"
+          <a href="core.html" title="Core"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../intro/pipelines.html" title="Pipelines"
+          <a href="../tutorials.html" title="Tutorials"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.1.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -53,10 +53,26 @@
 <h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="cardio.batch.html">Batch</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cardio.batch.html#ecgdataset">EcgDataset</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cardio.models.html">Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cardio.pipelines.html">Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.html#ecgbatch">EcgBatch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#ecgdataset">EcgDataset</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="models.html#dirichletmodel">DirichletModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#dirichletmodelbase">DirichletModelBase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#hmmodel">HMModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#fftmodel">FFTModel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="pipelines.html">Pipelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#dirichlet-train-pipeline">dirichlet_train_pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#dirichlet-predict-pipeline">dirichlet_predict_pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#hmm-preprocessing-pipeline">hmm_preprocessing_pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#hmm-train-pipeline">hmm_train_pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html#hmm-predict-pipeline">hmm_predict_pipeline</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -68,15 +84,15 @@
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
-  <p class="topless"><a href="../intro/pipelines.html"
-                        title="previous chapter">Pipelines</a></p>
+  <p class="topless"><a href="../tutorials.html"
+                        title="previous chapter">Tutorials</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="cardio.batch.html"
-                        title="next chapter">Batch</a></p>
+  <p class="topless"><a href="core.html"
+                        title="next chapter">Core</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="../_sources/api/cardio.rst.txt"
+      <li><a href="../_sources/api/api.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
@@ -101,12 +117,12 @@
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="cardio.batch.html" title="Batch"
+          <a href="core.html" title="Core"
              >next</a> |</li>
         <li class="right" >
-          <a href="../intro/pipelines.html" title="Pipelines"
+          <a href="../tutorials.html" title="Tutorials"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.1.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

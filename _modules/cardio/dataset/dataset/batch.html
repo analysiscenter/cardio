@@ -5,13 +5,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>cardio.dataset.dataset.batch &#8212; CardIO 0.1.0 documentation</title>
+    <title>cardio.dataset.dataset.batch &#8212; CardIO 0.2.0 documentation</title>
     <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../../',
-        VERSION:     '0.1.0',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -32,7 +32,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>  
@@ -48,8 +48,8 @@
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 
+<span class="kn">import</span> <span class="nn">dill</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">dill</span>
     <span class="kn">import</span> <span class="nn">blosc</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="k">pass</span>
@@ -68,7 +68,7 @@
     <span class="k">pass</span>
 
 <span class="kn">from</span> <span class="nn">.dsindex</span> <span class="k">import</span> <span class="n">DatasetIndex</span><span class="p">,</span> <span class="n">FilesIndex</span>
-<span class="kn">from</span> <span class="nn">.decorators</span> <span class="k">import</span> <span class="n">action</span><span class="p">,</span> <span class="n">inbatch_parallel</span><span class="p">,</span> <span class="n">ModelDirectory</span><span class="p">,</span> <span class="n">any_action_failed</span>
+<span class="kn">from</span> <span class="nn">.decorators</span> <span class="k">import</span> <span class="n">action</span><span class="p">,</span> <span class="n">inbatch_parallel</span><span class="p">,</span> <span class="n">any_action_failed</span>
 <span class="kn">from</span> <span class="nn">.dataset</span> <span class="k">import</span> <span class="n">Dataset</span>
 <span class="kn">from</span> <span class="nn">.batch_base</span> <span class="k">import</span> <span class="n">BaseBatch</span>
 <span class="kn">from</span> <span class="nn">.components</span> <span class="k">import</span> <span class="n">MetaComponentsTuple</span>
@@ -82,26 +82,47 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">preloaded</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span>  <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;components should be a tuple of strings with components names&quot;</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_preloaded</span> <span class="o">=</span> <span class="n">preloaded</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_preloaded_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pipeline</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Return a deep copy of the batch.</span>
+
+<span class="sd">        Constructs a new ``Batch`` instance and then recursively copies all</span>
+<span class="sd">        the objects found in the original batch, except the ``pipeline``,</span>
+<span class="sd">        which remains unchanged.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Batch</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pipeline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pipeline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pipeline</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">dump_batch</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">pipeline</span>
+
+        <span class="n">restored_batch</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">dump_batch</span><span class="p">)</span>
+        <span class="n">restored_batch</span><span class="o">.</span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">pipeline</span>
+        <span class="k">return</span> <span class="n">restored_batch</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_data</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">from_data</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Create batch from a given dataset &quot;&quot;&quot;</span>
         <span class="c1"># this is roughly equivalent to self.data = data</span>
         <span class="k">if</span> <span class="n">index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">preloaded</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">preloaded</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_batch</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">from_batch</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Create batch from another batch &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">preloaded</span><span class="o">=</span><span class="n">batch</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>  <span class="c1"># pylint: disable=protected-access</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">preloaded</span><span class="o">=</span><span class="n">batch</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>  <span class="c1"># pylint: disable=protected-access</span>
 
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">batches</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">batches</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Merge several batches to form a new batch of a given size</span>
 
 <span class="sd">        Parameters</span>
@@ -121,7 +142,7 @@
 
         <span class="k">def</span> <span class="nf">_make_batch</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
             <span class="n">index</span> <span class="o">=</span> <span class="n">_make_index</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">preloaded</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">data</span><span class="p">))</span> <span class="k">if</span> <span class="n">index</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">preloaded</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">data</span><span class="p">))</span> <span class="k">if</span> <span class="n">index</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">break_point</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">batches</span><span class="p">)</span>
@@ -151,12 +172,12 @@
                 <span class="n">last_batch_len_</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">get_pos</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">comp</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="n">last_batch_len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
                 <span class="n">new_comp</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="n">comp</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">batches</span><span class="p">[:</span><span class="n">break_point</span><span class="p">]]</span> <span class="o">+</span> \
                            <span class="p">[</span><span class="n">batches</span><span class="p">[</span><span class="n">break_point</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="n">comp</span><span class="p">)[:</span><span class="n">last_batch_len_</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]]</span>
-            <span class="n">new_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">merge_component</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">new_comp</span><span class="p">)</span>
+            <span class="n">new_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">merge_component</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">new_comp</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">rest_comp</span> <span class="o">=</span> <span class="p">[</span><span class="n">batches</span><span class="p">[</span><span class="n">break_point</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="n">comp</span><span class="p">)[</span><span class="n">last_batch_len_</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]]</span> <span class="o">+</span> \
                             <span class="p">[</span><span class="n">b</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="n">comp</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">batches</span><span class="p">[</span><span class="n">break_point</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]]</span>
-                <span class="n">rest_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">merge_component</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">rest_comp</span><span class="p">)</span>
+                <span class="n">rest_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">merge_component</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">rest_comp</span><span class="p">)</span>
 
         <span class="n">new_batch</span> <span class="o">=</span> <span class="n">_make_batch</span><span class="p">(</span><span class="n">new_data</span><span class="p">)</span>
         <span class="n">rest_batch</span> <span class="o">=</span> <span class="n">_make_batch</span><span class="p">(</span><span class="n">rest_data</span><span class="p">)</span>
@@ -164,7 +185,7 @@
         <span class="k">return</span> <span class="n">new_batch</span><span class="p">,</span> <span class="n">rest_batch</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">merge_component</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">component</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">merge_component</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">component</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Merge the same component data from several batches &quot;&quot;&quot;</span>
         <span class="n">_</span> <span class="o">=</span> <span class="n">component</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
@@ -186,12 +207,12 @@
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">dataset_class</span> <span class="o">=</span> <span class="n">Dataset</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">):</span>
-            <span class="n">dataset_class</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">__class__</span>
+            <span class="n">dataset_class</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="vm">__class__</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
             <span class="n">dataset_class</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;dataset should be some Dataset class or an instance of some Dataset class or None&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">dataset_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">preloaded</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dataset_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">batch_class</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="n">preloaded</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">indices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -201,6 +222,11 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span>
 
     <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;: int - number of items in the batch &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
 
     <span class="nd">@property</span>
@@ -214,17 +240,50 @@
         <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_named</span>
         <span class="k">return</span> <span class="n">res</span> <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty_data</span>
 
-    <span class="k">def</span> <span class="nf">make_item_class</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">make_item_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Create a class to handle data components &quot;&quot;&quot;</span>
         <span class="c1"># pylint: disable=protected-access</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_item_class</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_item_class</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">comp_class</span> <span class="o">=</span> <span class="n">MetaComponentsTuple</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span> <span class="o">+</span> <span class="s1">&#39;Components&#39;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_item_class</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">local</span><span class="p">:</span>
+            <span class="n">comp_class</span> <span class="o">=</span> <span class="n">MetaComponentsTuple</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s1">&#39;Components&#39;</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">)</span>
             <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_item_class</span> <span class="o">=</span> <span class="n">comp_class</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">comp_class</span> <span class="o">=</span> <span class="n">MetaComponentsTuple</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s1">&#39;Components&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)),</span>
+                                             <span class="n">components</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_item_class</span> <span class="o">=</span> <span class="n">comp_class</span>
+
+    <span class="nd">@action</span>
+    <span class="k">def</span> <span class="nf">add_components</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">components</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add new components</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        components : str or list</span>
+<span class="sd">            new component names</span>
+<span class="sd">        init : array-like</span>
+<span class="sd">            initial component data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">components</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">components</span> <span class="o">=</span> <span class="p">(</span><span class="n">components</span><span class="p">,)</span>
+            <span class="n">init</span> <span class="o">=</span> <span class="p">(</span><span class="n">init</span><span class="p">,)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">components</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">components</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="o">=</span> <span class="n">components</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="o">+</span> <span class="n">components</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">init</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">make_item_class</span><span class="p">(</span><span class="n">local</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">data</span>
+
+        <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">state</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_data_named&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">state</span>
 
@@ -302,22 +361,24 @@
             <span class="n">attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">attr</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> not found in class </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> not found in class </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
 
     <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;_data&quot;</span><span class="p">:</span>
-                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_item_class</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">make_item_class</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_data_named</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_item_class</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>   <span class="c1"># pylint: disable=not-callable</span>
             <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>    <span class="c1"># pylint: disable=unsupported-membership-test</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_named</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span>
                 <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_named</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="s1">&#39;_data&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_named</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;_data&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_named</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">put_into_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">components</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Load data into :attr:`_data` property &quot;&quot;&quot;</span>
@@ -392,7 +453,7 @@
 
     <span class="k">def</span> <span class="nf">get_model_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_name</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Return a model specification given its name &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">ModelDirectory</span><span class="o">.</span><span class="n">get_model_by_name</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">batch</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pipeline</span><span class="o">.</span><span class="n">get_model_by_name</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">batch</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">get_errors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">all_res</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Return a list of errors from a parallel action &quot;&quot;&quot;</span>
@@ -407,25 +468,30 @@
 
     <span class="nd">@action</span>
     <span class="nd">@inbatch_parallel</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="s1">&#39;indices&#39;</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">apply_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ix</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">apply_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ix</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Apply a function to each item in the batch</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        dst : str or array</span>
-<span class="sd">            the destination to put the result in, can be:</span>
-
-<span class="sd">            - str - a component name, e.g. &#39;images&#39; or &#39;masks&#39;</span>
-<span class="sd">            - array-like - a numpy-array, list, etc</span>
+<span class="sd">        func : callable</span>
+<span class="sd">            a function to apply to each item from the source</span>
 
 <span class="sd">        src : str or array</span>
 <span class="sd">            the source to get data from, can be:</span>
 
+<span class="sd">            - None</span>
 <span class="sd">            - str - a component name, e.g. &#39;images&#39; or &#39;masks&#39;</span>
 <span class="sd">            - array-like - a numpy-array, list, etc</span>
 
-<span class="sd">        func : callable</span>
-<span class="sd">            a function to apply to each item from the source</span>
+<span class="sd">        dst : str or array</span>
+<span class="sd">            the destination to put the result in, can be:</span>
+
+<span class="sd">            - None</span>
+<span class="sd">            - str - a component name, e.g. &#39;images&#39; or &#39;masks&#39;</span>
+<span class="sd">            - array-like - a numpy-array, list, etc</span>
+
+<span class="sd">        args, kwargs</span>
+<span class="sd">            parameters passed to ``func``</span>
 
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
@@ -441,39 +507,46 @@
             <span class="n">_args</span> <span class="o">=</span> <span class="n">args</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                <span class="n">src_attr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ix</span><span class="p">,</span> <span class="n">src</span><span class="p">)</span>
+                <span class="n">pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pos</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">ix</span><span class="p">)</span>
+                <span class="n">src_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">src</span><span class="p">)[</span><span class="n">pos</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pos</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">ix</span><span class="p">)</span>
                 <span class="n">src_attr</span> <span class="o">=</span> <span class="n">src</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span>
             <span class="n">_args</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">src_attr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">])</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="n">dst_attr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="n">dst</span><span class="p">)</span>
+            <span class="n">dst_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
             <span class="n">pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pos</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">ix</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">dst_attr</span> <span class="o">=</span> <span class="n">dst</span>
             <span class="n">pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pos</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">ix</span><span class="p">)</span>
-        <span class="n">dst_attr</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dst_attr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dst_attr</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="nd">@action</span>
-    <span class="k">def</span> <span class="nf">apply_transform_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">apply_transform_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Apply a function the whole batch at once</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        dst : str or array</span>
-<span class="sd">            the destination to put the result in, can be:</span>
+<span class="sd">        func : callable</span>
+<span class="sd">            a function to apply to each item from the source</span>
 
-<span class="sd">            - str - a component name, e.g. &#39;images&#39; or &#39;masks&#39;</span>
-<span class="sd">            - array-like - a numpy-array, list, etc</span>
 <span class="sd">        src : str or array</span>
 <span class="sd">            the source to get data from, can be:</span>
 
 <span class="sd">            - str - a component name, e.g. &#39;images&#39; or &#39;masks&#39;</span>
 <span class="sd">            - array-like - a numpy-array, list, etc</span>
 
-<span class="sd">        func : callable</span>
-<span class="sd">            a function to apply to each item from the source</span>
+<span class="sd">        dst : str or array</span>
+<span class="sd">            the destination to put the result in, can be:</span>
+
+<span class="sd">            - None</span>
+<span class="sd">            - str - a component name, e.g. &#39;images&#39; or &#39;masks&#39;</span>
+<span class="sd">            - array-like - a numpy-array, list, etc</span>
+
+<span class="sd">        args, kwargs</span>
+<span class="sd">            parameters passed to ``func``</span>
 
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
@@ -489,13 +562,15 @@
             <span class="n">_args</span> <span class="o">=</span> <span class="n">args</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                <span class="n">src_attr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="n">src</span><span class="p">)</span>
+                <span class="n">src_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">src</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">src_attr</span> <span class="o">=</span> <span class="n">src</span>
             <span class="n">_args</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">src_attr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">])</span>
 
         <span class="n">tr_res</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">dst</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">tr_res</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">dst</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">tr_res</span>
@@ -731,7 +806,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

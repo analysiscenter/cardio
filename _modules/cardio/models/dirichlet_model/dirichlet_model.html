@@ -5,13 +5,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>cardio.models.dirichlet_model.dirichlet_model &#8212; CardIO 0.1.0 documentation</title>
+    <title>cardio.models.dirichlet_model.dirichlet_model &#8212; CardIO 0.2.0 documentation</title>
     <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../../',
-        VERSION:     '0.1.0',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -32,7 +32,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>  
@@ -89,20 +89,23 @@
     <span class="k">return</span> <span class="n">res_dict</span>
 
 
-<span class="k">class</span> <span class="nc">DirichletModelBase</span><span class="p">(</span><span class="n">TFModel</span><span class="p">):</span>
+<div class="viewcode-block" id="DirichletModelBase"><a class="viewcode-back" href="../../../../api/models.html#cardio.models.DirichletModelBase">[docs]</a><span class="k">class</span> <span class="nc">DirichletModelBase</span><span class="p">(</span><span class="n">TFModel</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Dirichlet model class.</span>
 
 <span class="sd">    The model predicts Dirichlet distribution parameters from which class</span>
 <span class="sd">    probabilities are sampled.</span>
 
-<span class="sd">    Configuration</span>
-<span class="sd">    -------------</span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    **Configuration**</span>
+
 <span class="sd">    Model config must contain the following keys:</span>
-<span class="sd">    &quot;input_shape&quot; : tuple</span>
+
+<span class="sd">    * input_shape : tuple</span>
 <span class="sd">        Input signals&#39;s shape without the batch dimension.</span>
-<span class="sd">    &quot;class_names&quot; : array_like</span>
+<span class="sd">    * class_names : array_like</span>
 <span class="sd">        Class names.</span>
-<span class="sd">    &quot;loss&quot; : None</span>
+<span class="sd">    * loss : ``None``</span>
 <span class="sd">        The model has a predefined loss, so you should leave it ``None``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -162,17 +165,18 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">store_to_attr</span><span class="p">(</span><span class="s2">&quot;predictions&quot;</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span>
             <span class="n">loss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">lbeta</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span> <span class="o">-</span>
                                   <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">((</span><span class="n">parameters</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">targets_soft</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">)</span>
-            <span class="n">tf</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">add_loss</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">add_loss</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="DirichletModel"><a class="viewcode-back" href="../../../../api/cardio.models.html#cardio.models.DirichletModel">[docs]</a><span class="k">class</span> <span class="nc">DirichletModel</span><span class="p">(</span><span class="n">DirichletModelBase</span><span class="p">):</span>
+<div class="viewcode-block" id="DirichletModel"><a class="viewcode-back" href="../../../../api/models.html#cardio.models.DirichletModel">[docs]</a><span class="k">class</span> <span class="nc">DirichletModel</span><span class="p">(</span><span class="n">DirichletModelBase</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Dirichlet model with overloaded train and predict methods.</span>
 
-<span class="sd">    ``train`` method is identical to ``DirichletModelBase.train``, but also</span>
-<span class="sd">    accepts ``args`` and ``kwargs``.</span>
-<span class="sd">    ``predict`` method splits the resulting tensor for ``parameters`` fetch</span>
-<span class="sd">    using ``split_indices``. It also splits and aggregates results for</span>
-<span class="sd">    ``predictions`` fetch to get class probabilities.</span>
+<span class="sd">    * ``train`` method is identical to ``DirichletModelBase.train``, but also</span>
+<span class="sd">      accepts ``args`` and ``kwargs``.</span>
+
+<span class="sd">    * ``predict`` method splits the resulting tensor for ``parameters`` fetch</span>
+<span class="sd">      using ``split_indices``. It also splits and aggregates results for</span>
+<span class="sd">      ``predictions`` fetch to get class probabilities.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@staticmethod</span>
@@ -200,7 +204,7 @@
         <span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">comp_m2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">mean</span><span class="o">**</span><span class="mi">2</span>
         <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">var</span>
 
-<div class="viewcode-block" id="DirichletModel.train"><a class="viewcode-back" href="../../../../api/cardio.models.html#cardio.models.DirichletModel.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fetches</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_lock</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="DirichletModel.train"><a class="viewcode-back" href="../../../../api/models.html#cardio.models.DirichletModel.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fetches</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_lock</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Train the model with the data provided.</span>
 
 <span class="sd">        The only difference between ``DirichletModel.train`` and</span>
@@ -225,7 +229,7 @@
         <span class="n">_</span> <span class="o">=</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="n">feed_dict</span><span class="p">,</span> <span class="n">use_lock</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="DirichletModel.predict"><a class="viewcode-back" href="../../../../api/cardio.models.html#cardio.models.DirichletModel.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fetches</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">split_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># pylint: disable=arguments-differ</span>
+<div class="viewcode-block" id="DirichletModel.predict"><a class="viewcode-back" href="../../../../api/models.html#cardio.models.DirichletModel.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fetches</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">split_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># pylint: disable=arguments-differ</span>
         <span class="sd">&quot;&quot;&quot;Get predictions on the data provided.</span>
 
 <span class="sd">        Parameters</span>
@@ -307,7 +311,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.1.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

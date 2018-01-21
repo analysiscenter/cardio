@@ -1,0 +1,170 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Core &#8212; CardIO 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Models" href="models.html" />
+    <link rel="prev" title="Modules" href="modules.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="models.html" title="Models"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="modules.html" title="Modules"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" accesskey="U">Modules</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="core">
+<h1>Core<a class="headerlink" href="#core" title="Permalink to this headline">¶</a></h1>
+<p>CardIO’s core classes are <code class="docutils literal"><span class="pre">EcgBatch</span></code> and <code class="docutils literal"><span class="pre">EcgDataset</span></code>. They are responsible for
+storing of ECGs, batch generation and applying actions to batches.</p>
+<div class="section" id="ecgbatch">
+<h2>EcgBatch<a class="headerlink" href="#ecgbatch" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">EcgBatch</span></code> is a class that defines how to store ECG data and contains actions
+that can be applied to ECG in preprocessing stage.</p>
+<p>Attributes of <code class="docutils literal"><span class="pre">EcgBatch</span></code>:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">signal</span></code>, stores ECG signals in numpy array</li>
+<li><code class="docutils literal"><span class="pre">annotation</span></code>, array of dicts with different types of annotations, e.g. array of R-peaks</li>
+<li><code class="docutils literal"><span class="pre">meta</span></code>, array of dicts with metadata about ECG records, e.g. signal frequency</li>
+<li><code class="docutils literal"><span class="pre">target</span></code>, array of labels assigned to ECG records</li>
+<li><code class="docutils literal"><span class="pre">unique_labels</span></code>, array of all possible target labels in dataset</li>
+</ul>
+<p>Actions of <code class="docutils literal"><span class="pre">EcgBatch</span></code> allow to:</p>
+<ul class="simple">
+<li>load ECG records from wfdb, DICOM, EDF, wav or blosc format</li>
+<li>segment, flip and resample signals</li>
+<li>filter signals</li>
+<li>detect PQ, QT, QRS segments</li>
+<li>dump results</li>
+</ul>
+<p>To learn more about actions refer to the <a class="reference external" href="https://github.com/analysiscenter/cardio/blob/master/tutorials/I.CardIO.ipynb">tutorial</a>.</p>
+</div>
+<div class="section" id="ecgdataset">
+<h2>EcgDataset<a class="headerlink" href="#ecgdataset" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">EcgDataset</span></code> helps to conveniently create a list of ECG indices and generate batches
+(small subsets of data) of default type <code class="docutils literal"><span class="pre">EcgBatch</span></code>.</p>
+<p>CardIO generates batches trought a <a class="reference external" href="https://github.com/analysiscenter/dataset">Dataset</a> library. To initialize this process we need to create a sequence of data item ids, e.g. using names of files in specific folder:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cardio.dataset</span> <span class="kn">as</span> <span class="nn">ds</span>
+<span class="n">index</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">FilesIndex</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;../cardio/tests/data/*.hea&quot;</span><span class="p">,</span> <span class="n">no_ext</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then we specify type of batches we want to generate, e.g. <code class="docutils literal"><span class="pre">EcgBatch</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cardio</span> <span class="kn">import</span> <span class="n">EcgBatch</span>
+<span class="n">eds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">batch_class</span><span class="o">=</span><span class="n">EcgBatch</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">EcgDataset</span></code> helps to get the same result in a shorter way:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cardio</span> <span class="kn">import</span> <span class="n">EcgDataset</span>
+<span class="n">eds</span> <span class="o">=</span> <span class="n">EcgDataset</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;../cardio/tests/data/*.hea&quot;</span><span class="p">,</span> <span class="n">no_ext</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now we can call <code class="docutils literal"><span class="pre">EcgDataset.next_batch</span></code> with specified <code class="docutils literal"><span class="pre">batch_size</span></code> argument to generate batches and process them using actions of <code class="docutils literal"><span class="pre">EcgBatch</span></code>.</p>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="../api/core.html"><span class="doc">Core API</span></a></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Core</a><ul>
+<li><a class="reference internal" href="#ecgbatch">EcgBatch</a></li>
+<li><a class="reference internal" href="#ecgdataset">EcgDataset</a></li>
+<li><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="modules.html"
+                        title="previous chapter">Modules</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="models.html"
+                        title="next chapter">Models</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/modules/core.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="models.html" title="Models"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="modules.html" title="Modules"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">CardIO 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >Modules</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Analysis Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
+    </div>
+  </body>
+</html>
