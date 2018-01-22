@@ -99,7 +99,7 @@ When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Datas
 
 Please cite CardIO in your publications if it helps your research.
 
-[![DOI](https://zenodo.org/badge/109618565.svg)](https://zenodo.org/badge/latestdoi/109618565)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1156085.svg)](https://doi.org/10.5281/zenodo.1156085)
 
     Khudorozhkov R., Illarionov E., Kuvaev A., Podvyaznikov D. CardIO library for deep research of heart signals. 2017.
 
