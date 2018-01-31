@@ -6,7 +6,7 @@ import datetime
 from xml.etree import ElementTree
 
 import numpy as np
-from numba import njit
+from numba import njit, prange
 from scipy.io import wavfile
 import pyedflib
 import wfdb
@@ -561,6 +561,25 @@ def convolve_signals(signals, kernel, padding_mode="edge", axis=-1, **kwargs):
 
     signals = np.apply_along_axis(conv_func, arr=signals, axis=axis)
     return signals
+
+
+@njit(nogil=True, parallel=True)
+def convolve_signals_dev(signals, kernel):
+    kernel = kernel[::-1]
+    left_pad = len(kernel) // 2
+    right_pad = len(kernel) - left_pad - 1
+    pad = np.empty((signals.shape[0], signals.shape[1] + left_pad + right_pad), dtype=signals.dtype)
+    for j in prange(pad.shape[1]):
+        for i in prange(pad.shape[0]):
+            if (j < left_pad) or (j > pad.shape[1] - right_pad - 1):
+                pad[i, j] = 0
+            else:
+                pad[i, j] = signals[i, j - left_pad]
+    res = np.empty_like(signals)
+    for j in prange(res.shape[1]):
+        for i in prange(res.shape[0]):
+            res[i, j] = np.sum(pad[i, j : j + len(kernel)] * kernel)
+    return res
 
 
 def band_pass_signals(signals, freq, low=None, high=None, axis=-1):

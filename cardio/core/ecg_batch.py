@@ -925,6 +925,23 @@ class EcgBatch(ds.Batch):
             self.signal[i] = bt.convolve_signals(self.signal[i], kernel, padding_mode, axis, **kwargs)
         return self
 
+    @ds.inbatch_parallel(init="indices", target="for")
+    def _convolve_signals(self, index, kernel):
+        i = self.get_pos(None, "signal", index)
+        self._check_2d(self.signal[i])
+        self.signal[i] = bt.convolve_signals_dev(self.signal[i], kernel)
+
+    @ds.action
+    def convolve_signals_dev(self, kernel):
+        kernel = np.asarray(kernel)
+        if len(kernel.shape) == 0:
+            kernel = kernel.ravel()
+        if len(kernel.shape) != 1:
+            raise ValueError("Kernel must be 1-D array")
+        if not np.issubdtype(kernel.dtype, np.number):
+            raise ValueError("Kernel must have numeric dtype")
+        return self._convolve_signals(kernel)
+
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def band_pass_signals(self, index, low=None, high=None, axis=-1):
@@ -946,6 +963,38 @@ class EcgBatch(ds.Batch):
         """
         i = self.get_pos(None, "signal", index)
         self.signal[i] = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low, high, axis)
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="for")
+    def band_pass_signals_dev(self, index, low=None, high=None, transition=5):
+        i = self.get_pos(None, "signal", index)
+        self._check_2d(self.signal[i])
+        freq = self.meta[i]["fs"]
+        if freq <= 0:
+            raise ValueError("Sampling rate must be a positive float")
+        filter_length = int(np.ceil(freq * 3.1 / transition) // 2 * 2 + 1)
+        ix = np.arange(filter_length) - (filter_length - 1) / 2
+        window = np.hamming(filter_length)
+
+        if low is None:
+            low_pass = np.ones(1)
+        else:
+            if low <= 0:
+                raise ValueError("Cutoff frequency must be a positive float")
+            low_pass = np.sinc(2 * ix * high / freq) * window
+            low_pass = low_pass / np.sum(low_pass)
+
+        if high is None:
+            high_pass = np.ones(1)
+        else:
+            if high <= 0:
+                raise ValueError("Cutoff frequency must be a positive float")
+            high_pass = np.sinc(2 * ix * low / freq) * window
+            high_pass = -high_pass / np.sum(high_pass)
+            high_pass[(filter_length - 1) // 2] += 1
+
+        band_pass = np.convolve(low_pass, high_pass)
+        self.signal[i] = bt.convolve_signals_dev(self.signal[i], band_pass)
 
     @ds.action
     def drop_short_signals(self, min_length, axis=-1):
