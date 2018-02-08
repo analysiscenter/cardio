@@ -943,6 +943,29 @@ class EcgBatch(ds.Batch):
         return self._convolve_signals(kernel)
 
     @ds.action
+    def convolve_signals_dev_concat(self, kernel):
+        kernel = np.asarray(kernel)
+        if len(kernel.shape) == 0:
+            kernel = kernel.ravel()
+        if len(kernel.shape) != 1:
+            raise ValueError("Kernel must be 1-D array")
+        if not np.issubdtype(kernel.dtype, np.number):
+            raise ValueError("Kernel must have numeric dtype")
+        pad_length = len(kernel) // 2
+        padded_signals = []
+        split_indices = []
+        for sig in self.signal:
+            pad = np.pad(sig, ((0, 0), (pad_length, pad_length)), mode="constant")
+            padded_signals.append(pad)
+            split_indices.append(pad.shape[1])
+        split_indices = np.cumsum(split_indices)[:-1]
+        padded_signals = np.concatenate(padded_signals, axis=1)
+        convolved_signals = bt.convolve_signals_dev(padded_signals, kernel)
+        convolved_signals = np.split(convolved_signals, split_indices, axis=1)
+        self.signal = np.array([sig[:, pad_length:-pad_length]for sig in convolved_signals] + [None])[:-1]
+        return self
+
+    @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def band_pass_signals(self, index, low=None, high=None, axis=-1):
         """Reject frequencies outside a given range.
@@ -995,6 +1018,35 @@ class EcgBatch(ds.Batch):
 
         band_pass = np.convolve(low_pass, high_pass)
         self.signal[i] = bt.convolve_signals_dev(self.signal[i], band_pass)
+
+    @ds.action
+    def band_pass_signals_dev_concat(self, low=None, high=None, transition=5):
+        freq = self.meta[0]["fs"]
+        if freq <= 0:
+            raise ValueError("Sampling rate must be a positive float")
+        filter_length = int(np.ceil(freq * 3.1 / transition) // 2 * 2 + 1)
+        ix = np.arange(filter_length) - (filter_length - 1) / 2
+        window = np.hamming(filter_length)
+
+        if low is None:
+            low_pass = np.ones(1)
+        else:
+            if low <= 0:
+                raise ValueError("Cutoff frequency must be a positive float")
+            low_pass = np.sinc(2 * ix * high / freq) * window
+            low_pass = low_pass / np.sum(low_pass)
+
+        if high is None:
+            high_pass = np.ones(1)
+        else:
+            if high <= 0:
+                raise ValueError("Cutoff frequency must be a positive float")
+            high_pass = np.sinc(2 * ix * low / freq) * window
+            high_pass = -high_pass / np.sum(high_pass)
+            high_pass[(filter_length - 1) // 2] += 1
+
+        band_pass = np.convolve(low_pass, high_pass)
+        return self.convolve_signals_dev_concat(band_pass)
 
     @ds.action
     def drop_short_signals(self, min_length, axis=-1):
