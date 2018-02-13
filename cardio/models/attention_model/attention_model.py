@@ -3,7 +3,7 @@ from itertools import zip_longest
 import numpy as np
 import tensorflow as tf
 
-from ..layers import conv1d_block, resnet1d_block, attention1d_block
+from ..layers import resnet1d_block, attention1d_block
 from ...dataset.dataset.models.tf import TFModel
 
 
@@ -23,40 +23,40 @@ class AttentionModel(TFModel):
             targets = tf.placeholder(tf.float32, shape=(None, len(class_names)), name="targets")
             self.store_to_attr("targets", targets)
 
-            # block = conv1d_block("conv", signals_channels_last, is_training=self.is_training,
-            #                      filters=8, kernel_size=5)
             block = signals_channels_last
             print(block.get_shape())
 
             block_config = [
-                (15, 5, True),
-                (15, 5, True),
+                (15, 5, 2, True),
+                (15, 5, 2, True),
             ]
-            for i, (filters, kernel_size, downsample) in enumerate(block_config):
+            for i, (filters, kernel_size, dilation_rate, downsample) in enumerate(block_config):
                 block = resnet1d_block("block_" + str(i + 1), block, is_training=self.is_training,
-                                       filters=filters, kernel_size=kernel_size, downsample=downsample)
+                                       filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rate,
+                                       downsample=downsample)
                 block = tf.layers.dropout(block, rate=0.25, training=self.is_training)
                 print("block_" + str(i + 1), block.get_shape())
 
             block_config = [
-                (20, 5, True, 4),
-                (20, 5, True, 4),
-                (20, 5, True, 4),
+                (20, 5, 2, True, 4),
+                (20, 5, 2, True, 4),
+                (20, 5, 2, True, 4),
             ]
-            for i, (filters, kernel_size, downsample, downsample_mask) in enumerate(block_config):
+            for i, (filters, kernel_size, dilation_rate, downsample, downsample_mask) in enumerate(block_config):
                 block = attention1d_block("attention_block_" + str(i + 1), block, is_training=self.is_training,
                                           filters=filters, kernel_size=kernel_size, downsample_mask=downsample_mask,
-                                          downsample=downsample)
+                                          dilation_rate=dilation_rate, downsample=downsample)
                 block = tf.layers.dropout(block, rate=0.25, training=self.is_training)
                 print("attention_block_" + str(i + 1), block.get_shape())
 
             block_config = [
-                (25, 5, True),
-                (25, 5, True),
+                (25, 5, 2, True),
+                (25, 5, 2, True),
             ]
-            for i, (filters, kernel_size, downsample) in enumerate(block_config):
+            for i, (filters, kernel_size, dilation_rate, downsample) in enumerate(block_config):
                 block = resnet1d_block("end_block_" + str(i + 1), block, is_training=self.is_training,
-                                       filters=filters, kernel_size=kernel_size, downsample=downsample)
+                                       filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rate,
+                                       downsample=downsample)
                 block = tf.layers.dropout(block, rate=0.25, training=self.is_training)
                 print("end_block_" + str(i + 1), block.get_shape())
 
