@@ -27,37 +27,38 @@ class AttentionModel(TFModel):
             print(block.get_shape())
 
             block_config = [
-                (15, 5, 2, True),
-                (15, 5, 2, True),
+                (16, 5, 1, True),
+                (16, 5, 1, True),
             ]
             for i, (filters, kernel_size, dilation_rate, downsample) in enumerate(block_config):
                 block = resnet1d_block("block_" + str(i + 1), block, is_training=self.is_training,
                                        filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rate,
                                        downsample=downsample)
-                block = tf.layers.dropout(block, rate=0.25, training=self.is_training)
+                block = tf.layers.dropout(block, rate=0.2, training=self.is_training)
                 print("block_" + str(i + 1), block.get_shape())
 
             block_config = [
-                (20, 5, 2, True, 4),
-                (20, 5, 2, True, 4),
-                (20, 5, 2, True, 4),
+                (20, 5, 1, True, 4),
+                (20, 5, 1, True, 4),
+                (20, 5, 1, True, 4),
             ]
             for i, (filters, kernel_size, dilation_rate, downsample, downsample_mask) in enumerate(block_config):
                 block = attention1d_block("attention_block_" + str(i + 1), block, is_training=self.is_training,
                                           filters=filters, kernel_size=kernel_size, downsample_mask=downsample_mask,
                                           dilation_rate=dilation_rate, downsample=downsample)
-                block = tf.layers.dropout(block, rate=0.25, training=self.is_training)
+                block = tf.layers.dropout(block, rate=0.2, training=self.is_training)
                 print("attention_block_" + str(i + 1), block.get_shape())
 
+
             block_config = [
-                (25, 5, 2, True),
-                (25, 5, 2, True),
+                (24, 5, 1, True),
+                (24, 5, 1, True),
             ]
             for i, (filters, kernel_size, dilation_rate, downsample) in enumerate(block_config):
                 block = resnet1d_block("end_block_" + str(i + 1), block, is_training=self.is_training,
                                        filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rate,
                                        downsample=downsample)
-                block = tf.layers.dropout(block, rate=0.25, training=self.is_training)
+                block = tf.layers.dropout(block, rate=0.2, training=self.is_training)
                 print("end_block_" + str(i + 1), block.get_shape())
 
             with tf.variable_scope("global_max_pooling"):  # pylint: disable=not-context-manager
