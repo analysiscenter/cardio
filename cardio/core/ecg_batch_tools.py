@@ -6,9 +6,13 @@ import struct
 import numpy as np
 from numba import njit
 from scipy.io import wavfile
-import dicom
 import pyedflib
 import wfdb
+
+try:
+    import pydicom as dicom
+except ImportError:
+    import dicom
 
 # Constants
 
