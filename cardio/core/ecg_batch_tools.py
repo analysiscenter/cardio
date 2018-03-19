@@ -2,6 +2,8 @@
 
 import os
 import struct
+import datetime
+from xml.etree import ElementTree
 
 import numpy as np
 from numba import njit
@@ -315,6 +317,78 @@ def load_wav(path, components, *args, **kwargs):
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
+    return [data[comp] for comp in components]
+
+
+def load_xml(path, components, xml_type, *args, **kwargs):
+    loaders = {
+        "schiller": load_xml_schiller,
+    }
+    loader = loaders.get(xml_type)
+    if loader is None:
+        err_str = "Unsupported XML type {}. Currently supported XML types: {}"
+        err_msg = err_str.format(xml_type, ", ".join(sorted(loaders.keys())))
+        raise ValueError(err_msg)
+    return loader(path, components, *args, **kwargs)
+
+
+def unify_sex(sex):
+    transform_dict = {
+        "UNDEFINED": None,
+        "MALE": "M",
+        "FEMALE": "F",
+    }
+    return transform_dict.get(sex, sex)
+
+
+def load_xml_schiller(path, components, *args, **kwargs):
+    root = ElementTree.parse(path).getroot()
+
+    birthdate = root.find("./patdata/birthdate").text
+    if birthdate is None:
+        age = None
+    else:
+        today = datetime.date.today()
+        birthdate = datetime.datetime.strptime(birthdate, "%Y%m%d")
+        age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+
+    sex = unify_sex(root.find("./patdata/gender").text)
+
+    date = root.find("./examdescript/startdatetime/date").text
+    time = root.find("./examdescript/startdatetime/time").text
+    timestamp = datetime.datetime.strptime(date + time, "%Y%m%d%H%M%S%f")
+
+    ecg_data = root.find("./eventdata/event/wavedata[type='ECG_RHYTHMS']")
+    sig_info = []
+    for channel in ecg_data.findall("./channel"):
+        sig = [float(val) for val in channel.find("data").text.split(",") if val]
+        name = channel.find("name").text
+        sig_info.append((sig, name))
+    signal, signame = zip(*sig_info)
+    signal = np.array(signal)
+    signame = np.array(signame)
+
+    fs = float(ecg_data.find("./resolution/samplerate/value").text)
+    units = ecg_data.find("./resolution/yres/units").text
+    if units == "UV":
+        units = "uV"
+    units = np.array([units] * len(signame))
+
+    meta = {
+        "age": age,
+        "sex": sex,
+        "timestamp": timestamp,
+        "comments": None,
+        "fs": fs,
+        "signame": signame,
+        "units": units,
+    }
+
+    data = {
+        "signal": signal,
+        "annotation": {},
+        "meta": meta
+    }
     return [data[comp] for comp in components]
 
 

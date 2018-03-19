@@ -228,8 +228,8 @@ class EcgBatch(ds.Batch):
         ``signal`` and ``meta`` components are loaded. In case this assumption
         is not fulfilled, normal operation of the actions is not guaranteed.
 
-        This method supports loading of signals from wfdb, DICOM, EDF, wav and
-        blosc formats.
+        This method supports loading of signals from WFDB, DICOM, EDF, WAV,
+        XML and Blosc formats.
 
         Parameters
         ----------
@@ -252,20 +252,21 @@ class EcgBatch(ds.Batch):
         components = np.asarray(components).ravel()
         if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
             return self._load_labels(src)
-        elif fmt in ["wfdb", "dicom", "edf", "wav"]:
+        elif fmt in ["wfdb", "dicom", "edf", "wav", "xml"]:
             return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
         else:
             return super().load(src, fmt, components, *args, **kwargs)
 
     @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
     def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
-        """Load given components from wfdb, DICOM, EDF or wav files.
+        """Load given components from WFDB, DICOM, EDF, WAV or XML files.
 
         Parameters
         ----------
         src : misc, optional
-            Source to load components from. If ``None``, path from
-            ``FilesIndex`` is used.
+            Source to load components from. Must be a collection, that can be
+            indexed by indices of a batch. If ``None`` and ``index`` has
+            ``FilesIndex`` type, the path from ``index`` is used.
         fmt : str, optional
             Source format.
         components : iterable, optional
@@ -284,8 +285,13 @@ class EcgBatch(ds.Batch):
             If source path is not specified and batch's ``index`` is not a
             ``FilesIndex``.
         """
-        loaders = {"wfdb": bt.load_wfdb, "dicom": bt.load_dicom,
-                   "edf": bt.load_edf, "wav": bt.load_wav}
+        loaders = {
+            "wfdb": bt.load_wfdb,
+            "dicom": bt.load_dicom,
+            "edf": bt.load_edf,
+            "wav": bt.load_wav,
+            "xml": bt.load_xml,
+        }
 
         if src is not None:
             path = src[index]
