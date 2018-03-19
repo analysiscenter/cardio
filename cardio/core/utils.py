@@ -2,8 +2,16 @@
 
 import functools
 
+import pint
 import numpy as np
 from sklearn.preprocessing import LabelBinarizer as LB
+
+
+ureg = pint.UnitRegistry()
+
+
+def get_multiplier(old_units, new_units):
+    return ureg(old_units).to(new_units).magnitude
 
 
 def partialmethod(func, *frozen_args, **frozen_kwargs):

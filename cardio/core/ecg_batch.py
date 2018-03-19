@@ -14,7 +14,7 @@ import pywt
 from .. import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
-from .utils import partialmethod, LabelBinarizer
+from .utils import get_multiplier, partialmethod, LabelBinarizer
 
 
 ACTIONS_DICT = {
@@ -731,6 +731,7 @@ class EcgBatch(ds.Batch):
             raise ValueError("All channels cannot be dropped")
         self.signal[i] = self.signal[i][mask]
         self.meta[i]["signame"] = channels_names[mask]
+        self.meta[i]["units"] = self.meta[i]["units"][mask]
 
     @ds.action
     def drop_channels(self, names=None, indices=None):
@@ -806,6 +807,21 @@ class EcgBatch(ds.Batch):
         old_names = self.meta[i]["signame"]
         new_names = np.array([rename_dict.get(name, name) for name in old_names], dtype=object)
         self.meta[i]["signame"] = new_names
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def convert_units(self, index, new_units):
+        i = self.get_pos(None, "signal", index)
+        self._check_2d(self.signal[i])
+        old_units = self.meta[i]["units"]
+        if isinstance(new_units, str):
+            new_units = [new_units] * len(old_units)
+        elif len(new_units) != len(old_units):
+            raise ValueError("The length of the new and old units lists must be the same")
+        multiplier = [get_multiplier(o, n) for o, n in zip(old_units, new_units)]
+        multiplier = np.array(multiplier).reshape(-1, 1)
+        self.signal[i] *= multiplier
+        self.meta[i]["units"] = new_units
 
     # Signal processing
 
