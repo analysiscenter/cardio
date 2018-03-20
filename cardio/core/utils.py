@@ -11,7 +11,11 @@ ureg = pint.UnitRegistry()
 
 
 def get_multiplier(old_units, new_units):
-    return ureg(old_units).to(new_units).magnitude
+    try:  # pint exceptions are wrapped with ValueError exceptions because they don't implement __repr__ method
+        multiplier = ureg(old_units).to(new_units).magnitude
+    except Exception as e:
+        raise ValueError(e.__class__.__name__ + ": " + str(e))
+    return multiplier
 
 
 def partialmethod(func, *frozen_args, **frozen_kwargs):

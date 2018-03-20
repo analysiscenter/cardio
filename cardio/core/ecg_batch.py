@@ -405,7 +405,7 @@ class EcgBatch(ds.Batch):
             ax.set_title("Lead name: {}".format(lead_name))
             ax.set_xlabel("Time (sec)")
             ax.set_ylabel("Amplitude ({})".format(units))
-            ax.grid("on", which="major")
+            ax.grid(True, which="major")
 
         if annot and hasattr(self, annot):
             def fill_segments(segment_states, color):
@@ -812,14 +812,13 @@ class EcgBatch(ds.Batch):
     @ds.inbatch_parallel(init="indices", target="threads")
     def convert_units(self, index, new_units):
         i = self.get_pos(None, "signal", index)
-        self._check_2d(self.signal[i])
         old_units = self.meta[i]["units"]
         if isinstance(new_units, str):
             new_units = [new_units] * len(old_units)
         elif len(new_units) != len(old_units):
             raise ValueError("The length of the new and old units lists must be the same")
         multiplier = [get_multiplier(o, n) for o, n in zip(old_units, new_units)]
-        multiplier = np.array(multiplier).reshape(-1, 1)
+        multiplier = np.array(multiplier).reshape(*([-1] + [1] * (self.signal[i].ndim - 1)))
         self.signal[i] *= multiplier
         self.meta[i]["units"] = new_units
 
