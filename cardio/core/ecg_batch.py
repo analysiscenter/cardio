@@ -839,7 +839,7 @@ class EcgBatch(ds.Batch):
         multiplier = [get_multiplier(old, new) for old, new in zip(old_units, new_units)]
         multiplier = np.array(multiplier).reshape(*([-1] + [1] * (self.signal[i].ndim - 1)))
         self.signal[i] *= multiplier
-        self.meta[i]["units"] = new_units
+        self.meta[i]["units"] = np.asarray(new_units)
 
     # Signal processing
 
