@@ -810,6 +810,22 @@ class EcgBatch(ds.Batch):
 
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
+    def reorder_channels(self, index, new_order):
+        i = self.get_pos(None, "signal", index)
+        old_order = self.meta[i]["signame"]
+        diff = np.setdiff1d(new_order, old_order)
+        if diff.size > 0:
+            raise ValueError("Unknown leads: {}".format(", ".join(diff)))
+        if len(new_order) == 0:
+            raise ValueError("All channels cannot be dropped")
+        transform_dict = {k: v for v, k in enumerate(old_order)}
+        indices = [transform_dict[k] for k in new_order]
+        self.signal[i] = self.signal[i][indices]
+        self.meta[i]["signame"] = self.meta[i]["signame"][indices]
+        self.meta[i]["units"] = self.meta[i]["units"][indices]
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
     def convert_units(self, index, new_units):
         i = self.get_pos(None, "signal", index)
         old_units = self.meta[i]["units"]
