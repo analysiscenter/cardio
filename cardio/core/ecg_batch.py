@@ -813,11 +813,14 @@ class EcgBatch(ds.Batch):
     def convert_units(self, index, new_units):
         i = self.get_pos(None, "signal", index)
         old_units = self.meta[i]["units"]
+        channels_names = self.meta[i]["signame"]
         if isinstance(new_units, str):
             new_units = [new_units] * len(old_units)
+        elif isinstance(new_units, dict):
+            new_units = [new_units.get(name, unit) for name, unit in zip(channels_names, old_units)]
         elif len(new_units) != len(old_units):
             raise ValueError("The length of the new and old units lists must be the same")
-        multiplier = [get_multiplier(o, n) for o, n in zip(old_units, new_units)]
+        multiplier = [get_multiplier(old, new) for old, new in zip(old_units, new_units)]
         multiplier = np.array(multiplier).reshape(*([-1] + [1] * (self.signal[i].ndim - 1)))
         self.signal[i] *= multiplier
         self.meta[i]["units"] = new_units
