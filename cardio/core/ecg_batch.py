@@ -815,7 +815,7 @@ class EcgBatch(ds.Batch):
         old_order = self.meta[i]["signame"]
         diff = np.setdiff1d(new_order, old_order)
         if diff.size > 0:
-            raise ValueError("Unknown leads: {}".format(", ".join(diff)))
+            raise ValueError("Unknown lead names: {}".format(", ".join(diff)))
         if len(new_order) == 0:
             raise ValueError("All channels cannot be dropped")
         transform_dict = {k: v for v, k in enumerate(old_order)}

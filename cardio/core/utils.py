@@ -7,14 +7,28 @@ import numpy as np
 from sklearn.preprocessing import LabelBinarizer as LB
 
 
-ureg = pint.UnitRegistry()
+UNIT_REGISTRY = pint.UnitRegistry()
 
 
 def get_multiplier(old_units, new_units):
+    """Return a multiplier to convert values from old to new units.
+
+    Parameters
+    ----------
+    old_units : str
+        Current units in SI format.
+    new_units : str
+        Target units in SI format.
+
+    Returns
+    -------
+    multiplier : float
+        A multiplier to convert values between units.
+    """
     try:  # pint exceptions are wrapped with ValueError exceptions because they don't implement __repr__ method
-        multiplier = ureg(old_units).to(new_units).magnitude
-    except Exception as e:
-        raise ValueError(e.__class__.__name__ + ": " + str(e))
+        multiplier = UNIT_REGISTRY(old_units).to(new_units).magnitude
+    except Exception as error:
+        raise ValueError(error.__class__.__name__ + ": " + str(error))
     return multiplier
 
 
