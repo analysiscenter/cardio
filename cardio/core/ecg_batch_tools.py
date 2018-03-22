@@ -89,6 +89,16 @@ def check_units(units, nsig):
     return np.array(units)
 
 
+def unify_sex(sex):
+    transform_dict = {
+        "MALE": "M",
+        "M": "M",
+        "FEMALE": "F",
+        "F": "F",
+    }
+    return transform_dict.get(sex)
+
+
 def load_wfdb(path, components, *args, **kwargs):
     """Load given components from wfdb file.
 
@@ -321,6 +331,24 @@ def load_wav(path, components, *args, **kwargs):
 
 
 def load_xml(path, components, xml_type, *args, **kwargs):
+    """Load given components from an XML file.
+
+    Parameters
+    ----------
+    path : str
+        Path to an .xml file.
+    components : iterable
+        Components to load.
+    xml_type : str
+        Defines the structure of the file. The following values of the
+        argument are supported:
+            * "schiller" - Schiller XML
+
+    Returns
+    -------
+    loaded_data : list
+        A list of loaded ECG data components.
+    """
     loaders = {
         "schiller": load_xml_schiller,
     }
@@ -332,16 +360,23 @@ def load_xml(path, components, xml_type, *args, **kwargs):
     return loader(path, components, *args, **kwargs)
 
 
-def unify_sex(sex):
-    transform_dict = {
-        "UNDEFINED": None,
-        "MALE": "M",
-        "FEMALE": "F",
-    }
-    return transform_dict.get(sex, sex)
+def load_xml_schiller(path, components, *args, **kwargs):  # pylint: disable=too-many-locals
+    """Load given components from a Schiller XML file.
 
+    Parameters
+    ----------
+    path : str
+        Path to an .xml file.
+    components : iterable
+        Components to load.
 
-def load_xml_schiller(path, components, *args, **kwargs):
+    Returns
+    -------
+    loaded_data : list
+        A list of loaded ECG data components.
+    """
+    _ = args, kwargs
+
     root = ElementTree.parse(path).getroot()
 
     birthdate = root.find("./patdata/birthdate").text
