@@ -90,6 +90,19 @@ def check_units(units, nsig):
 
 
 def unify_sex(sex):
+    """Maps the sex of a patient into one of the following values: "M", "F" or
+    ``None``.
+
+    Parameters
+    ----------
+    sex : str
+        Sex of the patient.
+
+    Returns
+    -------
+    sex : str
+        Transformed sex of the patient.
+    """
     transform_dict = {
         "MALE": "M",
         "M": "M",
