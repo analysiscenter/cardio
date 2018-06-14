@@ -842,6 +842,25 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def convert_units(self, index, new_units):
+        """Convert units of signal's channels to ``new_units``.
+
+        Parameters
+        ----------
+        new_units : str, dict or array_like
+            New units of signal's channels. Must be specified in SI format and
+            can be of one of the following types:
+            * ``str`` - defines the same new units for each channel.
+            * ``dict`` - defines the mapping from channel name to new units.
+            * ``array_like`` - defines new units for corresponding channels.
+              The length of the sequence in this case must match the number of
+              channels.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with converted units. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+        """
         i = self.get_pos(None, "signal", index)
         old_units = self.meta[i]["units"]
         channels_names = self.meta[i]["signame"]
