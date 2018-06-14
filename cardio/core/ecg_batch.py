@@ -811,6 +811,21 @@ class EcgBatch(ds.Batch):
     @ds.action
     @ds.inbatch_parallel(init="indices", target="threads")
     def reorder_channels(self, index, new_order):
+        """Change the order of channels in the batch according to the
+        ``new_order``.
+
+        Parameters
+        ----------
+        new_order : array_like
+            A list of channel names specifying the order of channels in the
+            transformed batch.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with reordered channels. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+        """
         i = self.get_pos(None, "signal", index)
         old_order = self.meta[i]["signame"]
         diff = np.setdiff1d(new_order, old_order)
