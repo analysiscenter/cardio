@@ -829,9 +829,9 @@ class EcgBatch(ds.Batch):
         Raises
         ------
         ValueError
-            If:
-                * unknown lead names are specified,
-                * all channels should be dropped.
+            If unknown lead names are specified.
+        ValueError
+            If all channels should be dropped.
         """
         i = self.get_pos(None, "signal", index)
         old_order = self.meta[i]["signame"]
@@ -856,11 +856,13 @@ class EcgBatch(ds.Batch):
         new_units : str, dict or array_like
             New units of signal's channels. Must be specified in SI format and
             can be of one of the following types:
-            * ``str`` - defines the same new units for each channel.
-            * ``dict`` - defines the mapping from channel names to new units.
-            * ``array_like`` - defines new units for corresponding channels.
-              The length of the sequence in this case must match the number of
-              channels.
+                * ``str`` - defines the same new units for each channel.
+                * ``dict`` - defines the mapping from channel names to new
+                  units. Channels, whose names are not in the dictionary,
+                  remain unchanged.
+                * ``array_like`` - defines new units for corresponding
+                  channels. The length of the sequence in this case must match
+                  the number of channels.
 
         Returns
         -------
@@ -871,11 +873,12 @@ class EcgBatch(ds.Batch):
         Raises
         ------
         ValueError
-            If:
-                * ``new_units`` is ``array_like`` and its length doesn't match
-                  the number of channels,
-                * unknown units are used,
-                * conversion between incompatible units is performed.
+            If ``new_units`` is ``array_like`` and its length doesn't match
+            the number of channels.
+        ValueError
+            If unknown units are used.
+        ValueError
+            If conversion between incompatible units is performed.
         """
         i = self.get_pos(None, "signal", index)
         old_units = self.meta[i]["units"]
