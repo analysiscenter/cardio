@@ -1,10 +1,19 @@
+# Release 0.3.0
+
+## Major Features and Improvements
+* `load` method now supports Schiller XML format
+* Added channels processing methods:
+	* `EcgBatch.reorder_channels`
+	* `EcgBatch.convert_units`
+
+
 # Release 0.2.0
 
 ## Major Features and Improvements
 * `load` method now supports new signal formats:
 	* DICOM
 	* EDF
-	* wav
+	* WAV
 * `meta` component structure has changed - now it always contains a number of predefined keys.
 * Added channels processing methods:
 	* `EcgBatch.keep_channels`
