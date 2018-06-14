@@ -10,8 +10,9 @@ from sklearn.preprocessing import LabelBinarizer as LB
 UNIT_REGISTRY = pint.UnitRegistry()
 
 
-def get_multiplier(old_units, new_units):
-    """Return a multiplier to convert values from old to new units.
+def get_units_conversion_factor(old_units, new_units):
+    """Return a multiplicative factor to convert a measured quantity from old
+    to new units.
 
     Parameters
     ----------
@@ -22,14 +23,14 @@ def get_multiplier(old_units, new_units):
 
     Returns
     -------
-    multiplier : float
-        A multiplier to convert values between units.
+    factor : float
+        A factor to convert quantities between units.
     """
     try:  # pint exceptions are wrapped with ValueError exceptions because they don't implement __repr__ method
-        multiplier = UNIT_REGISTRY(old_units).to(new_units).magnitude
+        factor = UNIT_REGISTRY(old_units).to(new_units).magnitude
     except Exception as error:
         raise ValueError(error.__class__.__name__ + ": " + str(error))
-    return multiplier
+    return factor
 
 
 def partialmethod(func, *frozen_args, **frozen_kwargs):

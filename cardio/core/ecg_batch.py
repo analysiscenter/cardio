@@ -14,7 +14,7 @@ import pywt
 from .. import dataset as ds
 from . import kernels
 from . import ecg_batch_tools as bt
-from .utils import get_multiplier, partialmethod, LabelBinarizer
+from .utils import get_units_conversion_factor, partialmethod, LabelBinarizer
 
 
 ACTIONS_DICT = {
@@ -851,9 +851,9 @@ class EcgBatch(ds.Batch):
             new_units = [new_units.get(name, unit) for name, unit in zip(channels_names, old_units)]
         elif len(new_units) != len(old_units):
             raise ValueError("The length of the new and old units lists must be the same")
-        multiplier = [get_multiplier(old, new) for old, new in zip(old_units, new_units)]
-        multiplier = np.array(multiplier).reshape(*([-1] + [1] * (self.signal[i].ndim - 1)))
-        self.signal[i] *= multiplier
+        factors = [get_units_conversion_factor(old, new) for old, new in zip(old_units, new_units)]
+        factors = np.array(factors).reshape(*([-1] + [1] * (self.signal[i].ndim - 1)))
+        self.signal[i] *= factors
         self.meta[i]["units"] = np.asarray(new_units)
 
     # Signal processing
