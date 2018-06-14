@@ -349,7 +349,7 @@ def load_xml(path, components, xml_type, *args, **kwargs):
     Parameters
     ----------
     path : str
-        Path to an .xml file.
+        A path to an .xml file.
     components : iterable
         Components to load.
     xml_type : str
@@ -379,7 +379,7 @@ def load_xml_schiller(path, components, *args, **kwargs):  # pylint: disable=too
     Parameters
     ----------
     path : str
-        Path to an .xml file.
+        A path to an .xml file.
     components : iterable
         Components to load.
 

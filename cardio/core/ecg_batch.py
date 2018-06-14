@@ -825,6 +825,13 @@ class EcgBatch(ds.Batch):
         batch : EcgBatch
             Batch with reordered channels. Changes ``self.signal`` and
             ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If:
+                * unknown lead names are specified,
+                * all channels should be dropped.
         """
         i = self.get_pos(None, "signal", index)
         old_order = self.meta[i]["signame"]
@@ -850,7 +857,7 @@ class EcgBatch(ds.Batch):
             New units of signal's channels. Must be specified in SI format and
             can be of one of the following types:
             * ``str`` - defines the same new units for each channel.
-            * ``dict`` - defines the mapping from channel name to new units.
+            * ``dict`` - defines the mapping from channel names to new units.
             * ``array_like`` - defines new units for corresponding channels.
               The length of the sequence in this case must match the number of
               channels.
@@ -860,6 +867,15 @@ class EcgBatch(ds.Batch):
         batch : EcgBatch
             Batch with converted units. Changes ``self.signal`` and
             ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If:
+                * ``new_units`` is ``array_like`` and its length doesn't match
+                  the number of channels,
+                * unknown units are used,
+                * conversion between incompatible units is performed.
         """
         i = self.get_pos(None, "signal", index)
         old_units = self.meta[i]["units"]
