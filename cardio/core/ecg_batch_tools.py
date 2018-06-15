@@ -2,6 +2,8 @@
 
 import os
 import struct
+import datetime
+from xml.etree import ElementTree
 
 import numpy as np
 from numba import njit
@@ -85,6 +87,29 @@ def check_units(units, nsig):
     if not (isinstance(units, (tuple, list)) and len(units) == nsig):
         units = [None for number in range(nsig)]
     return np.array(units)
+
+
+def unify_sex(sex):
+    """Maps the sex of a patient into one of the following values: "M", "F" or
+    ``None``.
+
+    Parameters
+    ----------
+    sex : str
+        Sex of the patient.
+
+    Returns
+    -------
+    sex : str
+        Transformed sex of the patient.
+    """
+    transform_dict = {
+        "MALE": "M",
+        "M": "M",
+        "FEMALE": "F",
+        "F": "F",
+    }
+    return transform_dict.get(sex)
 
 
 def load_wfdb(path, components, *args, **kwargs):
@@ -315,6 +340,103 @@ def load_wav(path, components, *args, **kwargs):
     data = {"signal": signal,
             "annotation": annot,
             "meta": meta}
+    return [data[comp] for comp in components]
+
+
+def load_xml(path, components, xml_type, *args, **kwargs):
+    """Load given components from an XML file.
+
+    Parameters
+    ----------
+    path : str
+        A path to an .xml file.
+    components : iterable
+        Components to load.
+    xml_type : str
+        Defines the structure of the file. The following values of the
+        argument are supported:
+            * "schiller" - Schiller XML
+
+    Returns
+    -------
+    loaded_data : list
+        A list of loaded ECG data components.
+    """
+    loaders = {
+        "schiller": load_xml_schiller,
+    }
+    loader = loaders.get(xml_type)
+    if loader is None:
+        err_str = "Unsupported XML type {}. Currently supported XML types: {}"
+        err_msg = err_str.format(xml_type, ", ".join(sorted(loaders.keys())))
+        raise ValueError(err_msg)
+    return loader(path, components, *args, **kwargs)
+
+
+def load_xml_schiller(path, components, *args, **kwargs):  # pylint: disable=too-many-locals
+    """Load given components from a Schiller XML file.
+
+    Parameters
+    ----------
+    path : str
+        A path to an .xml file.
+    components : iterable
+        Components to load.
+
+    Returns
+    -------
+    loaded_data : list
+        A list of loaded ECG data components.
+    """
+    _ = args, kwargs
+
+    root = ElementTree.parse(path).getroot()
+
+    birthdate = root.find("./patdata/birthdate").text
+    if birthdate is None:
+        age = None
+    else:
+        today = datetime.date.today()
+        birthdate = datetime.datetime.strptime(birthdate, "%Y%m%d")
+        age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+
+    sex = unify_sex(root.find("./patdata/gender").text)
+
+    date = root.find("./examdescript/startdatetime/date").text
+    time = root.find("./examdescript/startdatetime/time").text
+    timestamp = datetime.datetime.strptime(date + time, "%Y%m%d%H%M%S%f")
+
+    ecg_data = root.find("./eventdata/event/wavedata[type='ECG_RHYTHMS']")
+    sig_info = []
+    for channel in ecg_data.findall("./channel"):
+        sig = [float(val) for val in channel.find("data").text.split(",") if val]
+        name = channel.find("name").text
+        sig_info.append((sig, name))
+    signal, signame = zip(*sig_info)
+    signal = np.array(signal)
+    signame = np.array(signame)
+
+    fs = float(ecg_data.find("./resolution/samplerate/value").text)
+    units = ecg_data.find("./resolution/yres/units").text
+    if units == "UV":
+        units = "uV"
+    units = np.array([units] * len(signame))
+
+    meta = {
+        "age": age,
+        "sex": sex,
+        "timestamp": timestamp,
+        "comments": None,
+        "fs": fs,
+        "signame": signame,
+        "units": units,
+    }
+
+    data = {
+        "signal": signal,
+        "annotation": {},
+        "meta": meta
+    }
     return [data[comp] for comp in components]
 
 

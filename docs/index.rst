@@ -5,12 +5,12 @@ Welcome to CardIO's documentation!
 
 Main features:
 
-* load and save signal in various formats (wfdb, DICOM, EDF, etc)
+* load and save signals in various formats: WFDB, DICOM, EDF, XML (Schiller), etc.
 * resample, crop, flip and filter signals
 * detect PQ, QT, QRS segments
 * calculate heart rate and other ECG characteristics
 * perform complex processing like fourier and wavelet transformations
-* applpy custom functions to the data
+* apply custom functions to the data
 * recognize heart diseases (e.g. atrial fibrillation)
 * efficiently work with large datasets that do not even fit into memory
 * perform end-to-end ECG processing
@@ -51,7 +51,7 @@ Contents
 Basic usage
 ===========
 
-Here is an example of pipeline that loads ECG signals, makes preprocessing and trains a model for 50 epochs:
+Here is an example of a pipeline that loads ECG signals, makes preprocessing and trains a model for 50 epochs:
 
 .. code-block:: python
 

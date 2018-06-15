@@ -2,8 +2,35 @@
 
 import functools
 
+import pint
 import numpy as np
 from sklearn.preprocessing import LabelBinarizer as LB
+
+
+UNIT_REGISTRY = pint.UnitRegistry()
+
+
+def get_units_conversion_factor(old_units, new_units):
+    """Return a multiplicative factor to convert a measured quantity from old
+    to new units.
+
+    Parameters
+    ----------
+    old_units : str
+        Current units in SI format.
+    new_units : str
+        Target units in SI format.
+
+    Returns
+    -------
+    factor : float
+        A factor to convert quantities between units.
+    """
+    try:  # pint exceptions are wrapped with ValueError exceptions because they don't implement __repr__ method
+        factor = UNIT_REGISTRY(old_units).to(new_units).magnitude
+    except Exception as error:
+        raise ValueError(error.__class__.__name__ + ": " + str(error))
+    return factor
 
 
 def partialmethod(func, *frozen_args, **frozen_kwargs):
