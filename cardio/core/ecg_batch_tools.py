@@ -134,25 +134,47 @@ def load_wfdb(path, components, *args, **kwargs):
     ann_ext = kwargs.get("ann_ext")
 
     path = os.path.splitext(path)[0]
-    record = wfdb.rdsamp(path)
-    signal = record.__dict__.pop("p_signals").T
-    record_meta = record.__dict__
-    nsig = record_meta["nsig"]
 
-    if "annotation" in components and ann_ext is not None:
-        annotation = wfdb.rdann(path, ann_ext)
-        annot = {"annsamp": annotation.sample,
-                 "anntype": annotation.symbol}
+    if wfdb.__version__ == "1.3.9":
+        record = wfdb.rdsamp(path)
+        signal = record.__dict__.pop("p_signals").T
+        record_meta = record.__dict__
+        nsig = record_meta["nsig"]
+
+        if "annotation" in components and ann_ext is not None:
+            annotation = wfdb.rdann(path, ann_ext)
+            annot = {"annsamp": annotation.sample,
+                     "anntype": annotation.symbol}
+        else:
+            annot = {}
+
+        # Initialize meta with defined keys, load values from record
+        # meta and preprocess to our format.
+        meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+        meta.update(record_meta)
+
+        meta["signame"] = check_signames(meta["signame"], nsig)
+        meta["units"] = check_units(meta["units"], nsig)
     else:
-        annot = {}
+        record = wfdb.rdrecord(path)
+        signal = record.__dict__.pop("p_signal").T
+        record_meta = record.__dict__
+        nsig = record_meta["n_sig"]
 
-    # Initialize meta with defined keys, load values from record
-    # meta and preprocess to our format.
-    meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
-    meta.update(record_meta)
+        if "annotation" in components and ann_ext is not None:
+            annotation = wfdb.rdann(path, ann_ext)
+            annot = {"annsamp": annotation.sample,
+                     "anntype": annotation.symbol}
+        else:
+            annot = {}
 
-    meta["signame"] = check_signames(meta["signame"], nsig)
-    meta["units"] = check_units(meta["units"], nsig)
+        # Initialize meta with defined keys, load values from record
+        # meta and preprocess to our format.
+        meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
+        meta.update(record_meta)
+
+        meta["signame"] = check_signames(meta["sig_name"], nsig)
+        meta["units"] = check_units(meta["units"], nsig)
 
     data = {"signal": signal,
             "annotation": annot,
