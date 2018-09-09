@@ -110,8 +110,8 @@ Citing CardIO
 
 Please cite CardIO in your publications if it helps your research.
 
-.. image:: https://zenodo.org/badge/109618565.svg
-    :target: https://zenodo.org/badge/latestdoi/109618565
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1156085.svg
+   :target: https://doi.org/10.5281/zenodo.1156085
 
 ::
 
