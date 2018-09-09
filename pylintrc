@@ -6,11 +6,11 @@ init-hook='import sys; sys.path.append(".")'
 max-line-length=120
 max-attributes=8
 max-args=8
-max-locals=20
+max-locals=25
 good-names=ax,im,ix,a,b,_,n,s,fs,i,j,k,t,x,y,z,lc,rc
 
 [MESSAGE CONTROL]
-disable=no-value-for-parameter,no-self-use,too-few-public-methods,unsubscriptable-object,no-method-argument,no-member
+disable=no-value-for-parameter,no-self-use,too-few-public-methods,unsubscriptable-object,no-method-argument,no-member,arguments-differ,keyword-arg-before-vararg
 
 [TYPECHECK]
 ignored-modules=numpy, keras
