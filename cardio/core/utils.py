@@ -54,7 +54,7 @@ class LabelBinarizer(LB):
         """
         Y = super().transform(y)
         if len(self.classes_) == 1:
-            Y = 1 - Y  # pylint: disable=redefined-variable-type
+            Y = 1 - Y
         if len(self.classes_) == 2:
             Y = np.hstack((1 - Y, Y))
         return Y

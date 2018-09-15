@@ -252,10 +252,9 @@ class EcgBatch(ds.Batch):
         components = np.asarray(components).ravel()
         if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
             return self._load_labels(src)
-        elif fmt in ["wfdb", "dicom", "edf", "wav"]:
+        if fmt in ["wfdb", "dicom", "edf", "wav"]:
             return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
-        else:
-            return super().load(src, fmt, components, *args, **kwargs)
+        return super().load(src, fmt, components, *args, **kwargs)
 
     @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
     def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
@@ -991,7 +990,7 @@ class EcgBatch(ds.Batch):
         """
         if isinstance(arg, int):
             return arg
-        elif isinstance(arg, dict):
+        if isinstance(arg, dict):
             arg = arg.get(target)
             if arg is None:
                 raise KeyError("Undefined {} for target {}".format(arg_name, target))
