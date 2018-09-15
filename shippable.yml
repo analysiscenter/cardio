@@ -11,6 +11,7 @@ build:
     image_name: $DOCKER_ACC/$DOCKER_REPO
     image_tag: $TAG
   ci:
+    - pip3 install -U pylint
     - pip3 install -r requirements-shippable.txt
     - find ./cardio -not -path "./cardio/dataset/*" -iname "*.py" | xargs -r pylint3 -rn --rcfile pylintrc
     - pytest -v --ignore=./cardio/dataset --junitxml=shippable/testresults/pytests.xml
