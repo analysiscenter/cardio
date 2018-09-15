@@ -17,7 +17,7 @@ class RFFT(Layer):
     Output shape
     3D tensor (batch_size, int(signal_length / 2), nb_channels)
     '''
-    def __init__(self, *agrs, **kwargs):
+    def __init__(self, *agrs, **kwargs):#pylint: disable=useless-super-delegation
         super(RFFT, self).__init__(*agrs, **kwargs)
 
     def rfft(self, x, fft_fn):
@@ -57,8 +57,7 @@ class RFFT(Layer):
         '''
         if input_shape[1] is None:
             return input_shape
-        else:
-            return (input_shape[0], input_shape[1] // 2, input_shape[2])
+        return (input_shape[0], input_shape[1] // 2, input_shape[2])
 
 
 class Crop(Layer):

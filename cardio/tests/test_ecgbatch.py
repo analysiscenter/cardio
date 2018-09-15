@@ -8,8 +8,8 @@ import pytest
 
 sys.path.append(os.path.join("."))
 
-from cardio import EcgBatch, EcgDataset, dataset as ds  # pylint: disable=no-name-in-module
-from cardio.core import ecg_batch_tools as bt  # pylint: disable=no-name-in-module,import-error
+from cardio import EcgBatch, EcgDataset, dataset as ds  # pylint: disable=no-name-in-module,wrong-import-position
+from cardio.core import ecg_batch_tools as bt  # pylint: disable=no-name-in-module,wrong-import-position
 
 random.seed(170720143422)
 

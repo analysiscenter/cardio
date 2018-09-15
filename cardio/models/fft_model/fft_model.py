@@ -1,11 +1,12 @@
 """ Contains fft_model architecture """
 
+import tensorflow as tf
+import keras.backend as K
+
 from keras.layers import Input, Conv1D, Lambda, \
                          MaxPooling1D, MaxPooling2D, \
                          Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
-import keras.backend as K
-import tensorflow as tf
 
 from ...dataset.dataset.models.keras import KerasModel
 from ..keras_custom_objects import RFFT, Crop, Inception2D
