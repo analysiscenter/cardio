@@ -134,7 +134,7 @@ def load_wfdb(path, components, *args, **kwargs):
     ann_ext = kwargs.get("ann_ext")
 
     path = os.path.splitext(path)[0]
-    record = wfdb.rdsamp(path)
+    record = wfdb.rdrecord(path)
     signal = record.__dict__.pop("p_signals").T
     record_meta = record.__dict__
     nsig = record_meta["nsig"]
