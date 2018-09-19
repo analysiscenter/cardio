@@ -4,8 +4,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser(description='Path to the files and mask')
-parser.add_argument('--path', type=str, dest='path', default='./', 
-                    help='Full path to PN2017 files')
+parser.add_argument('path', help='Full path to PN2017 files')
 
 args = parser.parse_args()
 
