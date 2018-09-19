@@ -20,7 +20,7 @@ integrations:
   hub:
     - integrationName: DockerHub analysiscenter.ru
       type: docker
-  
+
   notifications:
     - integrationName: Slack analysiscenter.ru
       type: slack

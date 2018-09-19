@@ -120,7 +120,7 @@ Please cite CardIO in your publications if it helps your research.
 ::
 
     @misc{cardio_2017_1156085,
-      author       = {Khudorozhkov R., Illarionov E., Kuvaev A., Podvyaznikov D.},
+      author       = {R. Khudorozhkov and E. Illarionov and A. Kuvaev and D. Podvyaznikov},
       title        = {CardIO library for deep research of heart signals},
       year         = 2017,
       doi          = {10.5281/zenodo.1156085},
