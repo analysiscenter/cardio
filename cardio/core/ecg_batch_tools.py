@@ -151,7 +151,7 @@ def load_wfdb(path, components, *args, **kwargs):
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
     meta.update(record_meta)
 
-    meta["sig_name"] = check_signames(meta["sig_name"], nsig)
+    meta["signame"] = check_signames(meta.pop("sig_name"), nsig)
     meta["units"] = check_units(meta["units"], nsig)
 
     data = {"signal": signal,
