@@ -135,9 +135,9 @@ def load_wfdb(path, components, *args, **kwargs):
 
     path = os.path.splitext(path)[0]
     record = wfdb.rdrecord(path)
-    signal = record.__dict__.pop("p_signals").T
+    signal = record.__dict__.pop("p_signal").T
     record_meta = record.__dict__
-    nsig = record_meta["nsig"]
+    nsig = record_meta["n_sig"]
 
     if "annotation" in components and ann_ext is not None:
         annotation = wfdb.rdann(path, ann_ext)
@@ -151,7 +151,7 @@ def load_wfdb(path, components, *args, **kwargs):
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
     meta.update(record_meta)
 
-    meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["sig_name"] = check_signames(meta["sig_name"], nsig)
     meta["units"] = check_units(meta["units"], nsig)
 
     data = {"signal": signal,
