@@ -1,7 +1,6 @@
 """Module for testing ecg_batch methods"""
 
 import os
-import sys
 import random
 import numpy as np
 import pytest
