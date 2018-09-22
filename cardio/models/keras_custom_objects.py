@@ -17,8 +17,6 @@ class RFFT(Layer):
     Output shape
     3D tensor (batch_size, int(signal_length / 2), nb_channels)
     '''
-    def __init__(self, *agrs, **kwargs):#pylint: disable=useless-super-delegation
-        super(RFFT, self).__init__(*agrs, **kwargs)
 
     def rfft(self, x, fft_fn):
         '''

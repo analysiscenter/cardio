@@ -10,7 +10,7 @@ max-locals=25
 good-names=ax,im,ix,a,b,_,n,s,fs,i,j,k,t,x,y,z,lc,rc
 
 [MESSAGE CONTROL]
-disable=no-value-for-parameter,no-self-use,too-few-public-methods,unsubscriptable-object,no-method-argument,no-member,arguments-differ,len-as-condition,keyword-arg-before-vararg,too-many-locals,wrong-import-order
+disable=no-value-for-parameter,no-self-use,too-few-public-methods,unsubscriptable-object,no-method-argument,no-member,arguments-differ,len-as-condition,keyword-arg-before-vararg,too-many-locals
 
 [TYPECHECK]
 ignored-modules=numpy, keras
