@@ -600,7 +600,7 @@ def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
         mask |= (sig_freq >= high)
     slc = [slice(None)] * signals.ndim
     slc[axis] = mask
-    sig_rfft[slc] = 0
+    sig_rfft[tuple(slc)] = 0
     return np.fft.irfft(sig_rfft, n=signals.shape[axis], axis=axis)
 
 
