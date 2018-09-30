@@ -134,10 +134,10 @@ def load_wfdb(path, components, *args, **kwargs):
     ann_ext = kwargs.get("ann_ext")
 
     path = os.path.splitext(path)[0]
-    record = wfdb.rdsamp(path)
-    signal = record.__dict__.pop("p_signals").T
+    record = wfdb.rdrecord(path)
+    signal = record.__dict__.pop("p_signal").T
     record_meta = record.__dict__
-    nsig = record_meta["nsig"]
+    nsig = record_meta["n_sig"]
 
     if "annotation" in components and ann_ext is not None:
         annotation = wfdb.rdann(path, ann_ext)
@@ -151,7 +151,7 @@ def load_wfdb(path, components, *args, **kwargs):
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
     meta.update(record_meta)
 
-    meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["signame"] = check_signames(meta.pop("sig_name"), nsig)
     meta["units"] = check_units(meta["units"], nsig)
 
     data = {"signal": signal,
@@ -600,7 +600,7 @@ def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
         mask |= (sig_freq >= high)
     slc = [slice(None)] * signals.ndim
     slc[axis] = mask
-    sig_rfft[slc] = 0
+    sig_rfft[tuple(slc)] = 0
     return np.fft.irfft(sig_rfft, n=signals.shape[axis], axis=axis)
 
 

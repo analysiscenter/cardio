@@ -1,15 +1,13 @@
 """Module for testing ecg_batch methods"""
 
 import os
-import sys
 import random
 import numpy as np
 import pytest
 
-sys.path.append(os.path.join("."))
+from cardio import EcgBatch, EcgDataset, dataset as ds
+from cardio.core import ecg_batch_tools as bt
 
-from cardio import EcgBatch, EcgDataset, dataset as ds  # pylint: disable=no-name-in-module
-from cardio.core import ecg_batch_tools as bt  # pylint: disable=no-name-in-module,import-error
 
 random.seed(170720143422)
 
