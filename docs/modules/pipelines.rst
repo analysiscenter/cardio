@@ -22,8 +22,8 @@ is similar to running this
 
 .. code-block:: python
   
-  from cardio import dataset as ds
-  from cardio.dataset import F, V
+  from cardio import batchflow as bf
+  from cardio.batchflow import F, V
   from cardio.models import DirichletModel, concatenate_ecg_batch
 
   model_config = {
@@ -33,7 +33,7 @@ is similar to running this
         "loss": None}
 
   pipeline = (
-    ds.Pipeline()
+    bf.Pipeline()
       .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
       .init_variable("loss_history", init_on_each_run=list)
       .load(components=["signal", "meta"], fmt="wfdb")

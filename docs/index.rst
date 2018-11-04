@@ -19,7 +19,7 @@ Main features:
 About CardIO
 ============
 
-.. note:: CardIO is based on `Dataset <https://github.com/analysiscenter/dataset>`_. You might benefit from reading `its documentation <https://analysiscenter.github.io/dataset>`_. However, it is not required, especially at the beginning.
+.. note:: CardIO is based on `Batchflow <https://github.com/analysiscenter/batchflow>`_. You might benefit from reading `its documentation <https://analysiscenter.github.io/batchflow>`_. However, it is not required, especially at the beginning.
 
 CardIO has three modules: :doc:`core <./modules/core>`, :doc:`models <./modules/models>` and :doc:`pipelines <./modules/pipelines>`.
 
@@ -100,7 +100,7 @@ After that just import `cardio`::
 Installation as a project repository
 --------------------------------------
 
-When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Dataset`` submodule is also cloned::
+When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Batchflow`` submodule is also cloned::
 
     git clone --recursive https://github.com/analysiscenter/cardio.git
 

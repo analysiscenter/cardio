@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from ..layers import conv1d_block, resnet1d_block
-from ...dataset.dataset.models.tf import TFModel
+from ...batchflow.batchflow.models.tf import TFModel
 
 
 def concatenate_ecg_batch(batch, model, return_targets=True):

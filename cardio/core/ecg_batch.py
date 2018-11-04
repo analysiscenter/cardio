@@ -11,7 +11,7 @@ import scipy.signal
 import matplotlib.pyplot as plt
 import pywt
 
-from .. import dataset as ds
+from .. import batchflow as bf
 from . import kernels
 from . import ecg_batch_tools as bt
 from .utils import partialmethod, LabelBinarizer
@@ -91,7 +91,7 @@ def add_actions(actions_dict, template_docstring):
 
 
 @add_actions(ACTIONS_DICT, TEMPLATE_DOCSTRING)  # pylint: disable=too-many-public-methods,too-many-instance-attributes
-class EcgBatch(ds.Batch):
+class EcgBatch(bf.Batch):
     """Batch class for ECG signals storing.
 
     Contains ECG signals and additional metadata along with various processing
@@ -197,7 +197,7 @@ class EcgBatch(ds.Batch):
         RuntimeError
             If any paralleled action raised an ``Exception``.
         """
-        if ds.any_action_failed(results):
+        if bf.any_action_failed(results):
             all_errors = self.get_errors(results)
             raise RuntimeError("Cannot assemble the batch", all_errors)
 
@@ -220,7 +220,7 @@ class EcgBatch(ds.Batch):
 
     # Input/output methods
 
-    @ds.action
+    @bf.action
     def load(self, src=None, fmt=None, components=None, ann_ext=None, *args, **kwargs):
         """Load given batch components from source.
 
@@ -256,7 +256,7 @@ class EcgBatch(ds.Batch):
             return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
         return super().load(src, fmt, components, *args, **kwargs)
 
-    @ds.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
+    @bf.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
     def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
         """Load given components from wfdb, DICOM, EDF or wav files.
 
@@ -288,7 +288,7 @@ class EcgBatch(ds.Batch):
 
         if src is not None:
             path = src[index]
-        elif isinstance(self.index, ds.FilesIndex):
+        elif isinstance(self.index, bf.FilesIndex):
             path = self.index.get_fullpath(index)  # pylint: disable=no-member
         else:
             raise ValueError("Source path is not specified")
@@ -462,19 +462,19 @@ class EcgBatch(ds.Batch):
         data = copy.deepcopy(data)
 
         new_indices = indices[:batch_size]
-        new_batch = cls(ds.DatasetIndex(new_indices), unique_labels=batches[0].unique_labels)
+        new_batch = cls(bf.DatasetIndex(new_indices), unique_labels=batches[0].unique_labels)
         new_batch._data = tuple(comp[:batch_size] for comp in data)  # pylint: disable=protected-access, attribute-defined-outside-init, line-too-long
         if total_len <= batch_size:
             rest_batch = None
         else:
             rest_indices = indices[batch_size:]
-            rest_batch = cls(ds.DatasetIndex(rest_indices), unique_labels=batches[0].unique_labels)
+            rest_batch = cls(bf.DatasetIndex(rest_indices), unique_labels=batches[0].unique_labels)
             rest_batch._data = tuple(comp[batch_size:] for comp in data)  # pylint: disable=protected-access, attribute-defined-outside-init, line-too-long
         return new_batch, rest_batch
 
     # Versatile components processing
 
-    @ds.action
+    @bf.action
     def apply_transform(self, func, *args, src="signal", dst="signal", **kwargs):
         """Apply a function to each item in the batch.
 
@@ -517,8 +517,8 @@ class EcgBatch(ds.Batch):
             setattr(self, dst, np.array([None] * len(self.index)))
         return self.indices
 
-    @ds.action
-    @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
     def apply_to_each_channel(self, index, func, *args, src="signal", dst="signal", **kwargs):
         """Apply a function to each slice of a signal over the axis 0
         (typically the channel axis).
@@ -577,13 +577,13 @@ class EcgBatch(ds.Batch):
         """
         indices = self.indices[keep_mask]
         if len(indices) == 0:
-            raise ds.SkipBatchException("All batch data was dropped")
-        batch = self.__class__(ds.DatasetIndex(indices), unique_labels=self.unique_labels)
+            raise bf.SkipBatchException("All batch data was dropped")
+        batch = self.__class__(bf.DatasetIndex(indices), unique_labels=self.unique_labels)
         for component in self.components:
             setattr(batch, component, getattr(self, component)[keep_mask])
         return batch
 
-    @ds.action
+    @bf.action
     def drop_labels(self, drop_list):
         """Drop elements whose labels are in ``drop_list``.
 
@@ -613,7 +613,7 @@ class EcgBatch(ds.Batch):
         keep_mask = ~np.in1d(self.target, drop_arr)
         return self._filter_batch(keep_mask)
 
-    @ds.action
+    @bf.action
     def keep_labels(self, keep_list):
         """Drop elements whose labels are not in ``keep_list``.
 
@@ -643,7 +643,7 @@ class EcgBatch(ds.Batch):
         keep_mask = np.in1d(self.target, keep_arr)
         return self._filter_batch(keep_mask)
 
-    @ds.action
+    @bf.action
     def rename_labels(self, rename_dict):
         """Rename labels with corresponding values from ``rename_dict``.
 
@@ -661,7 +661,7 @@ class EcgBatch(ds.Batch):
         self.target = np.array([rename_dict.get(t, t) for t in self.target])
         return self
 
-    @ds.action
+    @bf.action
     def binarize_labels(self):
         """Binarize labels in a batch in a one-vs-all fashion.
 
@@ -675,7 +675,7 @@ class EcgBatch(ds.Batch):
 
     # Channels processing
 
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.inbatch_parallel(init="indices", target="threads")
     def _filter_channels(self, index, names=None, indices=None, invert_mask=False):
         """Build and apply a boolean mask for each channel of a signal based
         on provided channels ``names`` and ``indices``.
@@ -725,7 +725,7 @@ class EcgBatch(ds.Batch):
         self.signal[i] = self.signal[i][mask]
         self.meta[i]["signame"] = channels_names[mask]
 
-    @ds.action
+    @bf.action
     def drop_channels(self, names=None, indices=None):
         """Drop channels whose names are in ``names`` or whose indices are in
         ``indices``.
@@ -752,7 +752,7 @@ class EcgBatch(ds.Batch):
         """
         return self._filter_channels(names, indices, invert_mask=True)
 
-    @ds.action
+    @bf.action
     def keep_channels(self, names=None, indices=None):
         """Drop channels whose names are not in ``names`` and whose indices
         are not in ``indices``.
@@ -779,8 +779,8 @@ class EcgBatch(ds.Batch):
         """
         return self._filter_channels(names, indices, invert_mask=False)
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def rename_channels(self, index, rename_dict):
         """Rename channels with corresponding values from ``rename_dict``.
 
@@ -802,7 +802,7 @@ class EcgBatch(ds.Batch):
 
     # Signal processing
 
-    @ds.action
+    @bf.action
     def convolve_signals(self, kernel, padding_mode="edge", axis=-1, **kwargs):
         """Convolve signals with given ``kernel``.
 
@@ -831,8 +831,8 @@ class EcgBatch(ds.Batch):
             self.signal[i] = bt.convolve_signals(self.signal[i], kernel, padding_mode, axis, **kwargs)
         return self
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def band_pass_signals(self, index, low=None, high=None, axis=-1):
         """Reject frequencies outside a given range.
 
@@ -853,7 +853,7 @@ class EcgBatch(ds.Batch):
         i = self.get_pos(None, "signal", index)
         self.signal[i] = bt.band_pass_signals(self.signal[i], self.meta[i]["fs"], low, high, axis)
 
-    @ds.action
+    @bf.action
     def drop_short_signals(self, min_length, axis=-1):
         """Drop short signals from a batch.
 
@@ -872,8 +872,8 @@ class EcgBatch(ds.Batch):
         keep_mask = np.array([sig.shape[axis] >= min_length for sig in self.signal])
         return self._filter_batch(keep_mask)
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def flip_signals(self, index, window_size=None, threshold=0):
         """Flip 2-D signals whose R-peaks are directed downwards.
 
@@ -921,8 +921,8 @@ class EcgBatch(ds.Batch):
         mode_of_votes = scipy.stats.mode(votes)[0].reshape(-1, 1)
         self.signal[i] *= mode_of_votes
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def slice_signals(self, index, selection_object):
         """Perform indexing or slicing of signals in a batch. Allows basic
         ``NumPy`` indexing and slicing along with advanced indexing.
@@ -1040,8 +1040,8 @@ class EcgBatch(ds.Batch):
             raise ValueError("{} must be positive integer".format(arg_name))
         return arg
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def split_signals(self, index, length, step, pad_value=0):
         """Split 2-D signals along axis 1 (signal axis) with given ``length``
         and ``step``.
@@ -1088,8 +1088,8 @@ class EcgBatch(ds.Batch):
         else:
             self.signal[i] = bt.split_signals(self.signal[i], length, step)
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def random_split_signals(self, index, length, n_segments, pad_value=0):
         """Split 2-D signals along axis 1 (signal axis) ``n_segments`` times
         with random start position and given ``length``.
@@ -1137,7 +1137,7 @@ class EcgBatch(ds.Batch):
         else:
             self.signal[i] = bt.random_split_signals(self.signal[i], length, n_segments)
 
-    @ds.action
+    @bf.action
     def unstack_signals(self):
         """Create a new batch in which each signal's element along axis 0 is
         considered as a separate signal.
@@ -1169,7 +1169,7 @@ class EcgBatch(ds.Batch):
         """
         n_reps = [sig.shape[0] for sig in self.signal]
         signal = np.array([channel for signal in self.signal for channel in signal] + [None])[:-1]
-        index = ds.DatasetIndex(np.arange(len(signal)))
+        index = bf.DatasetIndex(np.arange(len(signal)))
         batch = self.__class__(index, unique_labels=self.unique_labels)
         batch.signal = signal
         for component_name in set(self.components) - {"signal"}:
@@ -1208,8 +1208,8 @@ class EcgBatch(ds.Batch):
         self.meta[i]["fs"] = fs
         self.signal[i] = bt.resample_signals(self.signal[i], new_len)
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def resample_signals(self, index, fs):
         """Resample 2-D signals along axis 1 (signal axis) to given sampling
         rate.
@@ -1236,8 +1236,8 @@ class EcgBatch(ds.Batch):
             raise ValueError("Sampling rate must be a positive float")
         self._safe_fs_resample(index, fs)
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def random_resample_signals(self, index, distr, **kwargs):
         """Resample 2-D signals along axis 1 (signal axis) to a new sampling
         rate, sampled from a given distribution.
@@ -1277,8 +1277,8 @@ class EcgBatch(ds.Batch):
 
     # Complex ECG processing
 
-    @ds.action
-    @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
     def spectrogram(self, index, *args, src="signal", dst="signal", **kwargs):
         """Compute a spectrogram for each slice of a signal over the axis 0
         (typically the channel axis).
@@ -1311,8 +1311,8 @@ class EcgBatch(ds.Batch):
         dst_data = np.array([scipy.signal.spectrogram(slc, fs, *args, **kwargs)[-1] for slc in src_data])
         getattr(self, dst)[i] = dst_data
 
-    @ds.action
-    @ds.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="_init_component", src="signal", dst="signal", target="threads")
     def standardize(self, index, axis=None, eps=1e-10, *, src="signal", dst="signal"):
         """Standardize data along specified axes by removing the mean and
         scaling to unit variance.
@@ -1340,8 +1340,8 @@ class EcgBatch(ds.Batch):
                     np.std(src_data, axis=axis, keepdims=True) + eps)
         getattr(self, dst)[i] = dst_data
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def calc_ecg_parameters(self, index, src=None):
         """Calculate ECG report parameters and write them to the ``meta``
         component.
