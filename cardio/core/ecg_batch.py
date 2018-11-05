@@ -14,7 +14,7 @@ import pywt
 from .. import batchflow as bf
 from . import kernels
 from . import ecg_batch_tools as bt
-from .utils import partialmethod, LabelBinarizer
+from .utils import get_units_conversion_factor, partialmethod, LabelBinarizer
 
 
 ACTIONS_DICT = {
@@ -228,8 +228,8 @@ class EcgBatch(bf.Batch):
         ``signal`` and ``meta`` components are loaded. In case this assumption
         is not fulfilled, normal operation of the actions is not guaranteed.
 
-        This method supports loading of signals from wfdb, DICOM, EDF, wav and
-        blosc formats.
+        This method supports loading of signals from WFDB, DICOM, EDF, WAV,
+        XML and Blosc formats.
 
         Parameters
         ----------
@@ -252,19 +252,20 @@ class EcgBatch(bf.Batch):
         components = np.asarray(components).ravel()
         if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
             return self._load_labels(src)
-        if fmt in ["wfdb", "dicom", "edf", "wav"]:
+        if fmt in ["wfdb", "dicom", "edf", "wav", "xml"]:
             return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
         return super().load(src, fmt, components, *args, **kwargs)
 
     @bf.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
     def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
-        """Load given components from wfdb, DICOM, EDF or wav files.
+        """Load given components from WFDB, DICOM, EDF, WAV or XML files.
 
         Parameters
         ----------
         src : misc, optional
-            Source to load components from. If ``None``, path from
-            ``FilesIndex`` is used.
+            Source to load components from. Must be a collection, that can be
+            indexed by indices of a batch. If ``None`` and ``index`` has
+            ``FilesIndex`` type, the path from ``index`` is used.
         fmt : str, optional
             Source format.
         components : iterable, optional
@@ -283,8 +284,13 @@ class EcgBatch(bf.Batch):
             If source path is not specified and batch's ``index`` is not a
             ``FilesIndex``.
         """
-        loaders = {"wfdb": bt.load_wfdb, "dicom": bt.load_dicom,
-                   "edf": bt.load_edf, "wav": bt.load_wav}
+        loaders = {
+            "wfdb": bt.load_wfdb,
+            "dicom": bt.load_dicom,
+            "edf": bt.load_edf,
+            "wav": bt.load_wav,
+            "xml": bt.load_xml,
+        }
 
         if src is not None:
             path = src[index]
@@ -398,7 +404,7 @@ class EcgBatch(bf.Batch):
             ax.set_title("Lead name: {}".format(lead_name))
             ax.set_xlabel("Time (sec)")
             ax.set_ylabel("Amplitude ({})".format(units))
-            ax.grid("on", which="major")
+            ax.grid(True, which="major")
 
         if annot and hasattr(self, annot):
             def fill_segments(segment_states, color):
@@ -724,6 +730,7 @@ class EcgBatch(bf.Batch):
             raise ValueError("All channels cannot be dropped")
         self.signal[i] = self.signal[i][mask]
         self.meta[i]["signame"] = channels_names[mask]
+        self.meta[i]["units"] = self.meta[i]["units"][mask]
 
     @bf.action
     def drop_channels(self, names=None, indices=None):
@@ -799,6 +806,92 @@ class EcgBatch(bf.Batch):
         old_names = self.meta[i]["signame"]
         new_names = np.array([rename_dict.get(name, name) for name in old_names], dtype=object)
         self.meta[i]["signame"] = new_names
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def reorder_channels(self, index, new_order):
+        """Change the order of channels in the batch according to the
+        ``new_order``.
+
+        Parameters
+        ----------
+        new_order : array_like
+            A list of channel names specifying the order of channels in the
+            transformed batch.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with reordered channels. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If unknown lead names are specified.
+        ValueError
+            If all channels should be dropped.
+        """
+        i = self.get_pos(None, "signal", index)
+        old_order = self.meta[i]["signame"]
+        diff = np.setdiff1d(new_order, old_order)
+        if diff.size > 0:
+            raise ValueError("Unknown lead names: {}".format(", ".join(diff)))
+        if len(new_order) == 0:
+            raise ValueError("All channels cannot be dropped")
+        transform_dict = {k: v for v, k in enumerate(old_order)}
+        indices = [transform_dict[k] for k in new_order]
+        self.signal[i] = self.signal[i][indices]
+        self.meta[i]["signame"] = self.meta[i]["signame"][indices]
+        self.meta[i]["units"] = self.meta[i]["units"][indices]
+
+    @ds.action
+    @ds.inbatch_parallel(init="indices", target="threads")
+    def convert_units(self, index, new_units):
+        """Convert units of signal's channels to ``new_units``.
+
+        Parameters
+        ----------
+        new_units : str, dict or array_like
+            New units of signal's channels. Must be specified in SI format and
+            can be of one of the following types:
+                * ``str`` - defines the same new units for each channel.
+                * ``dict`` - defines the mapping from channel names to new
+                  units. Channels, whose names are not in the dictionary,
+                  remain unchanged.
+                * ``array_like`` - defines new units for corresponding
+                  channels. The length of the sequence in this case must match
+                  the number of channels.
+
+        Returns
+        -------
+        batch : EcgBatch
+            Batch with converted units. Changes ``self.signal`` and
+            ``self.meta`` inplace.
+
+        Raises
+        ------
+        ValueError
+            If ``new_units`` is ``array_like`` and its length doesn't match
+            the number of channels.
+        ValueError
+            If unknown units are used.
+        ValueError
+            If conversion between incompatible units is performed.
+        """
+        i = self.get_pos(None, "signal", index)
+        old_units = self.meta[i]["units"]
+        channels_names = self.meta[i]["signame"]
+        if isinstance(new_units, str):
+            new_units = [new_units] * len(old_units)
+        elif isinstance(new_units, dict):
+            new_units = [new_units.get(name, unit) for name, unit in zip(channels_names, old_units)]
+        elif len(new_units) != len(old_units):
+            raise ValueError("The length of the new and old units lists must be the same")
+        factors = [get_units_conversion_factor(old, new) for old, new in zip(old_units, new_units)]
+        factors = np.array(factors).reshape(*([-1] + [1] * (self.signal[i].ndim - 1)))
+        self.signal[i] *= factors
+        self.meta[i]["units"] = np.asarray(new_units)
 
     # Signal processing
 

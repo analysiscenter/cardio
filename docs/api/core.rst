@@ -41,6 +41,8 @@ Channels processing
 	.. automethod:: cardio.EcgBatch.drop_channels
 	.. automethod:: cardio.EcgBatch.keep_channels
 	.. automethod:: cardio.EcgBatch.rename_channels
+	.. automethod:: cardio.EcgBatch.reorder_channels
+	.. automethod:: cardio.EcgBatch.convert_units
 
 Signal processing
 ^^^^^^^^^^^^^^^^^

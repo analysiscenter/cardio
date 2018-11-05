@@ -2,6 +2,8 @@
 
 import os
 import struct
+import datetime
+from xml.etree import ElementTree
 
 import numpy as np
 from numba import njit
@@ -87,6 +89,29 @@ def check_units(units, nsig):
     return np.array(units)
 
 
+def unify_sex(sex):
+    """Maps the sex of a patient into one of the following values: "M", "F" or
+    ``None``.
+
+    Parameters
+    ----------
+    sex : str
+        Sex of the patient.
+
+    Returns
+    -------
+    sex : str
+        Transformed sex of the patient.
+    """
+    transform_dict = {
+        "MALE": "M",
+        "M": "M",
+        "FEMALE": "F",
+        "F": "F",
+    }
+    return transform_dict.get(sex)
+
+
 def load_wfdb(path, components, *args, **kwargs):
     """Load given components from wfdb file.
 
@@ -109,10 +134,10 @@ def load_wfdb(path, components, *args, **kwargs):
     ann_ext = kwargs.get("ann_ext")
 
     path = os.path.splitext(path)[0]
-    record = wfdb.rdsamp(path)
-    signal = record.__dict__.pop("p_signals").T
+    record = wfdb.rdrecord(path)
+    signal = record.__dict__.pop("p_signal").T
     record_meta = record.__dict__
-    nsig = record_meta["nsig"]
+    nsig = record_meta["n_sig"]
 
     if "annotation" in components and ann_ext is not None:
         annotation = wfdb.rdann(path, ann_ext)
@@ -126,7 +151,7 @@ def load_wfdb(path, components, *args, **kwargs):
     meta = dict(zip(META_KEYS, [None] * len(META_KEYS)))
     meta.update(record_meta)
 
-    meta["signame"] = check_signames(meta["signame"], nsig)
+    meta["signame"] = check_signames(meta.pop("sig_name"), nsig)
     meta["units"] = check_units(meta["units"], nsig)
 
     data = {"signal": signal,
@@ -318,6 +343,103 @@ def load_wav(path, components, *args, **kwargs):
     return [data[comp] for comp in components]
 
 
+def load_xml(path, components, xml_type, *args, **kwargs):
+    """Load given components from an XML file.
+
+    Parameters
+    ----------
+    path : str
+        A path to an .xml file.
+    components : iterable
+        Components to load.
+    xml_type : str
+        Defines the structure of the file. The following values of the
+        argument are supported:
+            * "schiller" - Schiller XML
+
+    Returns
+    -------
+    loaded_data : list
+        A list of loaded ECG data components.
+    """
+    loaders = {
+        "schiller": load_xml_schiller,
+    }
+    loader = loaders.get(xml_type)
+    if loader is None:
+        err_str = "Unsupported XML type {}. Currently supported XML types: {}"
+        err_msg = err_str.format(xml_type, ", ".join(sorted(loaders.keys())))
+        raise ValueError(err_msg)
+    return loader(path, components, *args, **kwargs)
+
+
+def load_xml_schiller(path, components, *args, **kwargs):  # pylint: disable=too-many-locals
+    """Load given components from a Schiller XML file.
+
+    Parameters
+    ----------
+    path : str
+        A path to an .xml file.
+    components : iterable
+        Components to load.
+
+    Returns
+    -------
+    loaded_data : list
+        A list of loaded ECG data components.
+    """
+    _ = args, kwargs
+
+    root = ElementTree.parse(path).getroot()
+
+    birthdate = root.find("./patdata/birthdate").text
+    if birthdate is None:
+        age = None
+    else:
+        today = datetime.date.today()
+        birthdate = datetime.datetime.strptime(birthdate, "%Y%m%d")
+        age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+
+    sex = unify_sex(root.find("./patdata/gender").text)
+
+    date = root.find("./examdescript/startdatetime/date").text
+    time = root.find("./examdescript/startdatetime/time").text
+    timestamp = datetime.datetime.strptime(date + time, "%Y%m%d%H%M%S%f")
+
+    ecg_data = root.find("./eventdata/event/wavedata[type='ECG_RHYTHMS']")
+    sig_info = []
+    for channel in ecg_data.findall("./channel"):
+        sig = [float(val) for val in channel.find("data").text.split(",") if val]
+        name = channel.find("name").text
+        sig_info.append((sig, name))
+    signal, signame = zip(*sig_info)
+    signal = np.array(signal)
+    signame = np.array(signame)
+
+    fs = float(ecg_data.find("./resolution/samplerate/value").text)
+    units = ecg_data.find("./resolution/yres/units").text
+    if units == "UV":
+        units = "uV"
+    units = np.array([units] * len(signame))
+
+    meta = {
+        "age": age,
+        "sex": sex,
+        "timestamp": timestamp,
+        "comments": None,
+        "fs": fs,
+        "signame": signame,
+        "units": units,
+    }
+
+    data = {
+        "signal": signal,
+        "annotation": {},
+        "meta": meta
+    }
+    return [data[comp] for comp in components]
+
+
 @njit(nogil=True)
 def split_signals(signals, length, step):
     """Split signals along axis 1 with given ``length`` and ``step``.
@@ -478,7 +600,7 @@ def band_pass_signals(signals, freq, low=None, high=None, axis=-1):
         mask |= (sig_freq >= high)
     slc = [slice(None)] * signals.ndim
     slc[axis] = mask
-    sig_rfft[slc] = 0
+    sig_rfft[tuple(slc)] = 0
     return np.fft.irfft(sig_rfft, n=signals.shape[axis], axis=axis)
 
 
