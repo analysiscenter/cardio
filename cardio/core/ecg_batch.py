@@ -807,8 +807,8 @@ class EcgBatch(bf.Batch):
         new_names = np.array([rename_dict.get(name, name) for name in old_names], dtype=object)
         self.meta[i]["signame"] = new_names
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def reorder_channels(self, index, new_order):
         """Change the order of channels in the batch according to the
         ``new_order``.
@@ -845,8 +845,8 @@ class EcgBatch(bf.Batch):
         self.meta[i]["signame"] = self.meta[i]["signame"][indices]
         self.meta[i]["units"] = self.meta[i]["units"][indices]
 
-    @ds.action
-    @ds.inbatch_parallel(init="indices", target="threads")
+    @bf.action
+    @bf.inbatch_parallel(init="indices", target="threads")
     def convert_units(self, index, new_units):
         """Convert units of signal's channels to ``new_units``.
 
