@@ -69,58 +69,58 @@ class DirichletModelBase(TFModel):
         input_shape = self.config["input_shape"]
         class_names = self.config["class_names"]
 
-        with self:  # pylint: disable=not-context-manager
-            self.store_to_attr("class_names", tf.constant(class_names))
+        #with self:  # pylint: disable=not-context-manager
+        self.store_to_attr("class_names", tf.constant(class_names))
 
-            signals = tf.placeholder(tf.float32, shape=(None,) + input_shape, name="signals")
-            self.store_to_attr("signals", signals)
-            signals_channels_last = tf.transpose(signals, perm=[0, 2, 1], name="signals_channels_last")
+        signals = tf.placeholder(tf.float32, shape=(None,) + input_shape, name="signals")
+        self.store_to_attr("signals", signals)
+        signals_channels_last = tf.transpose(signals, perm=[0, 2, 1], name="signals_channels_last")
 
-            k = 0.001
-            targets = tf.placeholder(tf.float32, shape=(None, len(class_names)), name="targets")
-            self.store_to_attr("targets", targets)
-            targets_soft = (1 - 2 * k) * targets + k
+        k = 0.001
+        targets = tf.placeholder(tf.float32, shape=(None, len(class_names)), name="targets")
+        self.store_to_attr("targets", targets)
+        targets_soft = (1 - 2 * k) * targets + k
 
-            block = conv1d_block("conv", signals_channels_last, is_training=self.is_training,
-                                 filters=8, kernel_size=5)
+        block = conv1d_block("conv", signals_channels_last, is_training=self.is_training,
+                             filters=8, kernel_size=5)
 
-            block_config = [
-                (8, 3, True),
-                (8, 3, False),
-                (8, 3, True),
-                (8, 3, False),
-                (12, 3, True),
-                (12, 3, False),
-                (12, 3, True),
-                (12, 3, False),
-                (16, 3, True),
-                (16, 3, False),
-                (16, 3, False),
-                (16, 3, True),
-                (16, 3, False),
-                (16, 3, False),
-                (20, 3, True),
-                (20, 3, False),
-            ]
-            for i, (filters, kernel_size, downsample) in enumerate(block_config):
-                block = resnet1d_block("block_" + str(i + 1), block, is_training=self.is_training,
-                                       filters=filters, kernel_size=kernel_size, downsample=downsample)
+        block_config = [
+            (8, 3, True),
+            (8, 3, False),
+            (8, 3, True),
+            (8, 3, False),
+            (12, 3, True),
+            (12, 3, False),
+            (12, 3, True),
+            (12, 3, False),
+            (16, 3, True),
+            (16, 3, False),
+            (16, 3, False),
+            (16, 3, True),
+            (16, 3, False),
+            (16, 3, False),
+            (20, 3, True),
+            (20, 3, False),
+        ]
+        for i, (filters, kernel_size, downsample) in enumerate(block_config):
+            block = resnet1d_block("block_" + str(i + 1), block, is_training=self.is_training,
+                                   filters=filters, kernel_size=kernel_size, downsample=downsample)
 
-            with tf.variable_scope("global_max_pooling"):  # pylint: disable=not-context-manager
-                block = tf.reduce_max(block, axis=1)
+        with tf.variable_scope("global_max_pooling"):  # pylint: disable=not-context-manager
+            block = tf.reduce_max(block, axis=1)
 
-            with tf.variable_scope("dense"):  # pylint: disable=not-context-manager
-                dense = tf.layers.dense(block, len(class_names), use_bias=False, name="dense")
-                bnorm = tf.layers.batch_normalization(dense, training=self.is_training, name="batch_norm", fused=True)
-                act = tf.nn.softplus(bnorm, name="activation")
+        with tf.variable_scope("dense"):  # pylint: disable=not-context-manager
+            dense = tf.layers.dense(block, len(class_names), use_bias=False, name="dense")
+            bnorm = tf.layers.batch_normalization(dense, training=self.is_training, name="batch_norm", fused=True)
+            act = tf.nn.softplus(bnorm, name="activation")
 
-            parameters = tf.identity(act, name="parameters")
-            self.store_to_attr("parameters", parameters)
-            predictions = tf.identity(act, name="predictions")
-            self.store_to_attr("predictions", predictions)
-            loss = tf.reduce_mean(tf.lbeta(parameters) -
-                                  tf.reduce_sum((parameters - 1) * tf.log(targets_soft), axis=1), name="loss")
-            tf.losses.add_loss(loss)
+        parameters = tf.identity(act, name="parameters")
+        self.store_to_attr("parameters", parameters)
+        predictions = tf.identity(act, name="predictions")
+        self.store_to_attr("predictions", predictions)
+        loss = tf.reduce_mean(tf.lbeta(parameters) -
+                              tf.reduce_sum((parameters - 1) * tf.log(targets_soft), axis=1), name="loss")
+        tf.losses.add_loss(loss)
 
 
 class DirichletModel(DirichletModelBase):
