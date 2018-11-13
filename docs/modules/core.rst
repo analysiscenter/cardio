@@ -35,7 +35,7 @@ EcgDataset
 ``EcgDataset`` helps to conveniently create a list of ECG indices and generate batches
 (small subsets of data) of default type ``EcgBatch``. 
 
-CardIO generates batches trought a `Batchflow <https://github.com/analysiscenter/batchflow>`_ library. To initialize this process we need to create a sequence of data item ids, e.g. using names of files in specific folder:
+CardIO generates batches trought a `BatchFlow <https://github.com/analysiscenter/batchflow>`_ library. To initialize this process we need to create a sequence of data item ids, e.g. using names of files in specific folder:
 
 .. code-block:: python
 

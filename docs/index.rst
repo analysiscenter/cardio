@@ -19,7 +19,7 @@ Main features:
 About CardIO
 ============
 
-.. note:: CardIO is based on `Batchflow <https://github.com/analysiscenter/batchflow>`_. You might benefit from reading `its documentation <https://analysiscenter.github.io/batchflow>`_. However, it is not required, especially at the beginning.
+.. note:: CardIO is based on `BatchFlow <https://github.com/analysiscenter/batchflow>`_. You might benefit from reading `its documentation <https://analysiscenter.github.io/batchflow>`_. However, it is not required, especially at the beginning.
 
 CardIO has three modules: :doc:`core <./modules/core>`, :doc:`models <./modules/models>` and :doc:`pipelines <./modules/pipelines>`.
 
@@ -56,7 +56,7 @@ Here is an example of a pipeline that loads ECG signals, makes preprocessing and
 .. code-block:: python
 
   train_pipeline = (
-      ds.Pipeline()
+      bf.Pipeline()
         .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
         .init_variable("loss_history", init_on_each_run=list)
         .load(components=["signal", "meta"], fmt="wfdb")
@@ -100,7 +100,7 @@ After that just import `cardio`::
 Installation as a project repository
 --------------------------------------
 
-When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Batchflow`` submodule is also cloned::
+When cloning repo from GitHub use flag ``--recursive`` to make sure that ``BatchFlow`` submodule is also cloned::
 
     git clone --recursive https://github.com/analysiscenter/cardio.git
 

@@ -20,7 +20,7 @@ For more details see [the documentation and tutorials](https://analysiscenter.gi
 
 ## About CardIO
 
-> CardIO is based on [Batchflow](https://github.com/analysiscenter/batchflow). You might benefit from reading [its documentation](https://analysiscenter.github.io/batchflow).
+> CardIO is based on [BatchFlow](https://github.com/analysiscenter/batchflow). You might benefit from reading [its documentation](https://analysiscenter.github.io/batchflow).
 However, it is not required, especially at the beginning.
 
 
