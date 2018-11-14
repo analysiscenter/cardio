@@ -1,10 +1,13 @@
 # Release 0.3.0
 
 ## Major Features and Improvements
-* `load` method now supports Schiller XML format
+* `load` method now supports Schiller XML format.
 * Added channels processing methods:
 	* `EcgBatch.reorder_channels`
 	* `EcgBatch.convert_units`
+
+## Breaking Changes to the API
+* `Dataset` submodule was updated and renamed to `BatchFlow`.
 
 
 # Release 0.2.0
