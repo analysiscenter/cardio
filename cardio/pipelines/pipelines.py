@@ -7,7 +7,7 @@ import tensorflow as tf
 from hmmlearn import hmm
 
 from .. import batchflow as bf
-from ..batchflow.batchflow import F, V
+from ..batchflow import F, V
 from ..models.dirichlet_model import DirichletModel, concatenate_ecg_batch
 from ..models.hmm import HMModel, prepare_hmm_input
 
