@@ -3,7 +3,7 @@
 import numpy as np
 import dill
 
-from ...batchflow.models.base import BaseModel
+from ...batchflow.models.base import BaseModel #pylint: disable=no-name-in-module, import-error
 
 
 def prepare_hmm_input(batch, model, features, channel_ix):
@@ -81,6 +81,7 @@ class HMModel(BaseModel):
         path : str
             Path to the file to save model to.
         """
+        _ = args, kwargs
         if self.estimator is not None:
             with open(path, "wb") as file:
                 dill.dump(self.estimator, file)
@@ -95,15 +96,16 @@ class HMModel(BaseModel):
         path : str
             Path to the model.
         """
+        _ = args, kwargs
         with open(path, "rb") as file:
             self.estimator = dill.load(file)
 
-    def train(self, X, lengths=None, *args, **kwargs):
+    def train(self, x, lengths=None, *args, **kwargs):
         """ Train the model using data provided.
 
         Parameters
         ----------
-        X : array-like
+        x : array-like
             A matrix of observations.
             Should be of shape (n_samples, n_features).
         lengths : array-like of integers optional
@@ -115,10 +117,11 @@ class HMModel(BaseModel):
         -----
         For more details and other parameters look at the documentation for the estimator used.
         """
-        self.estimator.fit(X, lengths)
+        _ = args, kwargs
+        self.estimator.fit(x, lengths)
         return list(self.estimator.monitor_.history)
 
-    def predict(self, X, lengths=None, *args, **kwargs):
+    def predict(self, x, lengths=None, *args, **kwargs):
         """ Make prediction with the data provided.
 
         Parameters
@@ -140,7 +143,8 @@ class HMModel(BaseModel):
         -----
         For more details and other parameters look at the documentation for the estimator used.
         """
-        preds = self.estimator.predict(X, lengths)
+        _ = args, kwargs
+        preds = self.estimator.predict(x, lengths)
         if lengths:
             output = np.array(np.split(preds, np.cumsum(lengths)[:-1]) + [None])[:-1]
         else:

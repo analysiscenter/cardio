@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from ..layers import conv1d_block, resnet1d_block
-from ...batchflow.models.tf import TFModel
+from ...batchflow.models.tf import TFModel #pylint: disable=no-name-in-module, import-error
 
 
 def concatenate_ecg_batch(batch, model, return_targets=True):
@@ -64,13 +64,12 @@ class DirichletModelBase(TFModel):
         The model has a predefined loss, so you should leave it ``None``.
     """
 
-    def _build(self, config=None):  # pylint: disable=too-many-locals
+    def _build(self):  # pylint: disable=too-many-locals
         """Build Dirichlet model."""
-        with self.graph.as_default():
-            input_shape = self.config["input_shape"]
-            class_names = self.config["class_names"]
+        input_shape = self.config["input_shape"]
+        class_names = self.config["class_names"]
 
-            #with self:  # pylint: disable=not-context-manager
+        with self.graph.as_default():
             self.store_to_attr("class_names", tf.constant(class_names))
 
             signals = tf.placeholder(tf.float32, shape=(None,) + input_shape, name="signals")

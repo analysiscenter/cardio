@@ -8,7 +8,7 @@ from keras.layers import Input, Conv1D, Lambda, \
                          Dense, GlobalMaxPooling2D
 from keras.layers.core import Dropout
 
-from ...batchflow.models.keras import KerasModel
+from ...batchflow.models.keras import KerasModel #pylint: disable=no-name-in-module, import-error
 from ..keras_custom_objects import RFFT, Crop, Inception2D
 
 class FFTModel(KerasModel):#pylint: disable=too-many-locals
