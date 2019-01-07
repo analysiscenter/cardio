@@ -64,8 +64,9 @@ class DirichletModelBase(TFModel):
         The model has a predefined loss, so you should leave it ``None``.
     """
 
-    def _build(self, config=None):  # pylint: disable=too-many-locals
+    def _build(self, *args, **kwargs):  # pylint: disable=too-many-locals
         """Build Dirichlet model."""
+        _ = args, kwargs
         input_shape = self.config["input_shape"]
         class_names = self.config["class_names"]
 

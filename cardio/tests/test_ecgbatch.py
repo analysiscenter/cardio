@@ -225,7 +225,7 @@ class TestEcgBatchSingleMethods:
 
         # Assert
         assert batch.signal.shape == (2,)
-        assert np.all([True if sig.shape[-1] > 17000 else False for sig in batch.signal])
+        assert np.all([(sig.shape[-1] > 17000) for sig in batch.signal])
 
     @pytest.mark.usefixtures("setup_class_methods")
     def test_split_signals(self, setup_class_methods): #pylint: disable=redefined-outer-name
@@ -360,7 +360,7 @@ class TestEcgBatchPipelineMethods:
 
         assert len(batch) == 2
         assert batch.meta[0]["fs"] == 150
-        assert np.all([True if sig.shape[-1] == 9000 else False for sig in batch.signal])
+        assert np.all([(sig.shape[-1] == 9000) for sig in batch.signal])
         assert batch.target.shape == (2, 3)
 
     def test_get_signal_with_meta(self, setup_module_load): #pylint: disable=redefined-outer-name
