@@ -100,7 +100,7 @@ class HMModel(BaseModel):
         with open(path, "rb") as file:
             self.estimator = dill.load(file)
 
-    def train(self, x, lengths=None, *args, **kwargs):
+    def train(self, *args, **kwargs):
         """ Train the model using data provided.
 
         Parameters
@@ -117,11 +117,11 @@ class HMModel(BaseModel):
         -----
         For more details and other parameters look at the documentation for the estimator used.
         """
-        _ = args, kwargs
-        self.estimator.fit(x, lengths)
+        _ = args
+        self.estimator.fit(**kwargs)
         return list(self.estimator.monitor_.history)
 
-    def predict(self, x, lengths=None, *args, **kwargs):
+    def predict(self, *args, **kwargs):
         """ Make prediction with the data provided.
 
         Parameters
@@ -143,8 +143,9 @@ class HMModel(BaseModel):
         -----
         For more details and other parameters look at the documentation for the estimator used.
         """
-        _ = args, kwargs
-        preds = self.estimator.predict(x, lengths)
+        _ = args
+        preds = self.estimator.predict(**kwargs)
+        lengths = kwargs.get('lengths')
         if lengths:
             output = np.array(np.split(preds, np.cumsum(lengths)[:-1]) + [None])[:-1]
         else:
