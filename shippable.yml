@@ -13,7 +13,7 @@ build:
   ci:
     - pip3 install -U pylint
     - pip3 install -r requirements-shippable.txt
-    - find ./cardio -not -path "./cardio/batchflow/*" -iname "*.py" | xargs -r pylint3 -rn --rcfile pylintrc
+    - find ./cardio -not -path "./cardio/batchflow/*" -iname "*.py" | xargs -r pylint -rn --rcfile pylintrc
     - python3 -m pytest -v --ignore=./cardio/batchflow --junitxml=shippable/testresults/pytests.xml
 
 integrations:
