@@ -725,7 +725,8 @@ class EcgBatch(bf.Batch):
             indices = np.asarray(indices)
             mask |= np.array([i in indices for i in range(len(channels_names))])
         if invert_mask:
-            mask = ~mask
+            # know pylint bug: https://github.com/PyCQA/pylint/issues/2436
+            mask = ~mask # pylint: disable=invalid-unary-operand-type
         if np.sum(mask) == 0:
             raise ValueError("All channels cannot be dropped")
         self.signal[i] = self.signal[i][mask]
