@@ -20,7 +20,7 @@ For more details see [the documentation and tutorials](https://analysiscenter.gi
 
 ## About CardIO
 
-> CardIO is based on [Dataset](https://github.com/analysiscenter/dataset). You might benefit from reading [its documentation](https://analysiscenter.github.io/dataset).
+> CardIO is based on [BatchFlow](https://github.com/analysiscenter/batchflow). You might benefit from reading [its documentation](https://analysiscenter.github.io/batchflow).
 However, it is not required, especially at the beginning.
 
 
@@ -90,7 +90,7 @@ import cardio
 
 ### Installation as a project repository
 
-When cloning repo from GitHub use flag ``--recursive`` to make sure that ``Dataset`` submodule is also cloned.
+When cloning repo from GitHub use flag ``--recursive`` to make sure that ``batchflow`` submodule is also cloned.
 
     git clone --recursive https://github.com/analysiscenter/cardio.git
 

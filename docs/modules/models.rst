@@ -20,9 +20,9 @@ The high-level architecture of the network is shown in the figure below.
 
 .. code-block :: python
   
-  import cardio.dataset as ds
+  import cardio.batchflow as bf
   from cardio import EcgDataset
-  from cardio.dataset import F, V
+  from cardio.batchflow import F, V
   from cardio.models.dirichlet_model import DirichletModel, concatenate_ecg_batch
 
   eds = EcgDataset(path='./path/to/data/', no_ext=True, sort=True)
@@ -36,7 +36,7 @@ The high-level architecture of the network is shown in the figure below.
   }
 
   dirichlet_train_ppl = (
-    ds.Pipeline()
+    bf.Pipeline()
       .init_model("dynamic", DirichletModel, name="dirichlet", config=model_config)
       .init_variable("loss_history", init_on_each_run=list)
       .load(components=["signal", "meta"], fmt="wfdb")
@@ -71,9 +71,9 @@ Also, as you can see in the picture below, we introduce direct transition from l
   
   from hmmlearn import hmm
 
-  import cardio.dataset as ds
+  import cardio.batchflow as ds
   from cardio import EcgBatch
-  from cardio.dataset import B, V, F
+  from cardio.batchflow import B, V, F
   from cardio.models.hmm import HMModel, prepare_hmm_input
 
   model_config = {
@@ -84,7 +84,7 @@ Also, as you can see in the picture below, we introduce direct transition from l
   eds = EcgDataset(path='./path/to/data/', no_ext=True, sort=True)
 
   hmm_train_ppl = (
-    ds.Pipeline()
+    bf.Pipeline()
       .init_model("dynamic", HMModel, "HMM", config=model_config)
       .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
       .cwt(src="signal", dst="hmm_features", scales=[4,8,16], wavelet="mexh")
@@ -112,9 +112,9 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
 
 .. code-block :: python
 
-  import cardio.dataset as ds
+  import cardio.batchflow as bf
   from cardio import EcgDataset
-  from cardio.dataset import F, V
+  from cardio.batchflow import F, V
   from cardio.models.fft_model import FFTModel
 
   def make_data(batch, **kwagrs):
@@ -129,7 +129,7 @@ We applied this model to arrhythmia prediction from single-lead ECG. Train pipel
   }
 
   fft_train_ppl = (
-    ds.Pipeline()
+    bf.Pipeline()
       .init_model("dynamic", FFTModel, name="fft_model", config=model_config)
       .init_variable("loss_history", init_on_each_run=list)
       .load(fmt="wfdb", components=["signal", "meta"])

@@ -6,8 +6,8 @@ import numpy as np
 import tensorflow as tf
 from hmmlearn import hmm
 
-from .. import dataset as ds
-from ..dataset.dataset import F, V
+from .. import batchflow as bf
+from ..batchflow import F, V
 from ..models.dirichlet_model import DirichletModel, concatenate_ecg_batch
 from ..models.hmm import HMModel, prepare_hmm_input
 
@@ -48,7 +48,7 @@ def dirichlet_train_pipeline(labels_path, batch_size=256, n_epochs=1000, gpu_opt
         "loss": None,
     }
 
-    return (ds.Pipeline()
+    return (bf.Pipeline()
             .init_model("dynamic", DirichletModel, name=model_name, config=model_config)
             .init_variable(loss_history, init_on_each_run=list)
             .load(components=["signal", "meta"], fmt="wfdb")
@@ -95,7 +95,7 @@ def dirichlet_predict_pipeline(model_path, batch_size=100, gpu_options=None,
         "load": {"path": model_path},
     }
 
-    return (ds.Pipeline()
+    return (bf.Pipeline()
             .init_model("static", DirichletModel, name=model_name, config=model_config)
             .init_variable(predictions, init_on_each_run=list)
             .load(fmt="wfdb", components=["signal", "meta"])
@@ -135,16 +135,16 @@ def hmm_preprocessing_pipeline(batch_size=20, features="hmm_features"):
         """
         return [ann["anntype"] for ann in batch.annotation]
 
-    return (ds.Pipeline()
+    return (bf.Pipeline()
             .init_variable("annsamps", init_on_each_run=list)
             .init_variable("anntypes", init_on_each_run=list)
             .init_variable(features, init_on_each_run=list)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
-            .update_variable("annsamps", ds.F(get_annsamples), mode='e')
-            .update_variable("anntypes", ds.F(get_anntypes), mode='e')
-            .update_variable(features, ds.B(features), mode='e')
+            .update_variable("annsamps", bf.F(get_annsamples), mode='e')
+            .update_variable("anntypes", bf.F(get_anntypes), mode='e')
+            .update_variable(features, bf.B(features), mode='e')
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))
 
 def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features", channel_ix=0,
@@ -255,7 +255,7 @@ def hmm_train_pipeline(hmm_preprocessed, batch_size=20, features="hmm_features",
                         'startprob_': start_probabilities}
     }
 
-    return (ds.Pipeline()
+    return (bf.Pipeline()
             .init_model("dynamic", HMModel, model_name, config=config_train)
             .load(fmt='wfdb', components=["signal", "annotation", "meta"], ann_ext='pu1')
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
@@ -295,12 +295,12 @@ def hmm_predict_pipeline(model_path, batch_size=20, features="hmm_features",
         'load': {'path': model_path}
     }
 
-    return (ds.Pipeline()
+    return (bf.Pipeline()
             .init_model("static", HMModel, model_name, config=config_predict)
             .load(fmt="wfdb", components=["signal", "meta"])
             .cwt(src="signal", dst=features, scales=[4, 8, 16], wavelet="mexh")
             .standardize(axis=-1, src=features, dst=features)
             .predict_model(model_name, make_data=partial(prepare_hmm_input, features=features, channel_ix=channel_ix),
-                           save_to=ds.B(annot), mode='w')
+                           save_to=bf.B(annot), mode='w')
             .calc_ecg_parameters(src=annot)
             .run(batch_size=batch_size, shuffle=False, drop_last=False, n_epochs=1, lazy=True))

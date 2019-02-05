@@ -5,9 +5,8 @@ import random
 import numpy as np
 import pytest
 
-from cardio import EcgBatch, EcgDataset, dataset as ds
+from cardio import EcgBatch, EcgDataset, batchflow as bf
 from cardio.core import ecg_batch_tools as bt
-
 
 random.seed(170720143422)
 
@@ -25,7 +24,7 @@ def setup_module_load(request):
     # REFERENCE.csv
 
     if np.all([os.path.isfile(os.path.join(path, file)) for file in files]):
-        ind = ds.FilesIndex(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
+        ind = bf.FilesIndex(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
     else:
         raise FileNotFoundError("Test files not found in 'tests/data/'!")
 
@@ -43,7 +42,7 @@ def setup_class_methods(request):
     Fixture to setup class to test EcgBatch methods separately.
     """
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
-    ind = ds.FilesIndex(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
+    ind = bf.FilesIndex(path=os.path.join(path, 'A*.hea'), no_ext=True, sort=True)
     batch_loaded = (EcgBatch(ind, unique_labels=["A", "O", "N"])
                     .load(fmt="wfdb", components=["signal", "annotation", "meta"]))
 
@@ -124,7 +123,7 @@ class TestEcgBatchLoad():
         """
         # Arrange
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, 'sel100.hea'), no_ext=True, sort=True)
+        ind = bf.FilesIndex(path=os.path.join(path, 'sel100.hea'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         # Act
         batch = batch.load(fmt="wfdb", components=["signal", "annotation", "meta"], ann_ext="pu1")
@@ -148,7 +147,7 @@ class TestEcgBatchLoad():
         """
         # Arrange
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.dcm'), no_ext=True, sort=True)
+        ind = bf.FilesIndex(path=os.path.join(path, 'sample*.dcm'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         # Act
         batch = batch.load(fmt="dicom", components=["signal", "annotation", "meta"])
@@ -170,7 +169,7 @@ class TestEcgBatchLoad():
         """
         # Arrange
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.edf'), no_ext=True, sort=True)
+        ind = bf.FilesIndex(path=os.path.join(path, 'sample*.edf'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         # Act
         batch = batch.load(fmt="edf", components=["signal", "annotation", "meta"])
@@ -192,7 +191,7 @@ class TestEcgBatchLoad():
         """
         # Arrange
         path = setup_module_load[1]
-        ind = ds.FilesIndex(path=os.path.join(path, 'sample*.wav'), no_ext=True, sort=True)
+        ind = bf.FilesIndex(path=os.path.join(path, 'sample*.wav'), no_ext=True, sort=True)
         batch = EcgBatch(ind)
         # Act
         batch = batch.load(fmt="wav", components=["signal", "annotation", "meta"])
@@ -226,7 +225,7 @@ class TestEcgBatchSingleMethods:
 
         # Assert
         assert batch.signal.shape == (2,)
-        assert np.all([True if sig.shape[-1] > 17000 else False for sig in batch.signal])
+        assert np.all([(sig.shape[-1] > 17000) for sig in batch.signal])
 
     @pytest.mark.usefixtures("setup_class_methods")
     def test_split_signals(self, setup_class_methods): #pylint: disable=redefined-outer-name
@@ -285,16 +284,16 @@ class TestEcgBatchDataset:
         ecg_dtst.cv_split(shares=0.5)
         assert ecg_dtst.train.indices.shape == (3,)
         assert ecg_dtst.test.indices.shape == (3,)
-        assert isinstance(ecg_dtst.train, ds.Dataset)
-        assert isinstance(ecg_dtst.test, ds.Dataset)
+        assert isinstance(ecg_dtst.train, bf.Dataset)
+        assert isinstance(ecg_dtst.test, bf.Dataset)
 
         ecg_dtst.cv_split(shares=[0.5, 0.49])
         assert ecg_dtst.train.indices.shape == (3,)
         assert ecg_dtst.test.indices.shape == (2,)
         assert ecg_dtst.validation.indices.shape == (1,)
-        assert isinstance(ecg_dtst.train, ds.Dataset)
-        assert isinstance(ecg_dtst.test, ds.Dataset)
-        assert isinstance(ecg_dtst.validation, ds.Dataset)
+        assert isinstance(ecg_dtst.train, bf.Dataset)
+        assert isinstance(ecg_dtst.test, bf.Dataset)
+        assert isinstance(ecg_dtst.validation, bf.Dataset)
 
     def test_pipeline_load(self, setup_class_dataset, setup_module_load): #pylint: disable=redefined-outer-name
         """
@@ -320,7 +319,7 @@ class TestEcgBatchDataset:
             assert np.unique(ppln_batch.target).shape == (1,)
 
             first_indice = ppln_batch.indices[0]
-            assert isinstance(ppln_batch[first_indice], ds.components.EcgBatchComponents) #pylint: disable=no-member
+            assert isinstance(ppln_batch[first_indice], bf.components.EcgBatchComponents) #pylint: disable=no-member
 
 
 
@@ -361,7 +360,7 @@ class TestEcgBatchPipelineMethods:
 
         assert len(batch) == 2
         assert batch.meta[0]["fs"] == 150
-        assert np.all([True if sig.shape[-1] == 9000 else False for sig in batch.signal])
+        assert np.all([(sig.shape[-1] == 9000) for sig in batch.signal])
         assert batch.target.shape == (2, 3)
 
     def test_get_signal_with_meta(self, setup_module_load): #pylint: disable=redefined-outer-name
@@ -369,11 +368,11 @@ class TestEcgBatchPipelineMethods:
         Testing get_signal_meta.
         """
         # Arrange
-        ppln = (ds.Pipeline()
+        ppln = (bf.Pipeline()
                 .init_variable(name="signal", init_on_each_run=list)
                 .load(fmt='wfdb', components=["signal", "meta"])
                 .flip_signals()
-                .update_variable("signal", ds.B("signal"), mode='a')
+                .update_variable("signal", bf.B("signal"), mode='a')
                 .run(batch_size=2, shuffle=False,
                      drop_last=False, n_epochs=1, lazy=True))
 
