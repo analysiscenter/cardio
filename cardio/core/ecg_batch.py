@@ -1097,8 +1097,7 @@ class EcgBatch(bf.Batch):
             arg = arg.get(target)
             if arg is None:
                 raise KeyError("Undefined {} for target {}".format(arg_name, target))
-            else:
-                return arg
+            return arg
         else:
             raise ValueError("Unsupported {} type".format(arg_name))
 
