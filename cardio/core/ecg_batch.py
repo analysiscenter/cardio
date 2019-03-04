@@ -146,6 +146,10 @@ class EcgBatch(bf.Batch):
     def components(self):
         """tuple of str: Data components names."""
         return "signal", "annotation", "meta", "target"
+    
+    @components.setter
+    def components(self, components):
+        return components
 
     @property
     def array_of_nones(self):
@@ -249,12 +253,12 @@ class EcgBatch(bf.Batch):
         """
         if components is None:
             components = self.components
-        components = np.asarray(components).ravel()
-        if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and np.all(components == "target"):
+        if ((fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and
+             np.all(np.asarray(components).ravel() == "target")):
             return self._load_labels(src)
         if fmt in ["wfdb", "dicom", "edf", "wav", "xml"]:
             return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
-        return super().load(src, fmt, components, *args, **kwargs)
+        return super().load(src=src, fmt=fmt, components=components, **kwargs)
 
     @bf.inbatch_parallel(init="indices", post="_assemble_load", target="threads")
     def _load_data(self, index, src=None, fmt=None, components=None, *args, **kwargs):
