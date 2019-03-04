@@ -1098,8 +1098,7 @@ class EcgBatch(bf.Batch):
             if arg is None:
                 raise KeyError("Undefined {} for target {}".format(arg_name, target))
             return arg
-        else:
-            raise ValueError("Unsupported {} type".format(arg_name))
+        raise ValueError("Unsupported {} type".format(arg_name))
 
     @staticmethod
     def _check_segmentation_args(signal, target, length, arg, arg_name):
