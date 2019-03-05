@@ -246,10 +246,9 @@ class EcgBatch(bf.Batch):
         """
         if components is None:
             components = self.components
-        components = np.asarray(components).ravel().tolist()
+        components = np.unique(components).ravel().tolist()
 
-        if ((fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and
-            all(comp == "target" for comp in components)):
+        if (fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and components == ['target']:
             return self._load_labels(src)
         if fmt in ["wfdb", "dicom", "edf", "wav", "xml"]:
             unexpected_components = set(components) - set(self.components)
