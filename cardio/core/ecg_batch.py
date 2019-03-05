@@ -259,9 +259,9 @@ class EcgBatch(bf.Batch):
                 all(comp == "target" for comp in components)):
             return self._load_labels(src)
         if fmt in ["wfdb", "dicom", "edf", "wav", "xml"]:
-            for comp in components:
-                if not comp in self.components:
-                    raise ValueError("Unexpected component: " + comp)
+            unexpected_components = set(components) - set(self.components)
+            if unexpected_components:
+                raise ValueError('Unexpected components: ', unexpected_components)
             return self._load_data(src=src, fmt=fmt, components=components, ann_ext=ann_ext, *args, **kwargs)
         return super().load(src=src, fmt=fmt, components=components, **kwargs)
 
