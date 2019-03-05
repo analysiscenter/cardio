@@ -132,6 +132,8 @@ class EcgBatch(bf.Batch):
     ``batch.resample_signals(fs)``.
     """
 
+    components = "signal", "annotation", "meta", "target"
+
     def __init__(self, index, preloaded=None, unique_labels=None):
         super().__init__(index, preloaded)
         self.signal = self.array_of_nones
@@ -141,15 +143,6 @@ class EcgBatch(bf.Batch):
         self._unique_labels = None
         self._label_binarizer = None
         self.unique_labels = unique_labels
-
-    @property
-    def components(self):
-        """tuple of str: Data components names."""
-        return "signal", "annotation", "meta", "target"
-
-    @components.setter
-    def components(self, components):
-        return components
 
     @property
     def array_of_nones(self):
@@ -256,7 +249,7 @@ class EcgBatch(bf.Batch):
         components = np.asarray(components).ravel().tolist()
 
         if ((fmt == "csv" or fmt is None and isinstance(src, pd.Series)) and
-                all(comp == "target" for comp in components)):
+            all(comp == "target" for comp in components)):
             return self._load_labels(src)
         if fmt in ["wfdb", "dicom", "edf", "wav", "xml"]:
             unexpected_components = set(components) - set(self.components)
