@@ -30,7 +30,7 @@ setup(
         'numpy>=1.13.1',
         'scipy>=0.19.1',
         'pandas>=0.21.1',
-        'scikit-learn>=0.19.1',
+        'scikit-learn==0.19.1',
         'numba>=0.35.0',
         'pywavelets>=0.5.2',
         'matplotlib>=2.1.0',
